@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --blue-brand: #2563eb;
+  --blue-light: #dbeafe;
 }
 
 @theme inline {
@@ -12,15 +14,33 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Pastikan form input & select memiliki warna teks dan latar yang kontras tinggi */
+input, select, textarea {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+/* Print Stylesheet untuk Export PDF & Cetak Laporan */
+@media print {
+  nav, aside, header, .no-print {
+    display: none !important;
+  }
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .shadow-sm, .shadow-2xs, .shadow-md, .shadow-xl {
+    box-shadow: none !important;
+  }
 }
