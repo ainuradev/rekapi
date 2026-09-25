@@ -12,8 +12,15 @@ export default async function PenjualanPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('branch_id, role')
+        .select('branch_id, role, business_id')
         .eq('id', user.id)
+        .single()
+
+    // Get business data
+    const { data: business } = await supabase
+        .from('businesses')
+        .select('name, address, phone')
+        .eq('id', profile?.business_id)
         .single()
 
     let products: any[] | null = null
@@ -44,6 +51,10 @@ export default async function PenjualanPage() {
             products={products ?? []}
             branches={branches ?? []}
             fixedBranchId={profile?.branch_id ?? null}
+            businessName={business?.name ?? 'Rekapin'}
+            businessAddress={business?.address}
+            businessPhone={business?.phone}
+            userName={user.email?.split('@')[0] ?? 'Kasir'}
         />
     )
 }

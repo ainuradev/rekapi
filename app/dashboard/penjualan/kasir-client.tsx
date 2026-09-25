@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { createSale } from './actions'
+import InvoiceModal from '@/components/invoice-modal'
 
 type Product = {
     id: string
@@ -38,10 +39,18 @@ export default function KasirClient({
     products,
     branches,
     fixedBranchId,
+    businessName,
+    businessAddress,
+    businessPhone,
+    userName,
 }: {
     products: Product[]
     branches: Branch[]
     fixedBranchId: string | null
+    businessName: string
+    businessAddress?: string | null
+    businessPhone?: string | null
+    userName: string
 }) {
     const [cart, setCart] = useState<Record<string, CartLine>>({})
     const [selectedBranch, setSelectedBranch] = useState(fixedBranchId ?? branches[0]?.id ?? '')
@@ -50,6 +59,8 @@ export default function KasirClient({
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
     const [selectingGroup, setSelectingGroup] = useState<ProductGroup | null>(null)
+    const [showInvoice, setShowInvoice] = useState(false)
+    const [invoiceData, setInvoiceData] = useState<any>(null)
 
     // Mengelompokkan produk berdasarkan nama (case-insensitive) agar produk dengan banyak satuan
     // tampil menjadi satu kartu menu utama di kasir.
@@ -143,6 +154,41 @@ export default function KasirClient({
             return
         }
 
+        // Generate invoice number
+        const now = new Date()
+        const invoiceNumber = `INV/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}/${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
+
+        // Get branch name
+        const branch = branches.find(b => b.id === selectedBranch)
+
+        // Prepare invoice data
+        const invoice = {
+            invoiceNumber,
+            date: now.toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }),
+            businessName: businessName,
+            branchName: branch?.name,
+            address: businessAddress,
+            phone: businessPhone,
+            items: Object.values(cart).map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.price * item.quantity,
+            })),
+            subtotal: total,
+            total: total,
+            paymentMethod: paymentMethod,
+            cashierName: userName,
+        }
+
+        setInvoiceData(invoice)
+        setShowInvoice(true)
         setCart({})
         setMessage('Transaksi tersimpan!')
     }
@@ -496,6 +542,15 @@ export default function KasirClient({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Invoice Modal */}
+            {showInvoice && invoiceData && (
+                <InvoiceModal
+                    isOpen={showInvoice}
+                    onClose={() => setShowInvoice(false)}
+                    data={invoiceData}
+                />
             )}
         </div>
     )

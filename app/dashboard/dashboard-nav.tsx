@@ -2,19 +2,43 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
-type NavItem = { href: string; label: string; icon: string }
+type NavItem = {
+    href?: string
+    label: string
+    icon: string
+    children?: NavItem[]
+}
 
 const OWNER_NAV: NavItem[] = [
     { href: '/dashboard', label: 'Beranda', icon: '🏠' },
-    { href: '/dashboard/penjualan', label: 'Kasir', icon: '🧾' },
-    { href: '/dashboard/penjualan/riwayat', label: 'Riwayat', icon: '📋' },
-    { href: '/dashboard/produk', label: 'Produk', icon: '📦' },
-    { href: '/dashboard/bahan-baku', label: 'Bahan Baku', icon: '🥬' },
-    { href: '/dashboard/keuangan', label: 'Keuangan', icon: '💵' },
-    { href: '/dashboard/cabang', label: 'Cabang', icon: '🏢' },
-    { href: '/dashboard/pegawai', label: 'Pegawai', icon: '👥' },
-    { href: '/dashboard/profil', label: 'Profil', icon: '⚙️' },
+    {
+        label: 'Transaksi',
+        icon: '🧾',
+        children: [
+            { href: '/dashboard/penjualan', label: 'Kasir', icon: '💳' },
+            { href: '/dashboard/penjualan/riwayat', label: 'Riwayat', icon: '📋' },
+        ],
+    },
+    {
+        label: 'Inventori',
+        icon: '📦',
+        children: [
+            { href: '/dashboard/produk', label: 'Produk', icon: '🛍️' },
+            { href: '/dashboard/bahan-baku', label: 'Bahan Baku', icon: '🥬' },
+        ],
+    },
+    {
+        label: 'Manajemen',
+        icon: '🏢',
+        children: [
+            { href: '/dashboard/keuangan', label: 'Keuangan', icon: '💵' },
+            { href: '/dashboard/cabang', label: 'Cabang', icon: '🏪' },
+            { href: '/dashboard/pegawai', label: 'Pegawai', icon: '👥' },
+        ],
+    },
+    { href: '/dashboard/subscription', label: 'Langganan', icon: '⭐' },
 ]
 
 const PEGAWAI_NAV: NavItem[] = [
@@ -47,6 +71,30 @@ export default function DashboardNav({
 }: DashboardNavProps) {
     const pathname = usePathname()
     const items = isOwner ? OWNER_NAV : PEGAWAI_NAV
+
+    const isActiveParent = (children?: NavItem[]) => {
+        if (!children) return false
+        return children.some((child) => child.href === pathname)
+    }
+
+    // Auto-expand parent menu if child is active
+    const getInitialExpanded = () => {
+        const expanded: string[] = []
+        items.forEach((item) => {
+            if (item.children && isActiveParent(item.children)) {
+                expanded.push(item.label)
+            }
+        })
+        return expanded
+    }
+
+    const [expandedItems, setExpandedItems] = useState<string[]>(getInitialExpanded)
+
+    const toggleExpand = (label: string) => {
+        setExpandedItems((prev) =>
+            prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]
+        )
+    }
 
     return (
         <>
@@ -119,12 +167,13 @@ export default function DashboardNav({
 
             {/* ── Mobile: Bottom Nav ── */}
             <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white sm:hidden shadow-lg">
-                {items.map((item) => {
-                    const active = pathname === item.href
+                {items.map((item, idx) => {
+                    const active = item.href ? pathname === item.href : isActiveParent(item.children)
+                    const href = item.href || item.children?.[0]?.href || '#'
                     return (
                         <Link
-                            key={item.href}
-                            href={item.href}
+                            key={item.label + idx}
+                            href={href}
                             className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] transition ${
                                 active
                                     ? 'font-bold text-blue-600'
@@ -187,14 +236,66 @@ export default function DashboardNav({
                         <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                             {isOwner ? 'Menu Utama' : 'Kasir'}
                         </p>
-                        {items.map((item) => {
-                            const active = pathname === item.href
+                        {items.map((item, idx) => {
+                            const hasChildren = item.children && item.children.length > 0
+                            const isExpanded = expandedItems.includes(item.label)
+                            const isParentActive = isActiveParent(item.children)
+                            const isSelfActive = item.href === pathname
+
+                            if (hasChildren) {
+                                return (
+                                    <div key={item.label + idx}>
+                                        <button
+                                            onClick={() => toggleExpand(item.label)}
+                                            className={`flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                                                isParentActive
+                                                    ? 'bg-blue-50 text-blue-700'
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-base">{item.icon}</span>
+                                                {item.label}
+                                            </div>
+                                            <span
+                                                className={`text-xs transition-transform ${
+                                                    isExpanded ? 'rotate-180' : ''
+                                                }`}
+                                            >
+                                                ▼
+                                            </span>
+                                        </button>
+                                        {isExpanded && (
+                                            <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-slate-200 pl-2">
+                                                {item.children?.map((child) => {
+                                                    const childActive = pathname === child.href
+                                                    return (
+                                                        <Link
+                                                            key={child.href}
+                                                            href={child.href!}
+                                                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                                                                childActive
+                                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                            }`}
+                                                        >
+                                                            <span className="text-sm">{child.icon}</span>
+                                                            {child.label}
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+
                             return (
                                 <Link
                                     key={item.href}
-                                    href={item.href}
+                                    href={item.href!}
                                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        active
+                                        isSelfActive
                                             ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
                                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                     }`}
