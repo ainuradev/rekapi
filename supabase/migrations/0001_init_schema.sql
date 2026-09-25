@@ -56,9 +56,9 @@ create table subscription_plans (
 );
 
 insert into subscription_plans (code, name, price, max_branches) values
-  ('basic', 'Basic', 100000, 1),
-  ('bisnis', 'Bisnis', 250000, 3),
-  ('profesional', 'Profesional', 300000, null);
+  ('basic', 'Basic', 150000, 1),
+  ('bisnis', 'Bisnis', 300000, 3),
+  ('profesional', 'Profesional', 500000, null);
 
 -- ---------- SUBSCRIPTIONS ----------
 create table subscriptions (
