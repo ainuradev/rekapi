@@ -36,13 +36,15 @@ export async function POST(request: NextRequest) {
         // Update payment transaction
         const { data: paymentTx } = await admin
             .from('payment_transactions')
-            .select('*, subscriptions(id, business_id)')
+            .select('*')
             .eq('midtrans_order_id', orderId)
             .single()
 
         if (!paymentTx) {
             return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
         }
+
+        console.log('Payment transaction found:', paymentTx)
 
         let paymentStatus = 'pending'
         let subscriptionStatus: 'trial' | 'active' | 'expired' | 'canceled' = 'trial'
@@ -78,24 +80,55 @@ export async function POST(request: NextRequest) {
             })
             .eq('midtrans_order_id', orderId)
 
-        // Update subscription status
-        if (paymentStatus === 'settlement' && paymentTx.subscription_id) {
-            await admin
-                .from('subscriptions')
-                .update({
-                    status: subscriptionStatus,
-                })
-                .eq('id', paymentTx.subscription_id)
+        // Update subscription status and business status if payment is settled
+        if (paymentStatus === 'settlement') {
+            console.log('Payment settled, updating subscription and business status')
 
-            // Update business subscription status
-            const businessId = (paymentTx.subscriptions as any)?.business_id
-            if (businessId) {
-                await admin
-                    .from('businesses')
+            // Get subscription to calculate expiry date
+            const { data: subscription } = await admin
+                .from('subscriptions')
+                .select('*')
+                .eq('id', paymentTx.subscription_id)
+                .single()
+
+            if (subscription) {
+                // Calculate new expiry date (30 days from now)
+                const newExpiresAt = new Date()
+                newExpiresAt.setDate(newExpiresAt.getDate() + 30)
+
+                // Update subscription status
+                const { error: subError } = await admin
+                    .from('subscriptions')
                     .update({
-                        subscription_status: subscriptionStatus,
+                        status: subscriptionStatus,
+                        expires_at: newExpiresAt.toISOString(),
+                        updated_at: new Date().toISOString(),
                     })
-                    .eq('id', businessId)
+                    .eq('id', paymentTx.subscription_id)
+
+                if (subError) {
+                    console.error('Failed to update subscription:', subError)
+                } else {
+                    console.log('Subscription updated successfully')
+                }
+
+                // Update business subscription status
+                const businessId = paymentTx.business_id
+                if (businessId) {
+                    const { error: bizError } = await admin
+                        .from('businesses')
+                        .update({
+                            subscription_status: subscriptionStatus,
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq('id', businessId)
+
+                    if (bizError) {
+                        console.error('Failed to update business:', bizError)
+                    } else {
+                        console.log('Business subscription status updated successfully')
+                    }
+                }
             }
         }
 
