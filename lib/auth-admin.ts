@@ -1,4 +1,4 @@
-// Helper untuk verifikasi Super Admin Rekapin
+// Helper untuk verifikasi Super Admin Rekapi
 
 export function isSuperAdmin(email: string | null | undefined): boolean {
     if (!email) return false

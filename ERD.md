@@ -1,6 +1,6 @@
-# Entity Relationship Diagram (ERD) — **Rekapin**
+# Entity Relationship Diagram (ERD) — **Rekapi**
 
-Dokumentasi skema database PostgreSQL Supabase untuk SaaS **Rekapin**, mencakup tabel multi-tenant, relasi entitas, enum, reporting views, triggers, dan kebijakan Row Level Security (RLS).
+Dokumentasi skema database PostgreSQL Supabase untuk SaaS **Rekapi**, mencakup tabel multi-tenant, relasi entitas, enum, reporting views, triggers, dan kebijakan Row Level Security (RLS).
 
 ---
 

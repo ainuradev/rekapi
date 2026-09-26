@@ -217,7 +217,7 @@ export default function AdminClient({
                         👑 Portal Super Admin
                     </h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Pemantauan menyeluruh pengguna, bisnis UMKM, masa trial, dan aktivitas penjualan platform Rekapin.
+                        Pemantauan menyeluruh pengguna, bisnis UMKM, masa trial, dan aktivitas penjualan platform Rekapi.
                     </p>
                 </div>
             </div>

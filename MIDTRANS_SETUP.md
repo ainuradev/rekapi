@@ -1,6 +1,6 @@
 # Integrasi Midtrans untuk Subscription Billing
 
-Panduan lengkap untuk mengintegrasikan Midtrans sebagai payment gateway untuk sistem langganan bulanan di Rekapin.
+Panduan lengkap untuk mengintegrasikan Midtrans sebagai payment gateway untuk sistem langganan bulanan di Rekapi.
 
 ## 📋 Prerequisite
 

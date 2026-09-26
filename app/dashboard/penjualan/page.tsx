@@ -51,7 +51,7 @@ export default async function PenjualanPage() {
             products={products ?? []}
             branches={branches ?? []}
             fixedBranchId={profile?.branch_id ?? null}
-            businessName={business?.name ?? 'Rekapin'}
+            businessName={business?.name ?? 'Rekapi'}
             businessAddress={business?.address}
             businessPhone={business?.phone}
             userName={user.email?.split('@')[0] ?? 'Kasir'}

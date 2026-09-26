@@ -20,7 +20,7 @@ export default async function ProfilPage() {
 
     const { data: business } = await supabase
         .from('businesses')
-        .select('id, name, subscription_status, trial_ends_at')
+        .select('id, name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name)')
         .eq('id', profile.business_id)
         .single()
 
@@ -52,6 +52,8 @@ export default async function ProfilPage() {
             businessName={business?.name ?? ''}
             subscriptionStatus={business?.subscription_status ?? 'trial'}
             trialEndsAt={business?.trial_ends_at ?? null}
+            subscriptionExpiresAt={business?.subscription_expires_at ?? null}
+            planName={(business as any)?.subscription_plans?.name ?? null}
             isGoogleUser={isGoogleUser}
             hasPasswordSet={hasPasswordSet}
             isNewUser={isNewUser}

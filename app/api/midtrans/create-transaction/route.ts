@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
         const businessName = (profile as any).businesses?.name || 'Business'
 
         // Generate unique order ID
-        const orderId = `REKAPIN-${businessId.substring(0, 8)}-${Date.now()}`
+        const orderId = `REKAPI-${businessId.substring(0, 8)}-${Date.now()}`
 
         // Create subscription record
         const expiresAt = new Date()
-        expiresAt.setMonth(expiresAt.getMonth() + 1)
+        expiresAt.setDate(expiresAt.getDate() + 28) // 28 days subscription duration
 
         // Use service role client to bypass RLS for subscription insert
         const supabaseAdmin = createServiceRoleClient()
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
                     id: plan.code,
                     price: Number(plan.price),
                     quantity: 1,
-                    name: `Rekapin ${plan.name} - 1 Bulan`,
+                    name: `Rekapi ${plan.name} - 28 Hari`,
                 },
             ],
             callbacks: {

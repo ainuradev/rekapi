@@ -248,7 +248,7 @@ export default function RiwayatClient({
             .map(([name, qty], idx) => `${idx + 1}. ${name} (${qty} porsi)`)
             .join('\n')
 
-        const text = `*📊 REKAP PENJUALAN REKAPIN*
+        const text = `*📊 REKAP PENJUALAN REKAPI*
 🏪 Cabang: ${branchTitle}
 📅 Periode: ${periodLabel} (${dateStr})
 ----------------------------------------
@@ -269,7 +269,7 @@ ${channelList || 'Belum ada transaksi'}
 🍱 *Menu Terlaris:*
 ${topList || 'Belum ada data'}
 ----------------------------------------
-_Dicatat otomatis via Rekapin POS_`
+_Dicatat otomatis via Rekapi POS_`
 
         navigator.clipboard.writeText(text).then(() => {
             setCopiedToast(true)

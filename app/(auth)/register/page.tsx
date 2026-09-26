@@ -75,7 +75,7 @@ export default function RegisterPage() {
         <div className="mx-auto max-w-sm px-4 py-16">
             <div className="mb-6 text-center">
                 <div className="text-3xl mb-2">⚡</div>
-                <h1 className="text-2xl font-bold text-gray-900">Daftar Rekapin</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Daftar Rekapi</h1>
                 <p className="mt-1 text-sm text-gray-600">Mulai kelola cabang dan keuangan UMKM Anda.</p>
             </div>
 

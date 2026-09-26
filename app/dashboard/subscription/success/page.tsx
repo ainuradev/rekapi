@@ -22,7 +22,7 @@ export default function SubscriptionSuccessPage() {
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">Pembayaran Berhasil!</h1>
                     <p className="text-gray-600">
-                        Terima kasih! Langganan Anda telah aktif. Anda sekarang dapat menggunakan semua fitur Rekapin.
+                        Terima kasih! Langganan Anda telah aktif. Anda sekarang dapat menggunakan semua fitur Rekapi.
                     </p>
                 </div>
 

@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export const metadata = {
-    title: 'Super Admin Portal — Rekapin',
-    description: 'Portal pemantauan pengguna, bisnis, dan transaksi Rekapin',
+    title: 'Super Admin Portal — Rekapi',
+    description: 'Portal pemantauan pengguna, bisnis, dan transaksi Rekapi',
 }
 
 export default async function AdminLayout({
@@ -38,7 +38,7 @@ export default async function AdminLayout({
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500 font-bold text-white shadow-sm">
                                 ⚡
                             </span>
-                            <span className="text-base font-extrabold tracking-tight">Rekapin</span>
+                            <span className="text-base font-extrabold tracking-tight">Rekapi</span>
                         </Link>
                         <span className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[11px] font-black tracking-wide text-amber-300">
                             👑 SUPER ADMIN

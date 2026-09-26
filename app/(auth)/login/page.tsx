@@ -60,7 +60,7 @@ export default function LoginPage() {
                 <div className="flex justify-center mb-3">
                     <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white text-xl shadow-lg shadow-blue-600/25">⚡</span>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900">Masuk ke Rekapin</h1>
+                <h1 className="text-2xl font-bold text-slate-900">Masuk ke Rekapi</h1>
                 <p className="mt-1 text-sm text-slate-500">Catat sekali, rekap otomatis setiap cabang.</p>
             </div>
 

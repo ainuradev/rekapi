@@ -38,6 +38,8 @@ interface ExportButtonProps {
     summary: SummaryData
     expenses: ExpenseItem[]
     purchases: PurchaseItem[]
+    canExport: boolean
+    upgradeMessage?: string
 }
 
 function fmt(n: number) {
@@ -56,6 +58,8 @@ export default function ExportButton({
     summary,
     expenses,
     purchases,
+    canExport,
+    upgradeMessage,
 }: ExportButtonProps) {
     const [open, setOpen] = useState(false)
     const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -330,7 +334,7 @@ export default function ExportButton({
                 ? topExpenses.map((e) => `• ${e.categoryLabel}: ${fmt(e.amount)} ${e.description ? `(${e.description})` : ''}`).join('\n')
                 : '• Tidak ada pengeluaran operasional'
 
-        const text = `*📊 LAPORAN KEUANGAN REKAPIN*
+        const text = `*📊 LAPORAN KEUANGAN REKAPI*
 🏪 Bisnis: *${businessName}*
 🏢 Cabang: *${branchLabel}*
 📅 Periode: *${periodLabel}* (${dateRangeStr})
@@ -346,7 +350,7 @@ ${summary.netProfit >= 0 ? '🟢' : '🔴'} *LABA BERSIH: ${fmt(summary.netProfi
 *Rincian Pengeluaran Teratas:*
 ${expenseLines}
 ${expenses.length > 5 ? `_(+${expenses.length - 5} pengeluaran lainnya)_\n` : ''}
-_Laporan digenerate otomatis via Rekapin pada ${new Date().toLocaleDateString('id-ID', { timeZone: TIMEZONE_INDONESIA })}._`
+_Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id-ID', { timeZone: TIMEZONE_INDONESIA })}._`
 
         navigator.clipboard.writeText(text).then(() => {
             showToast('Ringkasan WhatsApp berhasil disalin ke clipboard!')
@@ -363,16 +367,41 @@ _Laporan digenerate otomatis via Rekapin pada ${new Date().toLocaleDateString('i
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-2xs transition hover:border-black hover:text-gray-900 active:bg-gray-50 cursor-pointer"
-                title="Export laporan keuangan ke Excel, PDF, atau salin ke WhatsApp"
+                disabled={!canExport}
+                className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-2xs transition ${
+                    canExport
+                        ? 'border-gray-300 bg-white text-gray-700 hover:border-black hover:text-gray-900 active:bg-gray-50 cursor-pointer'
+                        : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+                title={canExport ? 'Export laporan keuangan ke Excel, PDF, atau salin ke WhatsApp' : upgradeMessage}
             >
                 <span className="text-sm">📥</span>
                 <span>Export Laporan</span>
-                <span className="text-[10px] text-gray-400">▼</span>
+                {canExport && <span className="text-[10px] text-gray-400">▼</span>}
+                {!canExport && <span className="text-[10px]">🔒</span>}
             </button>
 
+            {/* Upgrade Notice */}
+            {!canExport && open && (
+                <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="flex items-start gap-2">
+                        <span className="text-xl">🔒</span>
+                        <div>
+                            <p className="text-xs font-bold text-amber-900 mb-1">Fitur Premium</p>
+                            <p className="text-xs text-amber-800 mb-3">{upgradeMessage}</p>
+                            <a
+                                href="/dashboard/subscription"
+                                className="block w-full rounded-lg bg-blue-600 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-blue-700 transition"
+                            >
+                                Upgrade Sekarang
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Dropdown Menu */}
-            {open && (
+            {canExport && open && (
                 <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-3 py-2 border-b border-gray-100">
                         <p className="text-xs font-bold text-gray-900">Format Export Laporan</p>

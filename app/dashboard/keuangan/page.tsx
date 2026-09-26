@@ -5,6 +5,7 @@ import BranchFilter from './branch-filter'
 import ExportButton from './export-button'
 import { deleteExpense } from './actions'
 import { getIndonesianPeriodRange, formatIndonesianDate } from '@/lib/date-utils'
+import { canAccessAdvancedReports } from '@/lib/subscription-access'
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -40,13 +41,26 @@ export default async function KeuanganPage({
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(name)')
+        .select('role, business_id, businesses(name, subscription_status, subscription_expires_at, trial_ends_at, subscription_plan_id, subscription_plans(code))')
         .eq('id', user.id)
         .single()
 
     if (profile?.role !== 'owner') redirect('/dashboard')
 
     const businessName = (profile as any)?.businesses?.name ?? 'Bisnis'
+    const businessData = (profile as any)?.businesses
+    const subscriptionStatus = businessData?.subscription_status || 'trial'
+    const planCode = businessData?.subscription_plans?.code || null
+    const trialEndsAt = businessData?.trial_ends_at
+    const subscriptionExpiresAt = businessData?.subscription_expires_at
+
+    // Check export permission
+    const { allowed: canExport, reason: exportReason } = canAccessAdvancedReports({
+        status: subscriptionStatus,
+        planCode,
+        expiresAt: subscriptionExpiresAt,
+        trialEndsAt,
+    })
 
     const params = await searchParams
     const period = (['today', 'week', 'month'].includes(params.period ?? '')
@@ -210,6 +224,8 @@ export default async function KeuanganPage({
                         }}
                         expenses={formattedExpenses}
                         purchases={formattedPurchases}
+                        canExport={canExport}
+                        upgradeMessage={exportReason}
                     />
                 </div>
             </div>

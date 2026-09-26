@@ -1,4 +1,4 @@
-# Blueprint SaaS Pendataan & Rekap UMKM — **Rekapin**
+# Blueprint SaaS Pendataan & Rekap UMKM — **Rekapi**
 
 *Versi terbaru — termasuk semua keputusan sampai fase implementasi Module 05-07 (kasir, produk, pegawai).*
 
@@ -6,7 +6,7 @@
 
 ## 1. Konsep Produk
 
-**Nama project:** `Rekapin`
+**Nama project:** `Rekapi`
 
 Core value:
 

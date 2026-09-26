@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
                 .single()
 
             if (subscription) {
-                // Calculate new expiry date (30 days from now)
+                // Calculate new expiry date (28 days from now)
                 const newExpiresAt = new Date()
-                newExpiresAt.setDate(newExpiresAt.getDate() + 30)
+                newExpiresAt.setDate(newExpiresAt.getDate() + 28)
 
                 // Update subscription status
                 const { error: subError } = await admin
@@ -112,13 +112,15 @@ export async function POST(request: NextRequest) {
                     console.log('Subscription updated successfully')
                 }
 
-                // Update business subscription status
+                // Update business subscription status and plan
                 const businessId = paymentTx.business_id
                 if (businessId) {
                     const { error: bizError } = await admin
                         .from('businesses')
                         .update({
                             subscription_status: subscriptionStatus,
+                            subscription_plan_id: subscription.plan_id,
+                            subscription_expires_at: newExpiresAt.toISOString(),
                             updated_at: new Date().toISOString(),
                         })
                         .eq('id', businessId)

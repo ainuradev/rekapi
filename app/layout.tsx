@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rekapin — SaaS Pendataan & Rekap UMKM",
+  title: "Rekapi — SaaS Pendataan & Rekap UMKM",
   description: "Membantu pemilik UMKM mencatat transaksi dan membuat rekap omzet, HPP, serta laba/rugi otomatis.",
 };
 

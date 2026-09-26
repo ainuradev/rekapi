@@ -21,6 +21,8 @@ interface Props {
     businessName: string
     subscriptionStatus?: string
     trialEndsAt?: string | null
+    subscriptionExpiresAt?: string | null
+    planName?: string | null
     isGoogleUser: boolean
     hasPasswordSet: boolean
     isNewUser: boolean
@@ -140,6 +142,8 @@ export default function ProfilClient({
     businessName,
     subscriptionStatus = 'trial',
     trialEndsAt,
+    subscriptionExpiresAt,
+    planName,
     isGoogleUser,
     hasPasswordSet,
     isNewUser,
@@ -147,12 +151,17 @@ export default function ProfilClient({
 }: Props) {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
+    const isActive = subscriptionStatus === 'active'
+    const isTrial = subscriptionStatus === 'trial'
+
     let daysRemaining = 0
     let isExpired = false
     let formattedEndDate = '-'
 
-    if (trialEndsAt) {
-        const endDate = new Date(trialEndsAt)
+    const endDateStr = isActive ? subscriptionExpiresAt : trialEndsAt
+
+    if (endDateStr) {
+        const endDate = new Date(endDateStr)
         const msLeft = endDate.getTime() - Date.now()
         daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
         isExpired = subscriptionStatus === 'expired' || msLeft <= 0
@@ -174,7 +183,7 @@ export default function ProfilClient({
                 <div className="flex items-start gap-3 rounded-2xl border border-orange-300 bg-orange-50 p-4">
                     <span className="text-xl">👋</span>
                     <div>
-                        <p className="text-sm font-semibold text-orange-800">Selamat datang di Rekapin!</p>
+                        <p className="text-sm font-semibold text-orange-800">Selamat datang di Rekapi!</p>
                         <p className="mt-0.5 text-xs text-orange-700">
                             Lengkapi nama bisnis Anda di bawah sebelum mulai menggunakan aplikasi.
                         </p>
@@ -182,11 +191,13 @@ export default function ProfilClient({
                 </div>
             )}
 
-            {/* ── Status Paket & Masa Percobaan (Trial 7 Hari) ── */}
+            {/* ── Status Paket & Subscription ── */}
             <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-base font-bold text-slate-900">Paket & Masa Percobaan</h2>
+                        <h2 className="text-base font-bold text-slate-900">
+                            {isActive ? 'Paket Langganan' : 'Paket & Masa Percobaan'}
+                        </h2>
                         <p className="mt-0.5 text-xs text-slate-500">
                             Status aktif akun dan hak akses fitur bisnis Anda.
                         </p>
@@ -195,21 +206,25 @@ export default function ProfilClient({
                         className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
                             isExpired
                                 ? 'bg-red-100 text-red-700 border border-red-200'
+                                : isActive
+                                ? 'bg-green-100 text-green-700 border border-green-200'
                                 : 'bg-blue-100 text-blue-700 border border-blue-200'
                         }`}
                     >
-                        {isExpired ? 'Trial Berakhir' : 'Trial 7 Hari Aktif'}
+                        {isExpired ? (isTrial ? 'Trial Berakhir' : 'Berakhir') : isActive ? 'Aktif' : 'Trial 7 Hari'}
                     </span>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 border border-slate-100">
                     <div>
                         <span className="text-[11px] font-medium text-slate-400">Paket Layanan</span>
-                        <p className="mt-0.5 text-sm font-bold text-slate-800">Free Trial 7 Hari</p>
+                        <p className="mt-0.5 text-sm font-bold text-slate-800">
+                            {isActive && planName ? planName : 'Free Trial 7 Hari'}
+                        </p>
                     </div>
                     <div>
                         <span className="text-[11px] font-medium text-slate-400">Sisa Waktu</span>
-                        <p className={`mt-0.5 text-sm font-bold ${isExpired ? 'text-red-600' : 'text-blue-600'}`}>
+                        <p className={`mt-0.5 text-sm font-bold ${isExpired ? 'text-red-600' : isActive ? 'text-green-600' : 'text-blue-600'}`}>
                             {isExpired ? '0 hari (Kedaluwarsa)' : `${daysRemaining} hari lagi`}
                         </p>
                     </div>
@@ -221,9 +236,22 @@ export default function ProfilClient({
                     </div>
                 </div>
 
-                <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
-                    ✨ Selama masa trial 7 hari, Anda dapat menikmati akses penuh ke semua fitur kasir multi-cabang, laporan laba rugi, HPP otomatis, dan ekspor laporan.
-                </p>
+                <div className="mt-3 flex items-start gap-2">
+                    <p className="text-[11px] text-slate-500 leading-relaxed flex-1">
+                        {isActive
+                            ? `🎉 Anda berlangganan paket ${planName}. Nikmati akses penuh ke semua fitur premium.`
+                            : '✨ Selama masa trial 7 hari, Anda dapat menikmati akses penuh ke semua fitur kasir multi-cabang, laporan laba rugi, HPP otomatis, dan ekspor laporan.'}
+                    </p>
+                </div>
+
+                {(isExpired || daysRemaining <= 3) && (
+                    <a
+                        href="/dashboard/subscription"
+                        className="mt-3 block w-full rounded-lg bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-blue-700 transition"
+                    >
+                        {isExpired ? 'Perpanjang Langganan' : isActive ? 'Perpanjang Sekarang' : 'Upgrade ke Premium'}
+                    </a>
+                )}
             </div>
 
             {/* ── Info Akun (email read-only) ── */}

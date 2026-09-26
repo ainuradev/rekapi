@@ -20,7 +20,7 @@ export default async function HomePage() {
                             ⚡
                         </span>
                         <span className="text-lg font-extrabold tracking-tight text-slate-900">
-                            Rekapin
+                            Rekapi
                         </span>
                     </Link>
 
@@ -119,7 +119,7 @@ export default async function HomePage() {
                                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
                                 <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
                                 <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-                                <span className="ml-3 text-xs font-semibold text-slate-400">app.rekapin.com — Dashboard Owner</span>
+                                <span className="ml-3 text-xs font-semibold text-slate-400">app.rekapi.com — Dashboard Owner</span>
                             </div>
                             <div className="grid gap-3 text-left sm:grid-cols-3">
                                 {/* POS mock */}
@@ -191,13 +191,13 @@ export default async function HomePage() {
                         <div className="grid items-center gap-12 sm:grid-cols-2">
                             <div>
                                 <span className="inline-block rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
-                                    Tentang Rekapin
+                                    Tentang Rekapi
                                 </span>
                                 <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
                                     Dibuat untuk Pemilik UMKM yang Ingin Tenang
                                 </h2>
                                 <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                                    Rekapin adalah sistem kasir dan rekap keuangan berbasis web yang dirancang khusus untuk
+                                    Rekapi adalah sistem kasir dan rekap keuangan berbasis web yang dirancang khusus untuk
                                     UMKM Indonesia yang memiliki lebih dari satu cabang. Tidak perlu instalasi, tidak perlu hardware mahal.
                                 </p>
                                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
@@ -245,7 +245,7 @@ export default async function HomePage() {
                     <div className="mx-auto max-w-5xl px-4 sm:px-6">
                         <div className="text-center">
                             <span className="inline-block rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
-                                Kenapa Rekapin?
+                                Kenapa Rekapi?
                             </span>
                             <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
                                 Hentikan Lembur Rekap Nota Setiap Malam
@@ -278,7 +278,7 @@ export default async function HomePage() {
                             {/* Sesudah */}
                             <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-7 ring-2 ring-blue-200/60">
                                 <div className="mb-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
-                                    ⚡ Dengan Rekapin
+                                    ⚡ Dengan Rekapi
                                 </div>
                                 <ul className="space-y-3 text-sm text-slate-700">
                                     {[
@@ -478,15 +478,15 @@ export default async function HomePage() {
                             {[
                                 {
                                     q: 'Apakah kasir bisa melihat HPP atau rahasia modal saya?',
-                                    a: 'Sama sekali tidak. Rekapin menggunakan keamanan berlapis di level database (Postgres RLS). Kasir hanya melihat harga jual. HPP dan laba bersih dikunci khusus akun Owner.',
+                                    a: 'Sama sekali tidak. Rekapi menggunakan keamanan berlapis di level database (Postgres RLS). Kasir hanya melihat harga jual. HPP dan laba bersih dikunci khusus akun Owner.',
                                 },
                                 {
                                     q: 'Apakah saya harus membeli hardware atau mesin kasir?',
-                                    a: 'Tidak perlu. Rekapin adalah web app yang berjalan mulus di browser smartphone kasir, tablet, maupun laptop yang sudah Anda miliki.',
+                                    a: 'Tidak perlu. Rekapi adalah web app yang berjalan mulus di browser smartphone kasir, tablet, maupun laptop yang sudah Anda miliki.',
                                 },
                                 {
                                     q: 'Bagaimana jika kasir saya berganti shift?',
-                                    a: 'Rekapin menggunakan model 1 akun shared per cabang. Siapapun yang bertugas menggunakan login yang sama. Tutup shift? Klik "Salin Rekap WA" untuk serah terima kas.',
+                                    a: 'Rekapi menggunakan model 1 akun shared per cabang. Siapapun yang bertugas menggunakan login yang sama. Tutup shift? Klik "Salin Rekap WA" untuk serah terima kas.',
                                 },
                                 {
                                     q: 'Apakah ada biaya tersembunyi selama trial?',
@@ -544,15 +544,15 @@ export default async function HomePage() {
                                     icon: '📧',
                                     title: 'Email',
                                     desc: 'Kirim pertanyaan detail via email',
-                                    link: 'mailto:halo@rekapin.com',
-                                    label: 'halo@rekapin.com',
+                                    link: 'mailto:halo@rekapi.com',
+                                    label: 'halo@rekapi.com',
                                 },
                                 {
                                     icon: '📸',
                                     title: 'Instagram',
                                     desc: 'Update fitur & tips UMKM terbaru',
-                                    link: 'https://instagram.com/rekapin.id',
-                                    label: '@rekapin.id',
+                                    link: 'https://instagram.com/rekapi.id',
+                                    label: '@rekapi.id',
                                 },
                             ].map((c) => (
                                 <a
@@ -612,7 +612,7 @@ export default async function HomePage() {
                     <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                         <div className="flex items-center gap-2">
                             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white text-sm">⚡</span>
-                            <span className="font-bold text-slate-900">Rekapin</span>
+                            <span className="font-bold text-slate-900">Rekapi</span>
                             <span className="text-xs text-slate-400">— UMKM OS Indonesia</span>
                         </div>
                         <div className="flex items-center gap-5 text-xs text-slate-500">
@@ -622,7 +622,7 @@ export default async function HomePage() {
                             <a href="#kontak" className="hover:text-blue-600 transition">Kontak</a>
                             <Link href="/login" className="hover:text-blue-600 transition">Masuk</Link>
                         </div>
-                        <p className="text-xs text-slate-400">© 2026 Rekapin. All rights reserved.</p>
+                        <p className="text-xs text-slate-400">© 2026 Rekapi. All rights reserved.</p>
                     </div>
                 </div>
             </footer>

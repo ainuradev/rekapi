@@ -1,4 +1,4 @@
-# Rekapin — SaaS Pendataan & Rekap UMKM
+# Rekapi — SaaS Pendataan & Rekap UMKM
 
 > **Membantu pemilik UMKM mencatat transaksi dan pengeluaran sekali, lalu sistem otomatis membuat rekap omzet, HPP, dan laba/rugi harian, mingguan, dan bulanan untuk setiap cabang.**
 
@@ -81,8 +81,8 @@ Database dikelola menggunakan Supabase PostgreSQL dengan total 6 migration scrip
 5. `0005_products_and_editlog_fix.sql`: Pegawai boleh insert produk, trigger proteksi HPP, pengamanan audit log edit sale.
 6. `0006_invite_employee_trigger.sql`: Pembaruan `handle_new_user` untuk membedakan registrasi owner baru vs pembuatan akun pegawai oleh owner.
 
-Dokumentasi lengkap skema, relasi, dan tabel dapat dilihat di [ERD.md](file:///d:/rekapin/ERD.md).
-Blueprint lengkap produk tersedia di [BLUEPRINT.md](file:///d:/rekapin/BLUEPRINT.md).
+Dokumentasi lengkap skema, relasi, dan tabel dapat dilihat di [ERD.md](file:///d:/rekapi/ERD.md).
+Blueprint lengkap produk tersedia di [BLUEPRINT.md](file:///d:/rekapi/BLUEPRINT.md).
 
 ---
 

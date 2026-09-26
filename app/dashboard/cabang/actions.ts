@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { canAddBranch } from '@/lib/subscription-limits'
 
 export async function addBranch(formData: FormData) {
     const supabase = await createClient()
@@ -15,12 +16,30 @@ export async function addBranch(formData: FormData) {
     // business_id dari form/client, karena itu bisa dimanipulasi.
     const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id, role')
+        .select('business_id, role, businesses(subscription_status, subscription_plan_id, subscription_plans(code))')
         .eq('id', user.id)
         .single()
 
     if (!profile || profile.role !== 'owner') {
         return { error: 'Hanya owner yang bisa menambah cabang.' }
+    }
+
+    // Check subscription limits
+    const businessData = (profile as any)?.businesses
+    const subscriptionStatus = businessData?.subscription_status || 'trial'
+    const planCode = businessData?.subscription_plans?.code || null
+
+    // Count existing branches
+    const { count } = await supabase
+        .from('branches')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', profile.business_id)
+
+    const branchCount = count ?? 0
+    const { allowed, reason } = canAddBranch(branchCount, planCode, subscriptionStatus)
+
+    if (!allowed) {
+        return { error: reason }
     }
 
     const name = String(formData.get('name') ?? '').trim()

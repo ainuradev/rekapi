@@ -99,7 +99,7 @@ export default function OnboardingClient({ userId, businessId, currentFullName, 
                         disabled={loading || !businessName.trim()}
                         className="w-full rounded-lg bg-black py-2.5 text-sm font-semibold text-white shadow hover:bg-gray-800 transition active:scale-[0.99] disabled:opacity-50"
                     >
-                        {loading ? 'Menyimpan...' : 'Mulai Gunakan Rekapin →'}
+                        {loading ? 'Menyimpan...' : 'Mulai Gunakan Rekapi →'}
                     </button>
                 </form>
             </div>

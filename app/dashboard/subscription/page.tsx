@@ -13,7 +13,7 @@ export default async function SubscriptionPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(subscription_status, trial_ends_at)')
+        .select('role, business_id, businesses(subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name))')
         .eq('id', user.id)
         .single()
 
@@ -29,12 +29,16 @@ export default async function SubscriptionPage() {
     const businessData = (profile as any)?.businesses
     const currentStatus = businessData?.subscription_status || 'trial'
     const trialEndsAt = businessData?.trial_ends_at || null
+    const subscriptionExpiresAt = businessData?.subscription_expires_at || null
+    const currentPlanName = businessData?.subscription_plans?.name || null
 
     return (
         <SubscriptionClient
             plans={plans || []}
             currentStatus={currentStatus}
             trialEndsAt={trialEndsAt}
+            currentPlanName={currentPlanName}
+            subscriptionExpiresAt={subscriptionExpiresAt}
         />
     )
 }

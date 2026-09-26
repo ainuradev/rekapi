@@ -20,12 +20,15 @@ export default async function DashboardPage() {
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, role, business_id, businesses(name)')
+        .select('full_name, role, business_id, businesses(name, subscription_status, subscription_plan_id, subscription_plans(name))')
         .eq('id', user.id)
         .single()
 
     const isOwner = profile?.role === 'owner'
-    const businessName = (profile as any)?.businesses?.name ?? 'Bisnis'
+    const businessData = (profile as any)?.businesses
+    const businessName = businessData?.name ?? 'Bisnis'
+    const subscriptionStatus = businessData?.subscription_status ?? 'trial'
+    const planName = businessData?.subscription_plans?.name ?? null
 
     // ── Ringkasan keuangan hari ini (hanya untuk owner) ──
     let todaySales = 0
@@ -79,12 +82,12 @@ export default async function DashboardPage() {
 
     return (
         <div className="mx-auto max-w-2xl px-4 py-8 sm:py-16">
-            <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Dashboard</h1>
                     <p className="text-sm text-gray-500">{businessName}</p>
                 </div>
-                <div className="mt-2 sm:mt-0">
+                <div className="mt-2 sm:mt-0 flex items-center gap-2">
                     <span
                         className={`inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase ${
                             isOwner ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'
@@ -92,6 +95,11 @@ export default async function DashboardPage() {
                     >
                         {profile?.role ?? 'User'}
                     </span>
+                    {isOwner && planName && subscriptionStatus === 'active' && (
+                        <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 uppercase">
+                            {planName}
+                        </span>
+                    )}
                 </div>
             </div>
 

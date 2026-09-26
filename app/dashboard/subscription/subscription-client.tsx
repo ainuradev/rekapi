@@ -15,12 +15,16 @@ interface SubscriptionClientProps {
     plans: Plan[]
     currentStatus: string
     trialEndsAt: string | null
+    currentPlanName: string | null
+    subscriptionExpiresAt: string | null
 }
 
 export default function SubscriptionClient({
     plans,
     currentStatus,
     trialEndsAt,
+    currentPlanName,
+    subscriptionExpiresAt,
 }: SubscriptionClientProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
@@ -89,14 +93,26 @@ export default function SubscriptionClient({
             <div className="max-w-6xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">Pilih Paket Langganan</h1>
-                    <p className="text-gray-600">
-                        Status saat ini: <span className="font-semibold">{currentStatus}</span>
-                        {trialEndsAt && (
-                            <span className="ml-2 text-sm text-gray-500">
-                                (Trial berakhir: {new Date(trialEndsAt).toLocaleDateString('id-ID')})
-                            </span>
+                    <div className="text-gray-600">
+                        <p className="mb-1">
+                            Status saat ini: <span className="font-semibold capitalize">{currentStatus}</span>
+                            {currentPlanName && currentStatus === 'active' && (
+                                <span className="ml-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                    {currentPlanName}
+                                </span>
+                            )}
+                        </p>
+                        {trialEndsAt && currentStatus === 'trial' && (
+                            <p className="text-sm text-gray-500">
+                                Trial berakhir: {new Date(trialEndsAt).toLocaleDateString('id-ID')}
+                            </p>
                         )}
-                    </p>
+                        {subscriptionExpiresAt && currentStatus === 'active' && (
+                            <p className="text-sm text-gray-500">
+                                Langganan berakhir: {new Date(subscriptionExpiresAt).toLocaleDateString('id-ID')}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6">
@@ -116,7 +132,7 @@ export default function SubscriptionClient({
                             <div className="mb-6 space-y-3">
                                 <div className="flex items-center text-sm text-gray-700">
                                     <svg
-                                        className="w-5 h-5 text-green-500 mr-2"
+                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -136,7 +152,7 @@ export default function SubscriptionClient({
                                 </div>
                                 <div className="flex items-center text-sm text-gray-700">
                                     <svg
-                                        className="w-5 h-5 text-green-500 mr-2"
+                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -152,7 +168,7 @@ export default function SubscriptionClient({
                                 </div>
                                 <div className="flex items-center text-sm text-gray-700">
                                     <svg
-                                        className="w-5 h-5 text-green-500 mr-2"
+                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -164,11 +180,11 @@ export default function SubscriptionClient({
                                             d="M5 13l4 4L19 7"
                                         />
                                     </svg>
-                                    <span>Laporan lengkap</span>
+                                    <span>Laporan {plan.code === 'pro' ? 'advanced' : 'lengkap'}</span>
                                 </div>
                                 <div className="flex items-center text-sm text-gray-700">
                                     <svg
-                                        className="w-5 h-5 text-green-500 mr-2"
+                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -180,8 +196,62 @@ export default function SubscriptionClient({
                                             d="M5 13l4 4L19 7"
                                         />
                                     </svg>
-                                    <span>Support prioritas</span>
+                                    <span>Support {plan.code === 'pro' ? 'prioritas 24/7' : plan.code === 'business' ? 'prioritas' : 'standar'}</span>
                                 </div>
+                                {plan.code === 'business' && (
+                                    <div className="flex items-center text-sm text-gray-700">
+                                        <svg
+                                            className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M5 13l4 4L19 7"
+                                            />
+                                        </svg>
+                                        <span>Analisis penjualan</span>
+                                    </div>
+                                )}
+                                {plan.code === 'pro' && (
+                                    <>
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <svg
+                                                className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>Analisis penjualan lanjutan</span>
+                                        </div>
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <svg
+                                                className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>API access</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <button
@@ -198,8 +268,10 @@ export default function SubscriptionClient({
                 <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Informasi Penting</h3>
                     <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Tersedia trial gratis 7 hari untuk pengguna baru</li>
                         <li>• Pembayaran dilakukan melalui Midtrans dengan berbagai metode (VA, e-wallet, kartu kredit, dll)</li>
-                        <li>• Langganan berlaku 30 hari sejak pembayaran berhasil</li>
+                        <li>• Langganan berlaku 28 hari sejak pembayaran berhasil</li>
+                        <li>• Jika Anda berlangganan saat trial masih aktif, trial akan otomatis diganti dengan periode berlangganan</li>
                         <li>• Anda dapat upgrade atau downgrade paket kapan saja</li>
                         <li>• Hubungi support untuk bantuan lebih lanjut</li>
                     </ul>

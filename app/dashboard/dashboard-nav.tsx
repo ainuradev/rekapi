@@ -105,7 +105,7 @@ export default function DashboardNav({
                         ⚡
                     </span>
                     <div>
-                        <span className="font-bold text-slate-900 tracking-tight text-sm">Rekapin</span>
+                        <span className="font-bold text-slate-900 tracking-tight text-sm">Rekapi</span>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <span
                                 className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${
@@ -199,7 +199,7 @@ export default function DashboardNav({
                                 ⚡
                             </span>
                             <span className="text-base font-extrabold tracking-tight text-slate-900">
-                                Rekapin
+                                Rekapi
                             </span>
                         </div>
                         {businessName && (
