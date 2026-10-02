@@ -9,6 +9,10 @@ interface Plan {
     name: string
     price: number
     max_branches: number | null
+    max_employees?: number | null
+    duration_days?: number
+    description?: string | null
+    features?: string[] | null
 }
 
 interface SubscriptionClientProps {
@@ -48,28 +52,42 @@ export default function SubscriptionClient({
 
             const { token } = await res.json()
 
-            // Load Midtrans Snap
+            const openSnap = () => {
+                // @ts-ignore
+                if (window.snap) {
+                    // @ts-ignore
+                    window.snap.pay(token, {
+                        onSuccess: function () {
+                            router.push('/dashboard/subscription/success')
+                        },
+                        onPending: function () {
+                            router.push('/dashboard/subscription/pending')
+                        },
+                        onError: function () {
+                            router.push('/dashboard/subscription/error')
+                        },
+                        onClose: function () {
+                            setLoading(false)
+                            setSelectedPlan(null)
+                        },
+                    })
+                }
+            }
+
+            // Check if Midtrans Snap script is already loaded
+            const existingScript = document.querySelector('script[data-midtrans-snap="true"]') as HTMLScriptElement
+            if (existingScript && (window as any).snap) {
+                openSnap()
+                return
+            }
+
             const snapScript = document.createElement('script')
             snapScript.src = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js'
             snapScript.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
+            snapScript.setAttribute('data-midtrans-snap', 'true')
 
             snapScript.onload = () => {
-                // @ts-ignore
-                window.snap.pay(token, {
-                    onSuccess: function () {
-                        router.push('/dashboard/subscription/success')
-                    },
-                    onPending: function () {
-                        router.push('/dashboard/subscription/pending')
-                    },
-                    onError: function () {
-                        router.push('/dashboard/subscription/error')
-                    },
-                    onClose: function () {
-                        setLoading(false)
-                        setSelectedPlan(null)
-                    },
-                })
+                openSnap()
             }
 
             document.body.appendChild(snapScript)
@@ -130,93 +148,26 @@ export default function SubscriptionClient({
                             </div>
 
                             <div className="mb-6 space-y-3">
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <svg
-                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    <span>
-                                        {plan.max_branches
-                                            ? `Maksimal ${plan.max_branches} cabang`
-                                            : 'Unlimited cabang'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <svg
-                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    <span>Unlimited pegawai</span>
-                                </div>
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <svg
-                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    <span>Laporan {plan.code === 'pro' ? 'advanced' : 'lengkap'}</span>
-                                </div>
-                                <div className="flex items-center text-sm text-gray-700">
-                                    <svg
-                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    <span>Support {plan.code === 'pro' ? 'prioritas 24/7' : plan.code === 'business' ? 'prioritas' : 'standar'}</span>
-                                </div>
-                                {plan.code === 'business' && (
-                                    <div className="flex items-center text-sm text-gray-700">
-                                        <svg
-                                            className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M5 13l4 4L19 7"
-                                            />
-                                        </svg>
-                                        <span>Analisis penjualan</span>
-                                    </div>
-                                )}
-                                {plan.code === 'pro' && (
+                                {Array.isArray(plan.features) && plan.features.length > 0 ? (
+                                    plan.features.map((feat, idx) => (
+                                        <div key={idx} className="flex items-center text-sm text-gray-700">
+                                            <svg
+                                                className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>{feat}</span>
+                                        </div>
+                                    ))
+                                ) : (
                                     <>
                                         <div className="flex items-center text-sm text-gray-700">
                                             <svg
@@ -232,7 +183,11 @@ export default function SubscriptionClient({
                                                     d="M5 13l4 4L19 7"
                                                 />
                                             </svg>
-                                            <span>Analisis penjualan lanjutan</span>
+                                            <span>
+                                                {plan.max_branches
+                                                    ? `Maksimal ${plan.max_branches} cabang`
+                                                    : 'Unlimited cabang'}
+                                            </span>
                                         </div>
                                         <div className="flex items-center text-sm text-gray-700">
                                             <svg
@@ -248,8 +203,94 @@ export default function SubscriptionClient({
                                                     d="M5 13l4 4L19 7"
                                                 />
                                             </svg>
-                                            <span>API access</span>
+                                            <span>Unlimited pegawai</span>
                                         </div>
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <svg
+                                                className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>Laporan {plan.code === 'pro' ? 'advanced' : 'lengkap'}</span>
+                                        </div>
+                                        <div className="flex items-center text-sm text-gray-700">
+                                            <svg
+                                                className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span>Support {plan.code === 'pro' ? 'prioritas 24/7' : plan.code === 'business' ? 'prioritas' : 'standar'}</span>
+                                        </div>
+                                        {plan.code === 'business' && (
+                                            <div className="flex items-center text-sm text-gray-700">
+                                                <svg
+                                                    className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                                <span>Analisis penjualan</span>
+                                            </div>
+                                        )}
+                                        {plan.code === 'pro' && (
+                                            <>
+                                                <div className="flex items-center text-sm text-gray-700">
+                                                    <svg
+                                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M5 13l4 4L19 7"
+                                                        />
+                                                    </svg>
+                                                    <span>Analisis penjualan lanjutan</span>
+                                                </div>
+                                                <div className="flex items-center text-sm text-gray-700">
+                                                    <svg
+                                                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M5 13l4 4L19 7"
+                                                        />
+                                                    </svg>
+                                                    <span>API access</span>
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -270,7 +311,7 @@ export default function SubscriptionClient({
                     <ul className="text-sm text-blue-800 space-y-1">
                         <li>• Tersedia trial gratis 7 hari untuk pengguna baru</li>
                         <li>• Pembayaran dilakukan melalui Midtrans dengan berbagai metode (VA, e-wallet, kartu kredit, dll)</li>
-                        <li>• Langganan berlaku 28 hari sejak pembayaran berhasil</li>
+                        <li>• Langganan berlaku sesuai durasi paket ({plans[0]?.duration_days ?? 28} hari) sejak pembayaran berhasil</li>
                         <li>• Jika Anda berlangganan saat trial masih aktif, trial akan otomatis diganti dengan periode berlangganan</li>
                         <li>• Anda dapat upgrade atau downgrade paket kapan saja</li>
                         <li>• Hubungi support untuk bantuan lebih lanjut</li>

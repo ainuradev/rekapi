@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         console.log('Payment transaction found:', paymentTx)
 
         let paymentStatus = 'pending'
-        let subscriptionStatus: 'trial' | 'active' | 'expired' | 'canceled' = 'trial'
+        let subscriptionStatus: 'trial' | 'active' | 'expired' | 'canceled' | 'pending' = 'pending'
 
         if (transactionStatus === 'capture') {
             if (fraudStatus === 'accept') {
@@ -84,17 +84,18 @@ export async function POST(request: NextRequest) {
         if (paymentStatus === 'settlement') {
             console.log('Payment settled, updating subscription and business status')
 
-            // Get subscription to calculate expiry date
+            // Get subscription and its plan to calculate expiry date
             const { data: subscription } = await admin
                 .from('subscriptions')
-                .select('*')
+                .select('*, subscription_plans(duration_days)')
                 .eq('id', paymentTx.subscription_id)
                 .single()
 
             if (subscription) {
-                // Calculate new expiry date (28 days from now)
+                // Read duration_days from the plan row in the DB — not hard-coded
+                const durationDays = (subscription as any).subscription_plans?.duration_days ?? 28
                 const newExpiresAt = new Date()
-                newExpiresAt.setDate(newExpiresAt.getDate() + 28)
+                newExpiresAt.setDate(newExpiresAt.getDate() + durationDays)
 
                 // Update subscription status
                 const { error: subError } = await admin

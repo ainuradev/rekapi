@@ -13,7 +13,14 @@ export default async function CabangPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(subscription_status, subscription_plan_id, subscription_plans(code))')
+        .select(
+            `role, business_id,
+             businesses(
+               subscription_status,
+               subscription_plan_id,
+               subscription_plans(max_branches, max_employees, can_advanced_reports, can_api_access, duration_days)
+             )`
+        )
         .eq('id', user.id)
         .single()
 
@@ -28,10 +35,10 @@ export default async function CabangPage() {
 
     const businessData = (profile as any)?.businesses
     const subscriptionStatus = businessData?.subscription_status || 'trial'
-    const planCode = businessData?.subscription_plans?.code || null
+    const planLimits = businessData?.subscription_plans ?? null
 
     const branchCount = branches?.length ?? 0
-    const { allowed, reason } = canAddBranch(branchCount, planCode, subscriptionStatus)
+    const { allowed, reason } = canAddBranch(branchCount, planLimits, subscriptionStatus)
 
     return (
         <div className="mx-auto max-w-lg px-4 py-8 sm:py-16">

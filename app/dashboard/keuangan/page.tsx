@@ -41,7 +41,7 @@ export default async function KeuanganPage({
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(name, subscription_status, subscription_expires_at, trial_ends_at, subscription_plan_id, subscription_plans(code))')
+        .select('role, business_id, businesses(name, subscription_status, subscription_expires_at, trial_ends_at, subscription_plan_id, subscription_plans(code, can_advanced_reports, can_api_access))')
         .eq('id', user.id)
         .single()
 
@@ -50,16 +50,23 @@ export default async function KeuanganPage({
     const businessName = (profile as any)?.businesses?.name ?? 'Bisnis'
     const businessData = (profile as any)?.businesses
     const subscriptionStatus = businessData?.subscription_status || 'trial'
-    const planCode = businessData?.subscription_plans?.code || null
+    const planRow = businessData?.subscription_plans
+    const planCode = planRow?.code || null
     const trialEndsAt = businessData?.trial_ends_at
     const subscriptionExpiresAt = businessData?.subscription_expires_at
 
-    // Check export permission
+    // Check export permission using DB feature flags
     const { allowed: canExport, reason: exportReason } = canAccessAdvancedReports({
         status: subscriptionStatus,
         planCode,
         expiresAt: subscriptionExpiresAt,
         trialEndsAt,
+        planFeatures: planRow
+            ? {
+                  can_advanced_reports: !!planRow.can_advanced_reports,
+                  can_api_access: !!planRow.can_api_access,
+              }
+            : null,
     })
 
     const params = await searchParams

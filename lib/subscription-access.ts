@@ -1,12 +1,17 @@
-// Subscription access control utilities
+// Subscription access control utilities — feature flags come from the DB, not hard-coded plan codes.
 
-export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'canceled'
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'canceled' | 'pending'
 
 export interface SubscriptionData {
     status: SubscriptionStatus
     planCode: string | null
     expiresAt: string | null
     trialEndsAt: string | null
+    /** Feature flags sourced from subscription_plans in the DB */
+    planFeatures?: {
+        can_advanced_reports: boolean
+        can_api_access: boolean
+    } | null
 }
 
 /**
@@ -35,7 +40,9 @@ export function hasActiveAccess(subscription: SubscriptionData): boolean {
 }
 
 /**
- * Check if user can access advanced reports (Business & Pro only)
+ * Check if user can access advanced reports.
+ * Reads the `can_advanced_reports` flag from the DB plan row when available;
+ * falls back to checking plan code only if the DB flag is not provided.
  */
 export function canAccessAdvancedReports(
     subscription: SubscriptionData
@@ -51,30 +58,28 @@ export function canAccessAdvancedReports(
     if (subscription.status === 'trial') {
         return {
             allowed: false,
-            reason: 'Fitur analisis lanjutan hanya tersedia untuk paket Business dan Pro. Upgrade sekarang!',
+            reason: 'Fitur analisis lanjutan hanya tersedia untuk paket berbayar. Upgrade sekarang!',
         }
     }
 
-    // Check plan level
-    if (subscription.planCode === 'standard') {
+    // Prefer DB-sourced flag; fall back to plan code for backward compatibility
+    const canAccess = subscription.planFeatures != null
+        ? subscription.planFeatures.can_advanced_reports
+        : subscription.planCode === 'business' || subscription.planCode === 'pro'
+
+    if (!canAccess) {
         return {
             allowed: false,
             reason: 'Fitur ini hanya tersedia untuk paket Business dan Pro. Upgrade paket Anda!',
         }
     }
 
-    if (subscription.planCode === 'business' || subscription.planCode === 'pro') {
-        return { allowed: true }
-    }
-
-    return {
-        allowed: false,
-        reason: 'Upgrade ke paket Business atau Pro untuk mengakses fitur ini.',
-    }
+    return { allowed: true }
 }
 
 /**
- * Check if user can access API features (Pro only)
+ * Check if user can access API features.
+ * Reads the `can_api_access` flag from the DB plan row when available.
  */
 export function canAccessAPI(
     subscription: SubscriptionData
@@ -86,7 +91,19 @@ export function canAccessAPI(
         }
     }
 
-    if (subscription.planCode !== 'pro') {
+    if (subscription.status === 'trial') {
+        return {
+            allowed: false,
+            reason: 'Akses API tidak tersedia selama masa trial. Upgrade ke paket Pro!',
+        }
+    }
+
+    // Prefer DB-sourced flag; fall back to plan code for backward compatibility
+    const canAccess = subscription.planFeatures != null
+        ? subscription.planFeatures.can_api_access
+        : subscription.planCode === 'pro'
+
+    if (!canAccess) {
         return {
             allowed: false,
             reason: 'Akses API hanya tersedia untuk paket Pro. Upgrade sekarang!',

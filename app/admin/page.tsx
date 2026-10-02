@@ -11,10 +11,13 @@ export const dynamic = 'force-dynamic'
 export default async function AdminPage() {
     const admin = createAdminClient()
 
-    // 1. Ambil semua user dari Auth
+    // 1. Ambil semua user dari Auth (hingga 1000 user)
     const {
         data: { users },
-    } = await admin.auth.admin.listUsers()
+    } = await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+    })
 
     // 2. Ambil profil beserta relasi
     const { data: profiles } = await admin

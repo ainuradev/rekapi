@@ -16,7 +16,14 @@ export async function addBranch(formData: FormData) {
     // business_id dari form/client, karena itu bisa dimanipulasi.
     const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id, role, businesses(subscription_status, subscription_plan_id, subscription_plans(code))')
+        .select(
+            `role, business_id,
+             businesses(
+               subscription_status,
+               subscription_plan_id,
+               subscription_plans(max_branches, max_employees, can_advanced_reports, can_api_access, duration_days)
+             )`
+        )
         .eq('id', user.id)
         .single()
 
@@ -24,10 +31,10 @@ export async function addBranch(formData: FormData) {
         return { error: 'Hanya owner yang bisa menambah cabang.' }
     }
 
-    // Check subscription limits
+    // Pull plan limits from DB
     const businessData = (profile as any)?.businesses
     const subscriptionStatus = businessData?.subscription_status || 'trial'
-    const planCode = businessData?.subscription_plans?.code || null
+    const planLimits = businessData?.subscription_plans ?? null
 
     // Count existing branches
     const { count } = await supabase
@@ -36,7 +43,7 @@ export async function addBranch(formData: FormData) {
         .eq('business_id', profile.business_id)
 
     const branchCount = count ?? 0
-    const { allowed, reason } = canAddBranch(branchCount, planCode, subscriptionStatus)
+    const { allowed, reason } = canAddBranch(branchCount, planLimits, subscriptionStatus)
 
     if (!allowed) {
         return { error: reason }

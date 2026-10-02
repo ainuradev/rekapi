@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
 
         // Create subscription record
         const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + 28) // 28 days subscription duration
+        // duration_days comes from subscription_plans in the DB — no hard-coding here
+        expiresAt.setDate(expiresAt.getDate() + (plan.duration_days ?? 28))
 
         // Use service role client to bypass RLS for subscription insert
         const supabaseAdmin = createServiceRoleClient()
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
             .insert({
                 business_id: businessId,
                 plan_id: planId,
-                status: 'trial', // Will be updated to 'active' after payment
+                status: 'pending', // Will be updated to 'active' after payment
                 expires_at: expiresAt.toISOString(),
                 midtrans_order_id: orderId,
             })
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
                     id: plan.code,
                     price: Number(plan.price),
                     quantity: 1,
-                    name: `Rekapi ${plan.name} - 28 Hari`,
+                    name: `Rekapi ${plan.name} - ${plan.duration_days ?? 28} Hari`,
                 },
             ],
             callbacks: {
