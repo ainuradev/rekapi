@@ -12,11 +12,13 @@ export default async function ProfilPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('id, role, full_name, business_id')
+        .select('id, role, full_name, business_id, branch_id, branches(name)')
         .eq('id', user.id)
         .single()
 
-    if (!profile || profile.role !== 'owner') redirect('/dashboard')
+    if (!profile) redirect('/login')
+
+    const isOwner = profile.role === 'owner'
 
     const { data: business } = await supabase
         .from('businesses')
@@ -49,6 +51,8 @@ export default async function ProfilPage() {
             userId={user.id}
             email={user.email ?? ''}
             fullName={profile.full_name ?? ''}
+            role={profile.role ?? 'pegawai'}
+            branchName={(profile as any)?.branches?.name ?? null}
             businessName={business?.name ?? ''}
             subscriptionStatus={business?.subscription_status ?? 'trial'}
             trialEndsAt={business?.trial_ends_at ?? null}

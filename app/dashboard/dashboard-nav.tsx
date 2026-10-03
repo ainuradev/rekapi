@@ -123,8 +123,10 @@ export default function DashboardNav({
     ]
 
     const PEGAWAI_NAV: NavItem[] = [
+        { href: '/dashboard', label: 'Dashboard', icon: <HomeIcon /> },
         { href: '/dashboard/penjualan', label: 'Kasir', icon: <TransaksiIcon /> },
-        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat', icon: <HomeIcon /> },
+        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', icon: <LaporanIcon /> },
+        { href: '/dashboard/profil', label: 'Profil', icon: <PegawaiIcon /> },
     ]
 
     const items = isOwner ? OWNER_NAV : PEGAWAI_NAV
@@ -143,6 +145,8 @@ export default function DashboardNav({
         })
         return expanded
     })
+
+    const [userMenuOpen, setUserMenuOpen] = useState(false)
 
     const toggleExpand = (label: string) => {
         setExpandedItems((prev) =>
@@ -343,80 +347,184 @@ export default function DashboardNav({
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
                     </div>
 
-                    {/* User profile dropdown button */}
-                    <Link
-                        href="/dashboard/profil"
-                        className="flex items-center gap-2.5 pl-3 border-l border-slate-200 group"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-xs shadow-xs group-hover:ring-2 group-hover:ring-blue-400 transition-all">
-                            {userInitial}
-                        </div>
-                        <div className="hidden md:block text-left">
-                            <p className="text-xs font-semibold text-slate-800 leading-tight group-hover:text-blue-600 transition">
-                                {userName}
-                            </p>
-                            <p className="text-[10px] text-slate-400 capitalize">
-                                {isOwner ? 'Owner' : branchName || 'Pegawai'}
-                            </p>
-                        </div>
-                    </Link>
+                    {/* User profile dropdown */}
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setUserMenuOpen(!userMenuOpen)}
+                            className="flex items-center gap-2.5 pl-3 border-l border-slate-200 group cursor-pointer focus:outline-hidden"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-xs shadow-xs group-hover:ring-2 group-hover:ring-blue-400 transition-all">
+                                {userInitial}
+                            </div>
+                            <div className="hidden md:block text-left">
+                                <p className="text-xs font-semibold text-slate-800 leading-tight group-hover:text-blue-600 transition">
+                                    {userName}
+                                </p>
+                                <p className="text-[10px] text-slate-400 capitalize">
+                                    {isOwner ? 'Owner' : branchName || 'Pegawai'}
+                                </p>
+                            </div>
+                            <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {userMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white py-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="px-4 py-2.5 border-b border-slate-100">
+                                    <p className="text-xs font-bold text-slate-900 truncate">{userName}</p>
+                                    <p className="text-[11px] text-slate-500 capitalize">{isOwner ? 'Owner Bisnis' : branchName || 'Pegawai'}</p>
+                                </div>
+
+                                <div className="py-1">
+                                    <Link
+                                        href="/dashboard/profil"
+                                        onClick={() => setUserMenuOpen(false)}
+                                        className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                    >
+                                        <PengaturanIcon />
+                                        <span>Pengaturan Profil</span>
+                                    </Link>
+                                    {isOwner && (
+                                        <Link
+                                            href="/dashboard/subscription"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                        >
+                                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                            <span>Paket Langganan</span>
+                                        </Link>
+                                    )}
+                                </div>
+
+                                <div className="border-t border-slate-100 pt-1">
+                                    <form
+                                        action="/api/auth/signout"
+                                        method="post"
+                                        onSubmit={(e) => {
+                                            if (!confirm('Yakin ingin keluar dari akun?')) e.preventDefault()
+                                        }}
+                                    >
+                                        <button
+                                            type="submit"
+                                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer text-left"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            <span>Keluar / Logout</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
             {/* ── Mobile Floating Bottom Bar ── */}
             <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around h-16 border-t border-slate-200 bg-white/95 backdrop-blur-md px-2 sm:hidden shadow-xl">
-                <Link
-                    href="/dashboard"
-                    className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                        pathname === '/dashboard' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                    <HomeIcon />
-                    <span>Beranda</span>
-                </Link>
+                {!isOwner ? (
+                    <>
+                        <Link
+                            href="/dashboard"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname === '/dashboard' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <HomeIcon />
+                            <span>Dashboard</span>
+                        </Link>
 
-                <Link
-                    href="/dashboard/penjualan/riwayat"
-                    className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                        pathname.startsWith('/dashboard/penjualan/riwayat') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                    <TransaksiIcon />
-                    <span>Transaksi</span>
-                </Link>
+                        <Link
+                            href="/dashboard/penjualan"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname === '/dashboard/penjualan' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <TransaksiIcon />
+                            <span>Kasir</span>
+                        </Link>
 
-                {/* Center Floating Action Button (Kasir / Tambah Transaksi) */}
-                <div className="relative -top-4 flex items-center justify-center">
-                    <Link
-                        href="/dashboard/penjualan"
-                        title="Buka Kasir"
-                        className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                        </svg>
-                    </Link>
-                </div>
+                        <Link
+                            href="/dashboard/penjualan/riwayat"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname.startsWith('/dashboard/penjualan/riwayat') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <LaporanIcon />
+                            <span>Riwayat</span>
+                        </Link>
 
-                <Link
-                    href="/dashboard/keuangan"
-                    className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                        pathname.startsWith('/dashboard/keuangan') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                    <LaporanIcon />
-                    <span>Laporan</span>
-                </Link>
+                        <Link
+                            href="/dashboard/profil"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname.startsWith('/dashboard/profil') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <PegawaiIcon />
+                            <span>Profil</span>
+                        </Link>
+                    </>
+                ) : (
+                    <>
+                        <Link
+                            href="/dashboard"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname === '/dashboard' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <HomeIcon />
+                            <span>Beranda</span>
+                        </Link>
 
-                <Link
-                    href="/dashboard/profil"
-                    className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                        pathname.startsWith('/dashboard/profil') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                    <PengaturanIcon />
-                    <span>Akun</span>
-                </Link>
+                        <Link
+                            href="/dashboard/penjualan/riwayat"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname.startsWith('/dashboard/penjualan/riwayat') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <TransaksiIcon />
+                            <span>Transaksi</span>
+                        </Link>
+
+                        {/* Center Floating Action Button (Kasir / Tambah Transaksi) */}
+                        <div className="relative -top-4 flex items-center justify-center">
+                            <Link
+                                href="/dashboard/penjualan"
+                                title="Buka Kasir"
+                                className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                </svg>
+                            </Link>
+                        </div>
+
+                        <Link
+                            href="/dashboard/keuangan"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname.startsWith('/dashboard/keuangan') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <LaporanIcon />
+                            <span>Laporan</span>
+                        </Link>
+
+                        <Link
+                            href="/dashboard/profil"
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
+                                pathname.startsWith('/dashboard/profil') ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
+                        >
+                            <PengaturanIcon />
+                            <span>Akun</span>
+                        </Link>
+                    </>
+                )}
             </nav>
         </>
     )

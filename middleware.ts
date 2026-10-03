@@ -57,30 +57,35 @@ export async function middleware(request: NextRequest) {
 
         if (profile) {
             const businessData = (profile as any)?.businesses
-            const subscriptionStatus = businessData?.subscription_status || 'expired'
-            const trialEndsAt = businessData?.trial_ends_at
-            const subscriptionExpiresAt = businessData?.subscription_expires_at
+            
+            // If businessData is null (join failed or RLS timing), don't block access
+            // to avoid redirect loops. Give benefit of the doubt.
+            if (businessData) {
+                const subscriptionStatus = businessData?.subscription_status || 'expired'
+                const trialEndsAt = businessData?.trial_ends_at
+                const subscriptionExpiresAt = businessData?.subscription_expires_at
 
-            const now = new Date()
-            let hasAccess = false
+                const now = new Date()
+                let hasAccess = false
 
-            // Check trial access
-            if (subscriptionStatus === 'trial' && trialEndsAt) {
-                const trialEnd = new Date(trialEndsAt)
-                hasAccess = now <= trialEnd
-            }
+                // Check trial access
+                if (subscriptionStatus === 'trial' && trialEndsAt) {
+                    const trialEnd = new Date(trialEndsAt)
+                    hasAccess = now <= trialEnd
+                }
 
-            // Check paid subscription access
-            if (subscriptionStatus === 'active' && subscriptionExpiresAt) {
-                const subscriptionEnd = new Date(subscriptionExpiresAt)
-                hasAccess = now <= subscriptionEnd
-            }
+                // Check paid subscription access
+                if (subscriptionStatus === 'active' && subscriptionExpiresAt) {
+                    const subscriptionEnd = new Date(subscriptionExpiresAt)
+                    hasAccess = now <= subscriptionEnd
+                }
 
-            // Redirect to expired page if no access
-            if (!hasAccess) {
-                const url = request.nextUrl.clone()
-                url.pathname = '/dashboard/expired'
-                return NextResponse.redirect(url)
+                // Redirect to expired page if no access
+                if (!hasAccess) {
+                    const url = request.nextUrl.clone()
+                    url.pathname = '/dashboard/expired'
+                    return NextResponse.redirect(url)
+                }
             }
         }
     }

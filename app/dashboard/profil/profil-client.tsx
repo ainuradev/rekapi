@@ -18,6 +18,8 @@ interface Props {
     userId: string
     email: string
     fullName: string
+    role?: string
+    branchName?: string | null
     businessName: string
     subscriptionStatus?: string
     trialEndsAt?: string | null
@@ -114,23 +116,50 @@ function Field({
     minLength?: number
     readOnly?: boolean
 }) {
+    const [showPassword, setShowPassword] = useState(false)
+    const isPasswordField = type === 'password'
+    const inputType = isPasswordField ? (showPassword ? 'text' : 'password') : type
+
     return (
         <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
-            <input
-                type={type}
-                name={name}
-                defaultValue={defaultValue}
-                placeholder={placeholder}
-                minLength={minLength}
-                readOnly={readOnly}
-                required={!readOnly}
-                className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black ${
-                    readOnly
-                        ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                        : 'border-gray-300 bg-white'
-                }`}
-            />
+            <div className="relative">
+                <input
+                    type={inputType}
+                    name={name}
+                    defaultValue={defaultValue}
+                    placeholder={placeholder}
+                    minLength={minLength}
+                    readOnly={readOnly}
+                    required={!readOnly}
+                    className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black ${
+                        isPasswordField ? 'pr-10' : ''
+                    } ${
+                        readOnly
+                            ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                            : 'border-gray-300 bg-white'
+                    }`}
+                />
+                {isPasswordField && (
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                        tabIndex={-1}
+                    >
+                        {showPassword ? (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                            </svg>
+                        ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        )}
+                    </button>
+                )}
+            </div>
         </div>
     )
 }
@@ -139,6 +168,8 @@ function Field({
 export default function ProfilClient({
     email,
     fullName,
+    role = 'owner',
+    branchName,
     businessName,
     subscriptionStatus = 'trial',
     trialEndsAt,
@@ -150,6 +181,216 @@ export default function ProfilClient({
     employees,
 }: Props) {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+    const [activeTab, setActiveTab] = useState<'info' | 'password' | null>(null)
+
+    // ── Dedicated Pegawai Profile View (Matches Mockup) ──
+    if (role === 'pegawai') {
+        const initials = fullName
+            ? fullName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase()
+            : 'PK'
+
+        return (
+            <div className="mx-auto max-w-xl space-y-6 px-4 py-8 sm:py-12">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Profil</h1>
+                        <p className="mt-0.5 text-xs text-slate-500">Informasi akun dan pengaturan pegawai</p>
+                    </div>
+                </div>
+
+                {/* Profile Card Header */}
+                <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-blue-500/20">
+                                {initials}
+                            </div>
+                            <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">{fullName || 'Pegawai Kasir'}</h2>
+                            <p className="text-xs text-slate-500 capitalize">
+                                Pegawai {branchName ? `· ${branchName}` : ''}
+                            </p>
+                            <div className="mt-1 flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Aktif
+                                </span>
+                                {businessName && (
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                        {businessName}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Menu Action Cards */}
+                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
+                    {/* 1. Informasi Akun */}
+                    <div className="transition hover:bg-slate-50/80">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab(activeTab === 'info' ? null : 'info')}
+                            className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-900">Informasi Akun</div>
+                                    <div className="text-xs text-slate-400">Lihat data diri dan akun kasir</div>
+                                </div>
+                            </div>
+                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'info' ? 'rotate-90 text-blue-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+
+                        {activeTab === 'info' && (
+                            <div className="px-5 pb-5 pt-1 border-t border-slate-100 bg-slate-50/50">
+                                <div className="space-y-3 text-xs">
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span className="text-slate-500 font-medium">Nama Lengkap</span>
+                                        <span className="font-bold text-slate-800">{fullName}</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span className="text-slate-500 font-medium">Email / Username</span>
+                                        <span className="font-bold text-slate-800">{email}</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span className="text-slate-500 font-medium">Peran / Role</span>
+                                        <span className="font-bold text-blue-600 uppercase">Pegawai Kasir</span>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <span className="text-slate-500 font-medium">Cabang Penempatan</span>
+                                        <span className="font-bold text-slate-800">{branchName || 'Cabang Utama'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 2. Ubah Password */}
+                    <div className="transition hover:bg-slate-50/80">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab(activeTab === 'password' ? null : 'password')}
+                            className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-900">Ubah Password</div>
+                                    <div className="text-xs text-slate-400">Ganti kata sandi akun</div>
+                                </div>
+                            </div>
+                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'password' ? 'rotate-90 text-blue-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+
+                        {activeTab === 'password' && (
+                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 bg-slate-50/50">
+                                <ActionForm
+                                    action={changeOwnPassword}
+                                    title="Ganti Kata Sandi Sendiri"
+                                    subtitle="Masukkan kata sandi baru minimal 6 karakter."
+                                    submitLabel="Simpan Password Baru"
+                                    successMsg="Kata sandi berhasil diperbarui!"
+                                >
+                                    <Field
+                                        label="Kata Sandi Baru"
+                                        name="new_password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        minLength={6}
+                                    />
+                                    <Field
+                                        label="Konfirmasi Kata Sandi Baru"
+                                        name="confirm_password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        minLength={6}
+                                    />
+                                </ActionForm>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 3. Bantuan & FAQ */}
+                    <div className="transition hover:bg-slate-50/80">
+                        <a
+                            href="https://wa.me/?text=Halo%20Admin%20Rekapi%2C%20saya%20butuh%20bantuan%20terkait%20aplikasi%20kasir"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-900">Bantuan</div>
+                                    <div className="text-xs text-slate-400">Pusat bantuan & FAQ</div>
+                                </div>
+                            </div>
+                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                    </div>
+
+                    {/* 4. Keluar */}
+                    <div className="transition hover:bg-rose-50/50">
+                        <form
+                            action="/api/auth/signout"
+                            method="post"
+                            onSubmit={(e) => {
+                                if (!confirm('Yakin ingin keluar dari akun kasir?')) e.preventDefault()
+                            }}
+                        >
+                            <button
+                                type="submit"
+                                className="w-full flex items-center justify-between p-5 text-left cursor-pointer group"
+                            >
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-100 transition">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-rose-600">Keluar</div>
+                                        <div className="text-xs text-slate-400">Keluar dari akun</div>
+                                    </div>
+                                </div>
+                                <svg className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     const isActive = subscriptionStatus === 'active'
     const isTrial = subscriptionStatus === 'trial'
@@ -254,9 +495,28 @@ export default function ProfilClient({
                 )}
             </div>
 
-            {/* ── Info Akun (email read-only) ── */}
+            {/* ── Info Akun (email read-only & logout) ── */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="mb-4 text-base font-semibold text-gray-900">Informasi Akun</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-base font-semibold text-gray-900">Informasi Akun</h2>
+                    <form
+                        action="/api/auth/signout"
+                        method="post"
+                        onSubmit={(e) => {
+                            if (!confirm('Yakin ingin keluar dari akun?')) e.preventDefault()
+                        }}
+                    >
+                        <button
+                            type="submit"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Keluar dari Akun</span>
+                        </button>
+                    </form>
+                </div>
                 <Field label="Email Login" name="email" type="email" defaultValue={email} readOnly />
                 {isGoogleUser && (
                     <p className="mt-2 text-xs text-gray-500">

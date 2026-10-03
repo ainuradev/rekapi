@@ -444,88 +444,103 @@ _Dicatat otomatis via Rekapi POS_`
             </div>
 
             <div className="space-y-3">
-                {filteredSales.map((sale) => (
-                    <div
-                        key={sale.id}
-                        className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-gray-300"
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="pr-2">
-                                <div className="text-xs font-medium text-gray-500">
-                                    {formatIndonesianDateTime(sale.transaction_date)}
-                                    {isOwner && sale.branches?.name ? (
-                                        <span className="ml-1.5 font-semibold text-gray-700">
-                                            · 🏢 {sale.branches.name}
-                                        </span>
-                                    ) : ''}
-                                </div>
-                                <div className="mt-1.5 text-sm font-semibold text-gray-900">
-                                    {sale.sale_items
-                                        .map((i) => `${i.products?.name ?? 'Item'} (${i.quantity} ${i.products?.unit || 'x'})`)
-                                        .join(', ')}
-                                </div>
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                                    <span className="rounded bg-gray-100 px-2 py-0.5 font-semibold uppercase text-gray-700">
-                                        {sale.channel}
-                                    </span>
-                                    <span>·</span>
-                                    <span className="capitalize font-medium text-gray-700">
-                                        {sale.payment_method}
-                                    </span>
-                                    {sale.is_edited && (
-                                        <button
-                                            onClick={() => setAuditSale(sale)}
-                                            className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/90 px-2 py-0.5 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
-                                            title="Klik untuk melihat riwayat audit perubahan"
-                                        >
-                                            <span>✏️ Diedit</span>
-                                            <span className="font-normal underline decoration-amber-400">
-                                                Audit Trail ➔
+                {filteredSales.map((sale) => {
+                    const trxCode = `#TRX-${sale.id.slice(0, 4).toUpperCase()}`
+                    const dateObj = new Date(sale.transaction_date)
+                    const timeStr = dateObj.toLocaleTimeString('id-ID', {
+                        timeZone: TIMEZONE_INDONESIA,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    })
+                    const dateStr = formatIndonesianDateTime(sale.transaction_date).replace(' WIB', '')
+
+                    return (
+                        <div
+                            key={sale.id}
+                            className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs transition hover:border-blue-400 hover:shadow-xs"
+                        >
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3 min-w-0 pr-2">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                        </svg>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-extrabold text-sm text-slate-900 tracking-tight">
+                                                {trxCode}
                                             </span>
-                                        </button>
-                                    )}
+                                            {isOwner && sale.branches?.name && (
+                                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                    {sale.branches.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            {dateStr}
+                                        </div>
+                                        <div className="mt-1.5 text-xs font-semibold text-slate-700">
+                                            {sale.sale_items
+                                                .map((i) => `${i.products?.name ?? 'Item'} (${i.quantity}x)`)
+                                                .join(', ')}
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
+                                                {sale.channel}
+                                            </span>
+                                            <span>·</span>
+                                            <span className="capitalize font-semibold text-slate-600 text-[11px]">
+                                                {sale.payment_method}
+                                            </span>
+                                            {sale.is_edited && (
+                                                <button
+                                                    onClick={() => setAuditSale(sale)}
+                                                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/90 px-2 py-0.5 text-[10px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                                                    title="Lihat riwayat audit"
+                                                >
+                                                    <span>✏️ Diedit</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <div className="text-base font-bold text-gray-900">
-                                    Rp{sale.total.toLocaleString('id-ID')}
-                                </div>
-                                <div className="mt-1.5 flex items-center justify-end gap-1.5">
-                                    {sale.is_edited && (
+
+                                <div className="text-right shrink-0">
+                                    <div className="text-base font-extrabold text-slate-900">
+                                        Rp {sale.total.toLocaleString('id-ID')}
+                                    </div>
+                                    <div className="mt-1">
+                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            Selesai
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 flex items-center justify-end gap-1.5">
+                                        {canEdit(sale) && (
+                                            <button
+                                                onClick={() => setEditingSale(sale)}
+                                                className="p-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition"
+                                                title="Edit Transaksi"
+                                            >
+                                                ✏️
+                                            </button>
+                                        )}
                                         <button
-                                            onClick={() => setAuditSale(sale)}
-                                            className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
-                                            title="Lihat riwayat perubahan transaksi (Audit Trail)"
+                                            onClick={() => {
+                                                setDeleteError(null)
+                                                setDeletingSale(sale)
+                                            }}
+                                            className="p-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition"
+                                            title="Hapus Transaksi"
                                         >
-                                            <span>🕒</span>
-                                            <span>Log</span>
+                                            🗑️
                                         </button>
-                                    )}
-                                    {canEdit(sale) && (
-                                        <button
-                                            onClick={() => setEditingSale(sale)}
-                                            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-100 transition cursor-pointer"
-                                        >
-                                            <span>✏️</span>
-                                            <span>Edit</span>
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            setDeleteError(null)
-                                            setDeletingSale(sale)
-                                        }}
-                                        className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:border-red-400 hover:bg-red-100 transition cursor-pointer"
-                                        title="Hapus transaksi ini"
-                                    >
-                                        <span>🗑️</span>
-                                        <span>Hapus</span>
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
 
                 {filteredSales.length === 0 && (
                     <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">

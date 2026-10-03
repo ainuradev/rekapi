@@ -20,7 +20,7 @@ export default async function DashboardPage() {
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, role, business_id, businesses(name, subscription_status, subscription_plan_id, subscription_plans(name))')
+        .select('full_name, role, business_id, branch_id, businesses(name, subscription_status, subscription_plan_id, subscription_plans(name))')
         .eq('id', user.id)
         .single()
 
@@ -175,6 +175,39 @@ export default async function DashboardPage() {
         })
     }
 
+    // ── Data Khusus Pegawai (Hari Ini & Jam-jaman) ──
+    const todaySales = (recentSales.length > 0 || profile?.business_id)
+        ? (await supabase
+            .from('sales')
+            .select('id, total, transaction_date, channel, payment_method, branches(name), sale_items(product_id, quantity, products(name))')
+            .gte('transaction_date', `${todayStr}T00:00:00+07:00`)
+            .lte('transaction_date', `${todayStr}T23:59:59.999+07:00`)
+            .order('transaction_date', { ascending: false })).data || []
+        : []
+
+    const pegawaiTodayIncome = todaySales.reduce((sum, s) => sum + Number(s.total || 0), 0)
+    const pegawaiTodayCount = todaySales.length
+    const pegawaiAvgPerTrx = pegawaiTodayCount > 0 ? Math.round(pegawaiTodayIncome / pegawaiTodayCount) : 0
+    const pegawaiPendingCount = 0 // Rekapi auto-complete cashier transactions
+
+    // Hourly transaction bars for Pegawai chart (08:00 - 20:00)
+    const hourlySlots = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00']
+    const hourlyData = hourlySlots.map((slot) => {
+        const slotHour = parseInt(slot.split(':')[0], 10)
+        const inSlot = todaySales.filter((s) => {
+            const d = new Date(s.transaction_date)
+            const h = d.getHours()
+            return h >= slotHour && h < slotHour + 2
+        })
+        const sum = inSlot.reduce((acc, curr) => acc + Number(curr.total || 0), 0)
+        return {
+            slot,
+            count: inSlot.length,
+            total: sum,
+        }
+    })
+    const maxHourlyTotal = Math.max(...hourlyData.map((h) => h.total), 50000)
+
     // Hitung max height untuk bar chart scaling
     const maxValInChart = Math.max(
         ...chartData.map(c => Math.max(c.income, c.expense)),
@@ -187,6 +220,223 @@ export default async function DashboardPage() {
         month: 'long',
         year: 'numeric',
     })
+
+    // ── RENDER DEDICATED PEGAWAI DASHBOARD (Matches Mockup) ──
+    if (!isOwner) {
+        return (
+            <div className="space-y-6 pb-8">
+                {/* Header Pegawai */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                            Halo, {firstName} <span className="animate-pulse">👋</span>
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            Semangat terus, hari ini juga pasti lancar!
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-700 shadow-2xs self-start sm:self-auto">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>{formattedTodayHeader}</span>
+                    </div>
+                </div>
+
+                {/* Ringkasan Hari Ini - 4 Stat Cards */}
+                <div>
+                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        Ringkasan Hari Ini
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* 1. Total Transaksi */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400">Total Transaksi</p>
+                                    <p className="text-lg font-extrabold text-slate-900 mt-0.5">
+                                        {fmt(pegawaiTodayIncome)}
+                                    </p>
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-0.5">
+                                        ↑ {pegawaiTodayCount} transaksi
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Rata-rata per Transaksi */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400">Rata-rata per Transaksi</p>
+                                    <p className="text-lg font-extrabold text-slate-900 mt-0.5">
+                                        {fmt(pegawaiAvgPerTrx)}
+                                    </p>
+                                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">
+                                        Rata-rata basket size
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Transaksi Selesai */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400">Transaksi Selesai</p>
+                                    <p className="text-lg font-extrabold text-slate-900 mt-0.5">
+                                        {pegawaiTodayCount}
+                                    </p>
+                                    <span className="text-[10px] font-semibold text-teal-600 mt-0.5 block">
+                                        Semua sukses diproses
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. Transaksi Pending */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs flex items-center justify-between">
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-medium text-slate-400">Transaksi Pending</p>
+                                    <p className="text-lg font-extrabold text-slate-900 mt-0.5">
+                                        {pegawaiPendingCount}
+                                    </p>
+                                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">
+                                        Tidak ada antrean tertunda
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Grafik Transaksi & Aktivitas Terbaru */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Hourly Bar Chart */}
+                    <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-2xs">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">Transaksi Hari Ini</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">Distribusi penjualan per rentang jam kerja</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                                    <span>Penjualan</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Chart Visualization */}
+                        <div className="h-56 flex items-end justify-between gap-3 pt-6 border-b border-slate-100 px-2">
+                            {hourlyData.map((h, i) => {
+                                const heightPercent = Math.max(8, Math.round((h.total / maxHourlyTotal) * 100))
+                                return (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                                        <div className="text-[10px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {h.count > 0 ? fmt(h.total) : ''}
+                                        </div>
+                                        <div
+                                            style={{ height: `${heightPercent}%` }}
+                                            className="w-full max-w-[36px] rounded-t-xl bg-gradient-to-t from-blue-600 to-indigo-500 group-hover:from-blue-500 group-hover:to-indigo-400 transition-all shadow-xs"
+                                        />
+                                        <span className="text-[10px] font-medium text-slate-400 mt-1">
+                                            {h.slot}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Aktivitas Terbaru Card */}
+                    <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                                <h3 className="text-sm font-bold text-slate-900">Aktivitas Terbaru</h3>
+                                <Link
+                                    href="/dashboard/penjualan/riwayat"
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                                >
+                                    Lihat Semua ➔
+                                </Link>
+                            </div>
+
+                            <div className="space-y-3">
+                                {todaySales.slice(0, 5).map((sale) => {
+                                    const timeStr = new Date(sale.transaction_date).toLocaleTimeString('id-ID', {
+                                        timeZone: 'Asia/Jakarta',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })
+                                    return (
+                                        <div key={sale.id} className="flex items-center justify-between py-1 text-xs">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                                    ✓
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-slate-800">
+                                                        Pembayaran berhasil
+                                                    </div>
+                                                    <div className="text-[11px] font-bold text-emerald-600">
+                                                        {fmt(Number(sale.total))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className="text-[11px] text-slate-400 font-medium">
+                                                {timeStr}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
+
+                                {todaySales.length === 0 && (
+                                    <div className="py-8 text-center text-xs text-slate-400">
+                                        Belum ada transaksi tercatat hari ini.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 mt-4">
+                            <Link
+                                href="/dashboard/penjualan"
+                                className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition active:scale-95"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span>Buka Kasir POS</span>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6 pb-8">
