@@ -26,14 +26,14 @@ export default async function PenjualanPage() {
     let products: any[] | null = null
     const { data: prodsWithStock, error: stockErr } = await supabase
         .from('products')
-        .select('id, name, selling_price, cost_price, stock, unit')
+        .select('id, name, selling_price, cost_price, category, stock, unit')
         .eq('status', 'aktif')
         .order('name')
 
     if (stockErr && stockErr.code === '42703') {
         const { data: prodsFallback } = await supabase
             .from('products')
-            .select('id, name, selling_price, cost_price')
+            .select('id, name, selling_price, cost_price, category')
             .eq('status', 'aktif')
             .order('name')
         products = prodsFallback

@@ -21,7 +21,9 @@ export async function addProduct(formData: FormData) {
 
     const name = String(formData.get('name') ?? '').trim()
     const sellingPrice = Number(formData.get('selling_price'))
-    const category = String(formData.get('category') ?? '').trim() || null
+    const rawCategory = String(formData.get('category') ?? '').trim().toLowerCase()
+    const validCategories = ['makanan', 'minuman', 'lainnya']
+    const category = validCategories.includes(rawCategory) ? rawCategory : 'makanan'
 
     // cost_price cuma dibaca kalau owner yang ngisi form (field-nya disembunyikan
     // dari pegawai di UI). Kalau kosong/tidak ada, default 0 — dan trigger di DB

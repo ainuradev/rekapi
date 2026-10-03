@@ -466,7 +466,7 @@ export default function DashboardNav({
                             }`}
                         >
                             <PegawaiIcon />
-                            <span>Profil</span>
+                            <span>Akun</span>
                         </Link>
                     </>
                 ) : (

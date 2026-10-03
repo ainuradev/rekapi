@@ -11,6 +11,7 @@ type Product = {
     cost_price: number
     stock: number
     unit?: string
+    category?: 'makanan' | 'minuman' | 'lainnya' | string | null
 }
 
 type Branch = {
@@ -32,6 +33,7 @@ const PAYMENT_METHODS = ['cash', 'qris', 'transfer', 'lainnya']
 
 type ProductGroup = {
     name: string
+    category?: string | null
     variants: Product[]
 }
 
@@ -75,9 +77,13 @@ export default function KasirClient({
             const existing = map.get(key)
             if (existing) {
                 existing.variants.push(p)
+                if (!existing.category && p.category) {
+                    existing.category = p.category
+                }
             } else {
                 map.set(key, {
                     name: p.name.trim(),
+                    category: p.category ?? null,
                     variants: [p],
                 })
             }
@@ -94,6 +100,16 @@ export default function KasirClient({
 
             if (selectedCategory === 'semua') return true
 
+            // Jika produk memiliki kategori eksplisit dari database ('makanan' | 'minuman' | 'lainnya')
+            if (group.category) {
+                const catLower = group.category.toLowerCase().trim()
+                if (catLower === selectedCategory) return true
+                if (['makanan', 'minuman', 'lainnya'].includes(catLower)) {
+                    return false
+                }
+            }
+
+            // Fallback untuk produk lawas yang belum diisi kategori di database:
             const drinkKeywords = ['es', 'teh', 'kopi', 'jeruk', 'jus', 'drink', 'water', 'mineral', 'boba', 'susu', 'coffee', 'tea']
             const isDrink = drinkKeywords.some((k) => nameLower.includes(k))
 
