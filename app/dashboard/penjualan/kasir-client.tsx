@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { createSale } from './actions'
 import InvoiceModal from '@/components/invoice-modal'
+import SubTabNav from '@/components/sub-tab-nav'
 
 type Product = {
     id: string
@@ -37,9 +38,16 @@ type ProductGroup = {
     variants: Product[]
 }
 
+type BranchStock = {
+    product_id: string
+    branch_id: string
+    stock: number
+}
+
 export default function KasirClient({
-    products,
+    products: initialProducts,
     branches,
+    branchStocks = [],
     fixedBranchId,
     businessName,
     businessAddress,
@@ -48,6 +56,7 @@ export default function KasirClient({
 }: {
     products: Product[]
     branches: Branch[]
+    branchStocks?: BranchStock[]
     fixedBranchId: string | null
     businessName: string
     businessAddress?: string | null
@@ -58,6 +67,25 @@ export default function KasirClient({
     const [selectedBranch, setSelectedBranch] = useState(fixedBranchId ?? branches[0]?.id ?? '')
     const [channel, setChannel] = useState('offline')
     const [paymentMethod, setPaymentMethod] = useState('cash')
+
+    // Resolusi stok produk berdasarkan cabang yang sedang dipilih di kasir
+    const products = useMemo(() => {
+        if (!branchStocks || branchStocks.length === 0 || !selectedBranch) {
+            return initialProducts
+        }
+        const stockMap = new Map<string, number>()
+        for (const bs of branchStocks) {
+            if (bs.branch_id === selectedBranch) {
+                stockMap.set(bs.product_id, Number(bs.stock))
+            }
+        }
+        return initialProducts.map((p) => {
+            if (stockMap.has(p.id)) {
+                return { ...p, stock: stockMap.get(p.id)! }
+            }
+            return p
+        })
+    }, [initialProducts, branchStocks, selectedBranch])
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
     const [selectingGroup, setSelectingGroup] = useState<ProductGroup | null>(null)
@@ -263,6 +291,14 @@ export default function KasirClient({
                     </div>
                 )}
             </div>
+
+            {/* Sub-Tab Navigation (Kasir POS vs Riwayat) */}
+            <SubTabNav
+                items={[
+                    { href: '/dashboard/penjualan', label: 'Kasir POS', active: true },
+                    { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', active: false },
+                ]}
+            />
 
             {/* Scan / Cari Produk Input */}
             <div className="mb-4">

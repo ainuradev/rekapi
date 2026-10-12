@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import EditSaleModal from './edit-sale-modal'
 import AuditTrailModal from './audit-trail-modal'
+import SubTabNav from '@/components/sub-tab-nav'
 import { deleteSale } from './actions'
 import {
     getIndonesianPeriodRange,
@@ -314,6 +315,14 @@ _Dicatat otomatis via Rekapi POS_`
                     </button>
                 </div>
             </div>
+
+            {/* Sub-Tab Navigation (Kasir POS vs Riwayat) */}
+            <SubTabNav
+                items={[
+                    { href: '/dashboard/penjualan', label: 'Kasir POS', active: false },
+                    { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', active: true },
+                ]}
+            />
 
             {/* Filter Cabang (Khusus Owner jika memiliki cabang) */}
             {isOwner && branches.length > 0 && (

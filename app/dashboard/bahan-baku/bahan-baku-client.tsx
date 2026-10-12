@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { addPurchase, deletePurchase, PurchaseItemInput } from './actions'
 import { getIndonesianDate } from '@/lib/date-utils'
+import SubTabNav from '@/components/sub-tab-nav'
 
 type Branch = {
     id: string
@@ -119,6 +120,14 @@ export default function BahanBakuClient({ branches, initialPurchases }: BahanBak
                     Catat pengeluaran dan pembelian bahan baku dari supplier untuk tiap cabang usaha.
                 </p>
             </div>
+
+            {/* Sub-Tab Navigation (Katalog Produk vs Bahan Baku) */}
+            <SubTabNav
+                items={[
+                    { href: '/dashboard/produk', label: 'Katalog Produk', active: false },
+                    { href: '/dashboard/bahan-baku', label: 'Bahan Baku', active: true },
+                ]}
+            />
 
             {/* Form Catat Pembelian */}
             <div className="mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">

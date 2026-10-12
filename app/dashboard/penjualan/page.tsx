@@ -16,40 +16,47 @@ export default async function PenjualanPage() {
         .eq('id', user.id)
         .single()
 
-    // Get business data
-    const { data: business } = await supabase
-        .from('businesses')
-        .select('name, address, phone')
-        .eq('id', profile?.business_id)
-        .single()
+    // Ambil data bisnis, produk, cabang, dan stok cabang secara paralel
+    const [
+        { data: business },
+        prodsResult,
+        { data: branches },
+        { data: branchStocks },
+    ] = await Promise.all([
+        supabase
+            .from('businesses')
+            .select('name, address, phone')
+            .eq('id', profile?.business_id)
+            .single(),
+        supabase
+            .from('products')
+            .select('id, name, selling_price, cost_price, category, stock, unit')
+            .eq('status', 'aktif')
+            .order('name'),
+        supabase
+            .from('branches')
+            .select('id, name')
+            .order('name'),
+        supabase
+            .from('product_branch_stocks')
+            .select('product_id, branch_id, stock'),
+    ])
 
-    let products: any[] | null = null
-    const { data: prodsWithStock, error: stockErr } = await supabase
-        .from('products')
-        .select('id, name, selling_price, cost_price, category, stock, unit')
-        .eq('status', 'aktif')
-        .order('name')
-
-    if (stockErr && stockErr.code === '42703') {
+    let products: any[] | null = prodsResult.data
+    if (prodsResult.error && prodsResult.error.code === '42703') {
         const { data: prodsFallback } = await supabase
             .from('products')
             .select('id, name, selling_price, cost_price, category')
             .eq('status', 'aktif')
             .order('name')
         products = prodsFallback
-    } else {
-        products = prodsWithStock
     }
-
-    const { data: branches } = await supabase
-        .from('branches')
-        .select('id, name')
-        .order('name')
 
     return (
         <KasirClient
             products={products ?? []}
             branches={branches ?? []}
+            branchStocks={branchStocks ?? []}
             fixedBranchId={profile?.branch_id ?? null}
             businessName={business?.name ?? 'Rekapi'}
             businessAddress={business?.address}

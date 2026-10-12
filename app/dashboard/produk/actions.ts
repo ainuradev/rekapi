@@ -148,5 +148,57 @@ export async function updateStock(productId: string, stock: number) {
     if (error) return { error: error.message }
 
     revalidatePath('/dashboard/produk')
+    revalidatePath('/dashboard/penjualan')
+    return { success: true }
+}
+
+export async function updateBranchStock(productId: string, branchId: string, stock: number) {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya owner yang dapat mengubah stok cabang.' }
+    }
+
+    const cleanStock = Math.max(0, stock)
+
+    // Upsert into product_branch_stocks
+    const { error } = await supabase
+        .from('product_branch_stocks')
+        .upsert(
+            {
+                business_id: profile.business_id,
+                product_id: productId,
+                branch_id: branchId,
+                stock: cleanStock,
+                updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'product_id,branch_id' }
+        )
+
+    if (error) {
+        // Fallback jika migrasi 0014 belum dijalankan di Supabase: simpan ke products.stock
+        if (error.code === '42P01') {
+            await supabase.from('products').update({ stock: cleanStock }).eq('id', productId)
+            revalidatePath('/dashboard/produk')
+            revalidatePath('/dashboard/penjualan')
+            return { success: true }
+        }
+        return { error: error.message }
+    }
+
+    // Revalidate paths
+    revalidatePath('/dashboard/produk')
+    revalidatePath('/dashboard/penjualan')
     return { success: true }
 }

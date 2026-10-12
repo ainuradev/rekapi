@@ -18,21 +18,23 @@ export default async function RiwayatPage() {
 
     const isOwner = profile?.role === 'owner'
 
-    // Ambil daftar cabang jika owner (untuk dropdown switcher cabang)
-    const { data: branches } = isOwner
-        ? await supabase.from('branches').select('id, name').order('name')
-        : { data: [] }
+    // Ambil daftar cabang dan data transaksi secara paralel
+    const [branchesRes, salesRes] = await Promise.all([
+        isOwner
+            ? supabase.from('branches').select('id, name').order('name')
+            : Promise.resolve({ data: [] }),
+        supabase
+            .from('sales')
+            .select(
+                'id, transaction_date, channel, payment_method, total, is_edited, branch_id, user_id, branches(name), sale_items(product_id, quantity, price, cost_price, products(name, unit))'
+            )
+            .order('transaction_date', { ascending: false })
+            .limit(200),
+    ])
 
-    // RLS otomatis membatasi: pegawai cuma lihat transaksi cabangnya sendiri,
-    // owner lihat semua cabang. Tidak perlu filter manual di sini.
-    let sales: any[] | null = null
-    const { data: salesWithUnit, error: salesErr } = await supabase
-        .from('sales')
-        .select(
-            'id, transaction_date, channel, payment_method, total, is_edited, branch_id, user_id, branches(name), sale_items(product_id, quantity, price, cost_price, products(name, unit))'
-        )
-        .order('transaction_date', { ascending: false })
-        .limit(200)
+    const branches = branchesRes.data
+    let sales: any[] | null = salesRes.data
+    const salesErr = salesRes.error
 
     if (salesErr && salesErr.code === '42703') {
         const { data: salesFallback } = await supabase
@@ -43,8 +45,6 @@ export default async function RiwayatPage() {
             .order('transaction_date', { ascending: false })
             .limit(200)
         sales = salesFallback
-    } else {
-        sales = salesWithUnit
     }
 
     return (

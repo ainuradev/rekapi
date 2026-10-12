@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { updateStock } from './actions'
+import { updateStock, updateBranchStock } from './actions'
 
 export default function StockEditor({
     productId,
     initialStock,
     unit = 'pcs',
+    branchId,
 }: {
     productId: string
     initialStock: number
     unit?: string
+    branchId?: string | null
 }) {
     const [stock, setStock] = useState(initialStock)
     const [editing, setEditing] = useState(false)
@@ -21,7 +23,9 @@ export default function StockEditor({
         const newStock = Number(input)
         if (isNaN(newStock) || newStock < 0) return
         setSaving(true)
-        const result = await updateStock(productId, newStock)
+        const result = branchId
+            ? await updateBranchStock(productId, branchId, newStock)
+            : await updateStock(productId, newStock)
         setSaving(false)
         if (result.error) {
             alert(result.error)
