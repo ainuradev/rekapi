@@ -50,7 +50,7 @@ export default function SubscriptionClient({
                 throw new Error(error.error || 'Failed to create transaction')
             }
 
-            const { token, redirectUrl } = await res.json()
+            const { token, redirectUrl, orderId } = await res.json()
 
             const targetSnapUrl =
                 process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL ||
@@ -62,18 +62,39 @@ export default function SubscriptionClient({
                 if (window.snap && typeof window.snap.pay === 'function') {
                     // @ts-ignore
                     window.snap.pay(token, {
-                        onSuccess: function () {
-                            router.push('/dashboard/subscription/success')
+                        onSuccess: function (result: any) {
+                            const finalOrderId = result?.order_id || orderId || ''
+                            router.push(
+                                `/dashboard/subscription/success?order_id=${encodeURIComponent(finalOrderId)}`
+                            )
                         },
-                        onPending: function () {
-                            router.push('/dashboard/subscription/pending')
+                        onPending: function (result: any) {
+                            const finalOrderId = result?.order_id || orderId || ''
+                            router.push(
+                                `/dashboard/subscription/pending?order_id=${encodeURIComponent(finalOrderId)}`
+                            )
                         },
-                        onError: function () {
-                            router.push('/dashboard/subscription/error')
+                        onError: function (result: any) {
+                            const finalOrderId = result?.order_id || orderId || ''
+                            router.push(
+                                `/dashboard/subscription/error?order_id=${encodeURIComponent(finalOrderId)}`
+                            )
                         },
-                        onClose: function () {
+                        onClose: async function () {
                             setLoading(false)
                             setSelectedPlan(null)
+                            // Jika user menutup pop-up tanpa menyelesaikan pembayaran, batalkan status transaksi
+                            if (orderId) {
+                                try {
+                                    await fetch('/api/midtrans/cancel-transaction', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ orderId }),
+                                    })
+                                } catch {
+                                    // Abaikan error jaringan saat cancel
+                                }
+                            }
                         },
                     })
                 } else if (redirectUrl) {

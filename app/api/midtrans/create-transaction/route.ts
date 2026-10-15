@@ -109,8 +109,8 @@ export async function POST(request: NextRequest) {
             ],
             callbacks: {
                 finish: `${origin}/dashboard/subscription/success`,
+                unfinish: `${origin}/dashboard/subscription/unfinish`,
                 error: `${origin}/dashboard/subscription/error`,
-                pending: `${origin}/dashboard/subscription/pending`,
             },
         }
 
