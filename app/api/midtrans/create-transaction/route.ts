@@ -84,6 +84,12 @@ export async function POST(request: NextRequest) {
         // Create Midtrans transaction
         const snap = getMidtransSnap()
 
+        const origin =
+            process.env.NEXT_PUBLIC_SITE_URL ||
+            request.headers.get('origin') ||
+            request.nextUrl.origin ||
+            'http://localhost:3000'
+
         const parameter = {
             transaction_details: {
                 order_id: orderId,
@@ -102,9 +108,9 @@ export async function POST(request: NextRequest) {
                 },
             ],
             callbacks: {
-                finish: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/subscription/success`,
-                error: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/subscription/error`,
-                pending: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/subscription/pending`,
+                finish: `${origin}/dashboard/subscription/success`,
+                error: `${origin}/dashboard/subscription/error`,
+                pending: `${origin}/dashboard/subscription/pending`,
             },
         }
 

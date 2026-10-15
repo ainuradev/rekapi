@@ -20,5 +20,9 @@ export const MIDTRANS_CONFIG = {
     isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
     serverKey: process.env.MIDTRANS_SERVER_KEY || '',
     clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '',
-    snapUrl: process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js',
+    snapUrl:
+        process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL ||
+        (process.env.MIDTRANS_IS_PRODUCTION === 'true'
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js'),
 }

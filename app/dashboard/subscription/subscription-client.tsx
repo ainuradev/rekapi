@@ -50,11 +50,16 @@ export default function SubscriptionClient({
                 throw new Error(error.error || 'Failed to create transaction')
             }
 
-            const { token } = await res.json()
+            const { token, redirectUrl } = await res.json()
+
+            const targetSnapUrl =
+                process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL ||
+                'https://app.midtrans.com/snap/snap.js'
+            const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ''
 
             const openSnap = () => {
                 // @ts-ignore
-                if (window.snap) {
+                if (window.snap && typeof window.snap.pay === 'function') {
                     // @ts-ignore
                     window.snap.pay(token, {
                         onSuccess: function () {
@@ -71,23 +76,56 @@ export default function SubscriptionClient({
                             setSelectedPlan(null)
                         },
                     })
+                } else if (redirectUrl) {
+                    // Fallback to direct redirect if Snap popup is unavailable or blocked
+                    window.location.href = redirectUrl
+                } else {
+                    alert('Gagal membuka popup pembayaran. Silakan coba lagi.')
+                    setLoading(false)
+                    setSelectedPlan(null)
                 }
             }
 
             // Check if Midtrans Snap script is already loaded
             const existingScript = document.querySelector('script[data-midtrans-snap="true"]') as HTMLScriptElement
-            if (existingScript && (window as any).snap) {
-                openSnap()
-                return
+            if (existingScript) {
+                // If existing script has a different src or client key (e.g. from previous sandbox session), replace it
+                if (existingScript.src !== targetSnapUrl || existingScript.getAttribute('data-client-key') !== clientKey) {
+                    existingScript.remove()
+                    // @ts-ignore
+                    delete window.snap
+                } else if ((window as any).snap) {
+                    openSnap()
+                    return
+                }
             }
 
             const snapScript = document.createElement('script')
-            snapScript.src = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js'
-            snapScript.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
+            snapScript.src = targetSnapUrl
+            snapScript.setAttribute('data-client-key', clientKey)
             snapScript.setAttribute('data-midtrans-snap', 'true')
 
+            // Fallback timeout: if snap.js hangs or is blocked, redirect directly via redirectUrl
+            const timeoutId = setTimeout(() => {
+                if (redirectUrl) {
+                    window.location.href = redirectUrl
+                }
+            }, 5000)
+
             snapScript.onload = () => {
+                clearTimeout(timeoutId)
                 openSnap()
+            }
+
+            snapScript.onerror = () => {
+                clearTimeout(timeoutId)
+                if (redirectUrl) {
+                    window.location.href = redirectUrl
+                } else {
+                    alert('Gagal memuat sistem pembayaran Midtrans.')
+                    setLoading(false)
+                    setSelectedPlan(null)
+                }
             }
 
             document.body.appendChild(snapScript)
