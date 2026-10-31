@@ -130,3 +130,59 @@ export function formatIndonesianDateTime(dateInput: string | Date): string {
         ' WIB'
     )
 }
+
+export interface ParsedPeriodRange extends IndonesianPeriodRange {
+    period: string
+    isCustom: boolean
+    label: string
+}
+
+/**
+ * Parsing parameter periode dengan dukungan tanggal kustom (start_date & end_date)
+ * maupun opsi preset (today, week, month).
+ */
+export function parseCustomOrPeriodRange(
+    period?: string | null,
+    startDate?: string | null,
+    endDate?: string | null,
+    defaultPeriod: PeriodType = 'month'
+): ParsedPeriodRange {
+    if (startDate && endDate) {
+        let finalStart = startDate
+        let finalEnd = endDate
+        if (finalStart > finalEnd) {
+            finalStart = endDate
+            finalEnd = startDate
+        }
+        return {
+            dateFrom: finalStart,
+            dateTo: finalEnd,
+            timestampFrom: `${finalStart}T00:00:00+07:00`,
+            timestampTo: `${finalEnd}T23:59:59.999+07:00`,
+            period: 'custom',
+            isCustom: true,
+            label: finalStart === finalEnd
+                ? formatIndonesianDate(finalStart)
+                : `${formatIndonesianDate(finalStart)} - ${formatIndonesianDate(finalEnd)}`,
+        }
+    }
+
+    const validPeriod = (['today', 'week', 'month'].includes(period ?? '')
+        ? period
+        : defaultPeriod) as PeriodType
+
+    const range = getIndonesianPeriodRange(validPeriod)
+    const label = {
+        today: 'Hari Ini',
+        week: 'Minggu Ini (7 Hari)',
+        month: 'Bulan Ini',
+    }[validPeriod]
+
+    return {
+        ...range,
+        period: validPeriod,
+        isCustom: false,
+        label,
+    }
+}
+

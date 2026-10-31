@@ -76,7 +76,11 @@ export async function adminUpdateSubscriptionStatus(
 
     const admin = createAdminClient()
 
-    const updatePayload: Record<string, any> = {
+    const updatePayload: {
+        subscription_status: string
+        updated_at: string
+        trial_ends_at?: string
+    } = {
         subscription_status: status,
         updated_at: new Date().toISOString(),
     }

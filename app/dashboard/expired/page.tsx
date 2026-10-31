@@ -17,7 +17,15 @@ export default async function ExpiredPage() {
         .eq('id', user.id)
         .single()
 
-    const businessData = (profile as any)?.businesses
+    interface ProfileWithBizName {
+        role: string
+        businesses?: {
+            name: string | null
+            subscription_status: string | null
+        } | null
+    }
+
+    const businessData = (profile as unknown as ProfileWithBizName | null)?.businesses
     const subscriptionStatus = businessData?.subscription_status || 'expired'
     const businessName = businessData?.name || 'Bisnis Anda'
 
@@ -51,8 +59,8 @@ export default async function ExpiredPage() {
                         </p>
                     </div>
 
-                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm text-blue-800">
+                    <div className="mb-6 p-4 bg-emerald-50 rounded-xl border border-emerald-200/80">
+                        <p className="text-sm text-emerald-900 leading-relaxed">
                             Untuk melanjutkan menggunakan Rekapi dan mengakses semua fitur kasir, laporan, dan
                             manajemen bisnis Anda, silakan pilih paket langganan.
                         </p>
@@ -63,13 +71,13 @@ export default async function ExpiredPage() {
                             <>
                                 <Link
                                     href="/dashboard/subscription"
-                                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition"
+                                    className="block w-full bg-emerald-800 hover:bg-emerald-900 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-emerald-900/20 transition text-center"
                                 >
                                     Pilih Paket Langganan
                                 </Link>
                                 <Link
                                     href="/dashboard/profil"
-                                    className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition"
+                                    className="block w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 px-4 rounded-xl transition text-center"
                                 >
                                     Lihat Profil
                                 </Link>
@@ -87,7 +95,7 @@ export default async function ExpiredPage() {
                         <form action="/api/auth/signout" method="post">
                             <button
                                 type="submit"
-                                className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium py-2 transition"
+                                className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium py-2 transition cursor-pointer"
                             >
                                 Logout
                             </button>
@@ -97,7 +105,7 @@ export default async function ExpiredPage() {
 
                 <p className="text-center text-xs text-gray-500 mt-4">
                     Butuh bantuan?{' '}
-                    <a href="mailto:support@rekapi.com" className="text-blue-600 hover:underline">
+                    <a href="mailto:support@rekapi.com" className="text-emerald-800 font-semibold hover:underline">
                         Hubungi Support
                     </a>
                 </p>

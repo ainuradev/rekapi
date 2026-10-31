@@ -174,8 +174,9 @@ export default function AdminClient({
                     setTimeout(() => closeActionModal(), 1200)
                 }
             }
-        } catch (err: any) {
-            setFeedback({ type: 'err', text: err.message || 'Terjadi kesalahan sistem.' })
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Terjadi kesalahan sistem.'
+            setFeedback({ type: 'err', text: message })
         } finally {
             setLoading(false)
         }
@@ -192,10 +193,12 @@ export default function AdminClient({
         setFeedback(null)
         if (biz) {
             setNewBizName(biz.name)
-            setNewStatus(biz.subscriptionStatus as any)
+            const st = biz.subscriptionStatus
+            setNewStatus(st === 'active' || st === 'expired' ? st : 'trial')
         } else if (user) {
             setNewBizName(user.businessName)
-            setNewStatus(user.subscriptionStatus as any)
+            const st = user.subscriptionStatus
+            setNewStatus(st === 'active' || st === 'expired' ? st : 'trial')
         }
         setExtendDays(7)
         setNewPassword('')
@@ -344,7 +347,7 @@ export default function AdminClient({
                     {tab === 'users' && (
                         <select
                             value={roleFilter}
-                            onChange={(e) => setRoleFilter(e.target.value as any)}
+                            onChange={(e) => setRoleFilter(e.target.value as 'all' | 'owner' | 'pegawai')}
                             className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
                         >
                             <option value="all">Semua Peran (Role)</option>
@@ -355,7 +358,7 @@ export default function AdminClient({
 
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as any)}
+                        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'trial_active' | 'trial_expired' | 'active')}
                         className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
                     >
                         <option value="all">Semua Status Trial</option>
@@ -785,7 +788,7 @@ export default function AdminClient({
                                     <label className="block text-xs font-semibold text-slate-700">Pilih Status Baru</label>
                                     <select
                                         value={newStatus}
-                                        onChange={(e) => setNewStatus(e.target.value as any)}
+                                        onChange={(e) => setNewStatus(e.target.value as 'trial' | 'active' | 'expired')}
                                         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
                                     >
                                         <option value="trial">Trial (Masa Percobaan)</option>

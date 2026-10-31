@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 .env.local
+.env.staging.local
 
 # vercel
 .vercel
@@ -40,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local scratch, proposed drafts, & agent worktrees
+/scratch/
+/supabase/proposed/
+/supabase/.temp/
+/.claude/

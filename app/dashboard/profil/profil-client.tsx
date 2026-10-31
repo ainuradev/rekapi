@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
     updateOwnerName,
-    updateBusinessName,
+    updateBusinessProfile,
     changeOwnPassword,
     changeEmployeePassword,
 } from './actions'
@@ -21,6 +21,10 @@ interface Props {
     role?: string
     branchName?: string | null
     businessName: string
+    businessAddress?: string | null
+    businessPhone?: string | null
+    businessLogoUrl?: string | null
+    businessQrisUrl?: string | null
     subscriptionStatus?: string
     trialEndsAt?: string | null
     subscriptionExpiresAt?: string | null
@@ -65,34 +69,38 @@ function ActionForm({
 
     return (
         <div
-            className={`rounded-2xl border p-6 shadow-sm ${
+            className={`rounded-3xl border p-6 shadow-2xs transition ${
                 highlight
-                    ? 'border-orange-300 bg-orange-50 ring-2 ring-orange-200'
-                    : 'border-gray-200 bg-white'
+                    ? 'border-amber-300 bg-amber-50/50 ring-2 ring-amber-200/60'
+                    : 'border-slate-200/80 bg-white'
             }`}
         >
-            <h2 className="mb-0.5 text-base font-semibold text-gray-900">{title}</h2>
-            {subtitle && <p className="mb-4 text-xs text-gray-500">{subtitle}</p>}
+            <h2 className="text-base font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="mt-1 mb-4 text-xs text-slate-500">{subtitle}</p>}
             {!subtitle && <div className="mb-4" />}
             <form onSubmit={handleSubmit} className="space-y-4">
                 {children}
                 {msg && (
-                    <p
-                        className={`text-xs font-semibold ${
-                            msg.type === 'ok' ? 'text-green-600' : 'text-red-600'
+                    <div
+                        className={`rounded-xl p-3 text-xs font-semibold flex items-center gap-2 ${
+                            msg.type === 'ok'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
                     >
-                        {msg.type === 'ok' ? '✓ ' : '✗ '}
-                        {msg.text}
-                    </p>
+                        <span>{msg.type === 'ok' ? '✓' : '⚠️'}</span>
+                        <span>{msg.text}</span>
+                    </div>
                 )}
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="rounded-lg bg-black px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-gray-800 transition active:scale-[0.99] disabled:opacity-50"
-                >
-                    {loading ? 'Menyimpan...' : submitLabel}
-                </button>
+                <div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-700 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                    >
+                        {loading ? 'Menyimpan...' : submitLabel}
+                    </button>
+                </div>
             </form>
         </div>
     )
@@ -107,6 +115,7 @@ function Field({
     placeholder,
     minLength,
     readOnly,
+    required = true,
 }: {
     label: string
     name: string
@@ -115,14 +124,16 @@ function Field({
     placeholder?: string
     minLength?: number
     readOnly?: boolean
+    required?: boolean
 }) {
     const [showPassword, setShowPassword] = useState(false)
     const isPasswordField = type === 'password'
     const inputType = isPasswordField ? (showPassword ? 'text' : 'password') : type
+    const isRequired = !readOnly && required
 
     return (
         <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">{label}</label>
             <div className="relative">
                 <input
                     type={inputType}
@@ -131,20 +142,20 @@ function Field({
                     placeholder={placeholder}
                     minLength={minLength}
                     readOnly={readOnly}
-                    required={!readOnly}
-                    className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black ${
+                    required={isRequired}
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition ${
                         isPasswordField ? 'pr-10' : ''
                     } ${
                         readOnly
-                            ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                            : 'border-gray-300 bg-white'
+                            ? 'border-slate-200 bg-slate-50/80 text-slate-500 cursor-not-allowed'
+                            : 'border-slate-200 bg-white'
                     }`}
                 />
                 {isPasswordField && (
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                         tabIndex={-1}
                     >
                         {showPassword ? (
@@ -164,6 +175,160 @@ function Field({
     )
 }
 
+function QrisUploadField({ defaultValue }: { defaultValue?: string | null }) {
+    const [qrisUrl, setQrisUrl] = useState(defaultValue ?? '')
+    const [previewLoading, setPreviewLoading] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            alert('Silakan pilih file gambar (PNG, JPG, atau WEBP).')
+            return
+        }
+
+        setPreviewLoading(true)
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            const rawDataUrl = event.target?.result as string
+            const img = new Image()
+            img.onload = () => {
+                const canvas = document.createElement('canvas')
+                const maxDim = 600
+                let width = img.width
+                let height = img.height
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round((height * maxDim) / width)
+                        width = maxDim
+                    } else {
+                        width = Math.round((width * maxDim) / height)
+                        height = maxDim
+                    }
+                }
+                canvas.width = width
+                canvas.height = height
+                const ctx = canvas.getContext('2d')
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height)
+                    const compressed = canvas.toDataURL('image/webp', 0.9)
+                    setQrisUrl(compressed)
+                } else {
+                    setQrisUrl(rawDataUrl)
+                }
+                setPreviewLoading(false)
+            }
+            img.onerror = () => {
+                setQrisUrl(rawDataUrl)
+                setPreviewLoading(false)
+            }
+            img.src = rawDataUrl
+        }
+        reader.readAsDataURL(file)
+    }
+
+    return (
+        <div className="space-y-2.5 pt-3 border-t border-slate-100">
+            <label className="block text-xs font-semibold text-slate-800">
+                Gambar QRIS Toko (Untuk Pembayaran Kasir POS)
+            </label>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+                Unggah gambar/screenshot QRIS statis toko Anda (BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dll). Gambar ini akan otomatis muncul sebagai pop-up di layar kasir saat pelanggan memilih bayar dengan QRIS.
+            </p>
+
+            <input type="hidden" name="business_qris_url" value={qrisUrl} />
+
+            {qrisUrl ? (
+                <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="relative rounded-2xl border border-slate-200 bg-white p-2 shadow-2xs shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={qrisUrl}
+                                alt="Pratinjau QRIS Toko"
+                                className="h-40 w-40 object-contain rounded-xl"
+                            />
+                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white rounded-full p-1 shadow-xs">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </span>
+                        </div>
+                        <div className="flex-1 text-center sm:text-left space-y-2">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                                <span>✓ QRIS Aktif di Kasir POS</span>
+                            </div>
+                            <p className="text-xs text-slate-600">
+                                Saat kasir memilih metode <strong>QRIS</strong>, gambar QRIS ini akan langsung muncul untuk di-scan oleh pelanggan.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+                                >
+                                    🔄 Ganti Gambar QRIS
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setQrisUrl('')}
+                                    className="px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
+                                >
+                                    🗑️ Hapus QRIS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 hover:bg-emerald-50/40 hover:border-emerald-400 p-6 text-center transition"
+                >
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-2xl shadow-2xs group-hover:scale-105 transition">
+                        📱
+                    </div>
+                    <div className="mt-3 text-xs font-bold text-slate-800 group-hover:text-emerald-700">
+                        {previewLoading ? 'Memproses gambar...' : '+ Klik untuk Unggah Gambar QRIS Toko'}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                        Mendukung format PNG, JPG, JPEG, atau WEBP dari galeri ponsel atau laptop Anda.
+                    </p>
+                </div>
+            )}
+
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                onChange={handleFileChange}
+                className="hidden"
+            />
+        </div>
+    )
+}
+
+function calculateSubscriptionDetails(endDateStr: string | null | undefined, subscriptionStatus?: string) {
+    if (!endDateStr) {
+        return {
+            daysRemaining: 0,
+            isExpired: false,
+            formattedEndDate: '-',
+        }
+    }
+    const endDate = new Date(endDateStr)
+    const msLeft = endDate.getTime() - Date.now()
+    const daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
+    const isExpired = subscriptionStatus === 'expired' || msLeft <= 0
+    const formattedEndDate = new Intl.DateTimeFormat('id-ID', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+    }).format(endDate)
+
+    return { daysRemaining, isExpired, formattedEndDate }
+}
+
 // ─── Komponen utama ───────────────────────────────────────────────────────────
 export default function ProfilClient({
     email,
@@ -171,6 +336,10 @@ export default function ProfilClient({
     role = 'owner',
     branchName,
     businessName,
+    businessAddress,
+    businessPhone,
+    businessLogoUrl,
+    businessQrisUrl,
     subscriptionStatus = 'trial',
     trialEndsAt,
     subscriptionExpiresAt,
@@ -198,29 +367,29 @@ export default function ProfilClient({
             <div className="mx-auto max-w-xl space-y-6 px-4 py-8 sm:py-12">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Profil</h1>
-                        <p className="mt-0.5 text-xs text-slate-500">Informasi akun dan pengaturan pegawai</p>
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Profil Kasir</h1>
+                        <p className="mt-0.5 text-xs text-slate-500">Informasi akun dan pengaturan pegawai kasir</p>
                     </div>
                 </div>
 
                 {/* Profile Card Header */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm flex items-center justify-between">
+                <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="relative">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-blue-500/20">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-xl flex items-center justify-center shadow-xs shadow-emerald-500/20">
                                 {initials}
                             </div>
-                            <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-300" />
+                            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900">{fullName || 'Pegawai Kasir'}</h2>
+                            <h2 className="text-base font-bold text-slate-900">{fullName || 'Pegawai Kasir'}</h2>
                             <p className="text-xs text-slate-500 capitalize">
-                                Pegawai {branchName ? `· ${branchName}` : ''}
+                                Kasir {branchName ? `· ${branchName}` : ''}
                             </p>
                             <div className="mt-1 flex items-center gap-1.5">
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Aktif
+                                    Kasir Aktif
                                 </span>
                                 {businessName && (
                                     <span className="text-[11px] text-slate-400 font-medium">
@@ -233,7 +402,7 @@ export default function ProfilClient({
                 </div>
 
                 {/* Menu Action Cards */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
+                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-2xs divide-y divide-slate-100 overflow-hidden">
                     {/* 1. Informasi Akun */}
                     <div className="transition hover:bg-slate-50/80">
                         <button
@@ -242,7 +411,7 @@ export default function ProfilClient({
                             className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
                         >
                             <div className="flex items-center gap-3.5">
-                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
@@ -252,7 +421,7 @@ export default function ProfilClient({
                                     <div className="text-xs text-slate-400">Lihat data diri dan akun kasir</div>
                                 </div>
                             </div>
-                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'info' ? 'rotate-90 text-blue-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'info' ? 'rotate-90 text-emerald-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
@@ -270,7 +439,7 @@ export default function ProfilClient({
                                     </div>
                                     <div className="flex justify-between py-2 border-b border-slate-100">
                                         <span className="text-slate-500 font-medium">Peran / Role</span>
-                                        <span className="font-bold text-blue-600 uppercase">Pegawai Kasir</span>
+                                        <span className="font-bold text-emerald-700 uppercase">Pegawai Kasir</span>
                                     </div>
                                     <div className="flex justify-between py-2">
                                         <span className="text-slate-500 font-medium">Cabang Penempatan</span>
@@ -289,17 +458,17 @@ export default function ProfilClient({
                             className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
                         >
                             <div className="flex items-center gap-3.5">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <div className="text-sm font-bold text-slate-900">Ubah Password</div>
-                                    <div className="text-xs text-slate-400">Ganti kata sandi akun</div>
+                                    <div className="text-sm font-bold text-slate-900">Ubah Kata Sandi</div>
+                                    <div className="text-xs text-slate-400">Ganti kata sandi akun kasir</div>
                                 </div>
                             </div>
-                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'password' ? 'rotate-90 text-blue-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className={`w-4 h-4 text-slate-400 transition-transform ${activeTab === 'password' ? 'rotate-90 text-emerald-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
@@ -341,14 +510,14 @@ export default function ProfilClient({
                             className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
                         >
                             <div className="flex items-center gap-3.5">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <div className="text-sm font-bold text-slate-900">Bantuan</div>
-                                    <div className="text-xs text-slate-400">Pusat bantuan & FAQ</div>
+                                    <div className="text-sm font-bold text-slate-900">Bantuan Rekapi</div>
+                                    <div className="text-xs text-slate-400">Pusat bantuan &amp; FAQ WhatsApp</div>
                                 </div>
                             </div>
                             <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -371,14 +540,14 @@ export default function ProfilClient({
                                 className="w-full flex items-center justify-between p-5 text-left cursor-pointer group"
                             >
                                 <div className="flex items-center gap-3.5">
-                                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-100 transition">
+                                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:bg-rose-100 transition">
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <div className="text-sm font-bold text-rose-600">Keluar</div>
-                                        <div className="text-xs text-slate-400">Keluar dari akun</div>
+                                        <div className="text-sm font-bold text-rose-600">Keluar Akun</div>
+                                        <div className="text-xs text-slate-400">Keluar dari sesi login kasir</div>
                                     </div>
                                 </div>
                                 <svg className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -395,233 +564,284 @@ export default function ProfilClient({
     const isActive = subscriptionStatus === 'active'
     const isTrial = subscriptionStatus === 'trial'
 
-    let daysRemaining = 0
-    let isExpired = false
-    let formattedEndDate = '-'
-
     const endDateStr = isActive ? subscriptionExpiresAt : trialEndsAt
-
-    if (endDateStr) {
-        const endDate = new Date(endDateStr)
-        const msLeft = endDate.getTime() - Date.now()
-        daysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
-        isExpired = subscriptionStatus === 'expired' || msLeft <= 0
-        formattedEndDate = new Intl.DateTimeFormat('id-ID', {
-            dateStyle: 'full',
-            timeStyle: 'short',
-        }).format(endDate)
-    }
+    const { daysRemaining, isExpired, formattedEndDate } = calculateSubscriptionDetails(endDateStr, subscriptionStatus)
 
     return (
-        <div className="mx-auto max-w-lg space-y-6 px-4 py-8 sm:py-12">
+        <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Profil & Pengaturan</h1>
-                <p className="mt-1 text-sm text-gray-500">Kelola informasi akun dan bisnis Anda.</p>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Profil &amp; Pengaturan Bisnis</h1>
+                <p className="mt-1 text-xs text-slate-500">Kelola identitas pemilik, informasi bisnis, struk kasir, dan keamanan akun.</p>
             </div>
 
             {/* ── Banner untuk user baru Google ── */}
             {isNewUser && (
-                <div className="flex items-start gap-3 rounded-2xl border border-orange-300 bg-orange-50 p-4">
-                    <span className="text-xl">👋</span>
+                <div className="flex items-start gap-3 rounded-3xl border border-amber-300 bg-amber-50/60 p-5 shadow-2xs">
+                    <span className="text-2xl">👋</span>
                     <div>
-                        <p className="text-sm font-semibold text-orange-800">Selamat datang di Rekapi!</p>
-                        <p className="mt-0.5 text-xs text-orange-700">
-                            Lengkapi nama bisnis Anda di bawah sebelum mulai menggunakan aplikasi.
+                        <p className="text-sm font-bold text-amber-900">Selamat datang di Rekapi!</p>
+                        <p className="mt-0.5 text-xs text-amber-800 leading-relaxed">
+                            Lengkapi nama bisnis dan profil usaha Anda di bawah sebelum mulai mencatat penjualan di kasir.
                         </p>
                     </div>
                 </div>
             )}
 
-            {/* ── Status Paket & Subscription ── */}
-            <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-base font-bold text-slate-900">
-                            {isActive ? 'Paket Langganan' : 'Paket & Masa Percobaan'}
-                        </h2>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                            Status aktif akun dan hak akses fitur bisnis Anda.
-                        </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Kolom Kiri: Status Langganan & Akun Login */}
+                <div className="space-y-6 lg:col-span-1">
+                    {/* ── Status Paket & Subscription ── */}
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+                        <div className="flex items-center justify-between gap-2">
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-900">
+                                    {isActive ? 'Paket Langganan' : 'Paket & Masa Trial'}
+                                </h2>
+                                <p className="mt-0.5 text-[11px] text-slate-500">
+                                    Status aktif akun toko
+                                </p>
+                            </div>
+                            <span
+                                className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border ${
+                                    isExpired
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : isActive
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                }`}
+                            >
+                                {isExpired ? (isTrial ? 'Trial Berakhir' : 'Berakhir') : isActive ? 'Aktif' : 'Trial 7 Hari'}
+                            </span>
+                        </div>
+
+                        <div className="mt-4 space-y-3 rounded-2xl bg-slate-50/80 p-4 border border-slate-100 text-xs">
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 font-medium">Paket Layanan</span>
+                                <span className="font-bold text-slate-900">
+                                    {isActive && planName ? planName : 'Free Trial 7 Hari'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 font-medium">Sisa Waktu</span>
+                                <span className={`font-bold ${isExpired ? 'text-rose-600' : isActive ? 'text-emerald-700' : 'text-sky-700'}`}>
+                                    {isExpired ? '0 hari (Kedaluwarsa)' : `${daysRemaining} hari lagi`}
+                                </span>
+                            </div>
+                            <div className="pt-2 border-t border-slate-200/60">
+                                <span className="text-slate-400 text-[11px] block">Berlaku Sampai</span>
+                                <span className="font-semibold text-slate-700 text-xs block mt-0.5">
+                                    {formattedEndDate}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <a
+                                href="/dashboard/subscription"
+                                className="block w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-center text-xs font-bold text-white shadow-xs shadow-emerald-600/20 transition active:scale-[0.99]"
+                            >
+                                {isExpired ? 'Perpanjang Langganan' : isActive ? 'Kelola Langganan' : 'Upgrade ke Premium'}
+                            </a>
+                        </div>
                     </div>
-                    <span
-                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-                            isExpired
-                                ? 'bg-red-100 text-red-700 border border-red-200'
-                                : isActive
-                                ? 'bg-green-100 text-green-700 border border-green-200'
-                                : 'bg-blue-100 text-blue-700 border border-blue-200'
-                        }`}
+
+                    {/* ── Info Akun Login ── */}
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-900">Akun Login</h2>
+                                <p className="text-[11px] text-slate-500 mt-0.5">Kredensial akses Anda</p>
+                            </div>
+                            <form
+                                action="/api/auth/signout"
+                                method="post"
+                                onSubmit={(e) => {
+                                    if (!confirm('Yakin ingin keluar dari akun?')) e.preventDefault()
+                                }}
+                            >
+                                <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer shadow-2xs"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    <span>Keluar</span>
+                                </button>
+                            </form>
+                        </div>
+                        <Field label="Email Terdaftar" name="email" type="email" defaultValue={email} readOnly />
+                        {isGoogleUser && (
+                            <p className="mt-2.5 text-[11px] text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                🔗 Terhubung melalui akun Google. Anda dapat menambahkan kata sandi pada menu keamanan.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* ── Edit Nama Owner ── */}
+                    <ActionForm
+                        action={updateOwnerName}
+                        title="Nama Pemilik Toko"
+                        subtitle="Nama yang tertera pada akun pemilik bisnis."
+                        submitLabel="Simpan Nama"
+                        successMsg="Nama berhasil diperbarui."
                     >
-                        {isExpired ? (isTrial ? 'Trial Berakhir' : 'Berakhir') : isActive ? 'Aktif' : 'Trial 7 Hari'}
-                    </span>
+                        <Field
+                            label="Nama Lengkap Pemilik"
+                            name="full_name"
+                            defaultValue={fullName}
+                            placeholder="Nama lengkap Anda"
+                        />
+                    </ActionForm>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-4 border border-slate-100">
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-400">Paket Layanan</span>
-                        <p className="mt-0.5 text-sm font-bold text-slate-800">
-                            {isActive && planName ? planName : 'Free Trial 7 Hari'}
-                        </p>
-                    </div>
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-400">Sisa Waktu</span>
-                        <p className={`mt-0.5 text-sm font-bold ${isExpired ? 'text-red-600' : isActive ? 'text-green-600' : 'text-blue-600'}`}>
-                            {isExpired ? '0 hari (Kedaluwarsa)' : `${daysRemaining} hari lagi`}
-                        </p>
-                    </div>
-                    <div className="col-span-2 border-t border-slate-200/60 pt-3">
-                        <span className="text-[11px] font-medium text-slate-400">Berlaku Sampai</span>
-                        <p className="mt-0.5 text-xs font-semibold text-slate-700">
-                            {formattedEndDate}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mt-3 flex items-start gap-2">
-                    <p className="text-[11px] text-slate-500 leading-relaxed flex-1">
-                        {isActive
-                            ? `🎉 Anda berlangganan paket ${planName}. Nikmati akses penuh ke semua fitur premium.`
-                            : '✨ Selama masa trial 7 hari, Anda dapat menikmati akses penuh ke semua fitur kasir multi-cabang, laporan laba rugi, HPP otomatis, dan ekspor laporan.'}
-                    </p>
-                </div>
-
-                {(isExpired || daysRemaining <= 3) && (
-                    <a
-                        href="/dashboard/subscription"
-                        className="mt-3 block w-full rounded-lg bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-blue-700 transition"
+                {/* Kolom Kanan: Profil Bisnis, Branding Struk, dan Keamanan */}
+                <div className="space-y-6 lg:col-span-2">
+                    {/* ── Edit Profil Bisnis & Branding ── */}
+                    <ActionForm
+                        action={updateBusinessProfile}
+                        title="Profil Bisnis &amp; Struk Kasir"
+                        subtitle={
+                            isNewUser
+                                ? '⚠️ Belum diisi — silakan isi nama bisnis Anda.'
+                                : 'Informasi identitas bisnis yang akan dicetak pada struk kasir dan faktur transaksi.'
+                        }
+                        submitLabel="Simpan Profil Bisnis"
+                        successMsg="Profil bisnis berhasil diperbarui."
+                        highlight={isNewUser}
                     >
-                        {isExpired ? 'Perpanjang Langganan' : isActive ? 'Perpanjang Sekarang' : 'Upgrade ke Premium'}
-                    </a>
-                )}
-            </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="sm:col-span-2">
+                                <Field
+                                    label="Nama Bisnis / Brand *"
+                                    name="business_name"
+                                    defaultValue={isNewUser ? '' : businessName}
+                                    placeholder="Contoh: Dimsum Mentai"
+                                    required={true}
+                                />
+                            </div>
 
-            {/* ── Info Akun (email read-only & logout) ── */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-gray-900">Informasi Akun</h2>
-                    <form
-                        action="/api/auth/signout"
-                        method="post"
-                        onSubmit={(e) => {
-                            if (!confirm('Yakin ingin keluar dari akun?')) e.preventDefault()
-                        }}
+                            <div className="sm:col-span-2">
+                                <Field
+                                    label="Alamat Bisnis (Opsional)"
+                                    name="business_address"
+                                    defaultValue={businessAddress ?? ''}
+                                    placeholder="Contoh: Jl. Senopati No. 12, Jakarta Selatan"
+                                    required={false}
+                                />
+                            </div>
+
+                            <div>
+                                <Field
+                                    label="Nomor Telepon / WhatsApp (Opsional)"
+                                    name="business_phone"
+                                    defaultValue={businessPhone ?? ''}
+                                    placeholder="Contoh: 081234567890"
+                                    required={false}
+                                />
+                            </div>
+
+                            <div>
+                                <Field
+                                    label="URL Logo Bisnis (Opsional)"
+                                    name="business_logo_url"
+                                    defaultValue={businessLogoUrl ?? ''}
+                                    placeholder="Contoh: https://example.com/logo.png"
+                                    required={false}
+                                />
+                            </div>
+                        </div>
+
+                        {businessLogoUrl && (
+                            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={businessLogoUrl}
+                                    alt="Logo Bisnis"
+                                    className="h-10 w-10 rounded-xl object-contain border border-slate-200 bg-white p-0.5"
+                                    onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none'
+                                    }}
+                                />
+                                <div className="text-xs text-slate-600">
+                                    <span className="font-bold text-slate-800">Logo Aktif</span>
+                                    <p className="text-[11px] text-slate-400">Logo ini ditampilkan pada header struk kasir.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <QrisUploadField defaultValue={businessQrisUrl} />
+                    </ActionForm>
+
+                    {/* ── Ganti / Set Password Owner ── */}
+                    <ActionForm
+                        action={changeOwnPassword}
+                        title={isGoogleUser && !hasPasswordSet ? 'Set Kata Sandi Akun' : 'Ganti Kata Sandi Akun'}
+                        subtitle={
+                            isGoogleUser && !hasPasswordSet
+                                ? 'Tambahkan kata sandi agar bisa login dengan email & password selain Google.'
+                                : 'Perbarui kata sandi akun pemilik bisnis Anda secara berkala.'
+                        }
+                        submitLabel={isGoogleUser && !hasPasswordSet ? 'Set Kata Sandi' : 'Ganti Kata Sandi'}
+                        successMsg={
+                            isGoogleUser && !hasPasswordSet
+                                ? 'Kata sandi berhasil diset! Sekarang kamu bisa login dengan email & password.'
+                                : 'Kata sandi berhasil diganti.'
+                        }
                     >
-                        <button
-                            type="submit"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-600 hover:bg-rose-100 hover:border-rose-300 transition cursor-pointer"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            <span>Keluar dari Akun</span>
-                        </button>
-                    </form>
-                </div>
-                <Field label="Email Login" name="email" type="email" defaultValue={email} readOnly />
-                {isGoogleUser && (
-                    <p className="mt-2 text-xs text-gray-500">
-                        🔗 Login menggunakan Google. Kamu tetap bisa set kata sandi di bawah.
-                    </p>
-                )}
-            </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field
+                                label="Kata Sandi Baru (Min. 6 Karakter)"
+                                name="new_password"
+                                type="password"
+                                placeholder="••••••••"
+                                minLength={6}
+                            />
+                            <Field
+                                label="Konfirmasi Kata Sandi Baru"
+                                name="confirm_password"
+                                type="password"
+                                placeholder="••••••••"
+                                minLength={6}
+                            />
+                        </div>
+                    </ActionForm>
 
-            {/* ── Edit Nama Owner ── */}
-            <ActionForm
-                action={updateOwnerName}
-                title="Nama Pemilik"
-                submitLabel="Simpan Nama"
-                successMsg="Nama berhasil diperbarui."
-            >
-                <Field
-                    label="Nama Lengkap"
-                    name="full_name"
-                    defaultValue={fullName}
-                    placeholder="Nama lengkap Anda"
-                />
-            </ActionForm>
+                    {/* ── Ganti Password Pegawai ── */}
+                    {employees.length > 0 && (
+                        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+                            <h2 className="text-base font-bold text-slate-900">Reset Kata Sandi Pegawai</h2>
+                            <p className="mt-0.5 mb-4 text-xs text-slate-500">
+                                Pilih pegawai kasir, lalu tetapkan kata sandi baru jika kasir lupa akses login.
+                            </p>
 
-            {/* ── Edit Nama Bisnis (highlight jika user baru) ── */}
-            <ActionForm
-                action={updateBusinessName}
-                title="Nama Bisnis"
-                subtitle={isNewUser ? '⚠️ Belum diisi — silakan isi nama bisnis Anda.' : undefined}
-                submitLabel="Simpan Nama Bisnis"
-                successMsg="Nama bisnis berhasil diperbarui."
-                highlight={isNewUser}
-            >
-                <Field
-                    label="Nama Bisnis / Brand"
-                    name="business_name"
-                    defaultValue={isNewUser ? '' : businessName}
-                    placeholder="Contoh: Dimsum Mentai"
-                />
-            </ActionForm>
+                            <div className="mb-4">
+                                <label className="mb-1.5 block text-xs font-semibold text-slate-700">Pilih Pegawai Kasir</label>
+                                <select
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+                                    value={selectedEmployee?.id ?? ''}
+                                    onChange={(e) => {
+                                        const emp = employees.find((x) => x.id === e.target.value) ?? null
+                                        setSelectedEmployee(emp)
+                                    }}
+                                >
+                                    <option value="">-- Pilih Pegawai --</option>
+                                    {employees.map((emp) => (
+                                        <option key={emp.id} value={emp.id}>
+                                            {emp.full_name}
+                                            {emp.branch_name ? ` — ${emp.branch_name}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-            {/* ── Ganti / Set Password ── */}
-            <ActionForm
-                action={changeOwnPassword}
-                title={isGoogleUser && !hasPasswordSet ? 'Set Kata Sandi' : 'Ganti Kata Sandi'}
-                subtitle={
-                    isGoogleUser && !hasPasswordSet
-                        ? 'Tambahkan kata sandi agar bisa login dengan email & password selain Google.'
-                        : undefined
-                }
-                submitLabel={isGoogleUser && !hasPasswordSet ? 'Set Kata Sandi' : 'Ganti Kata Sandi'}
-                successMsg={
-                    isGoogleUser && !hasPasswordSet
-                        ? 'Kata sandi berhasil diset! Sekarang kamu bisa login dengan email & password.'
-                        : 'Kata sandi berhasil diganti.'
-                }
-            >
-                <Field
-                    label="Kata Sandi Baru (minimal 6 karakter)"
-                    name="new_password"
-                    type="password"
-                    placeholder="••••••••"
-                    minLength={6}
-                />
-                <Field
-                    label="Konfirmasi Kata Sandi Baru"
-                    name="confirm_password"
-                    type="password"
-                    placeholder="••••••••"
-                    minLength={6}
-                />
-            </ActionForm>
-
-            {/* ── Ganti Password Pegawai ── */}
-            {employees.length > 0 && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h2 className="mb-1 text-base font-semibold text-gray-900">Reset Kata Sandi Pegawai</h2>
-                    <p className="mb-4 text-xs text-gray-500">
-                        Pilih pegawai, lalu set kata sandi baru untuk mereka.
-                    </p>
-
-                    <div className="mb-4">
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Pilih Pegawai</label>
-                        <select
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-                            value={selectedEmployee?.id ?? ''}
-                            onChange={(e) => {
-                                const emp = employees.find((x) => x.id === e.target.value) ?? null
-                                setSelectedEmployee(emp)
-                            }}
-                        >
-                            <option value="">-- Pilih Pegawai --</option>
-                            {employees.map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                    {emp.full_name}
-                                    {emp.branch_name ? ` — ${emp.branch_name}` : ''}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {selectedEmployee && (
-                        <EmployeePasswordForm employee={selectedEmployee} />
+                            {selectedEmployee && (
+                                <EmployeePasswordForm employee={selectedEmployee} />
+                            )}
+                        </div>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     )
 }
@@ -647,11 +867,11 @@ function EmployeePasswordForm({ employee }: { employee: Employee }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-3 border-t border-gray-100 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5 border-t border-slate-100 pt-4">
             <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                     Kata Sandi Baru untuk{' '}
-                    <span className="font-semibold text-gray-900">{employee.full_name}</span>
+                    <span className="font-bold text-slate-900">{employee.full_name}</span>
                 </label>
                 <input
                     type="password"
@@ -659,28 +879,32 @@ function EmployeePasswordForm({ employee }: { employee: Employee }) {
                     required
                     minLength={6}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
                 />
             </div>
 
             {msg && (
-                <p
-                    className={`text-xs font-semibold ${
-                        msg.type === 'ok' ? 'text-green-600' : 'text-red-600'
+                <div
+                    className={`rounded-xl p-3 text-xs font-semibold flex items-center gap-2 ${
+                        msg.type === 'ok'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                     }`}
                 >
-                    {msg.type === 'ok' ? '✓ ' : '✗ '}
-                    {msg.text}
-                </p>
+                    <span>{msg.type === 'ok' ? '✓' : '⚠️'}</span>
+                    <span>{msg.text}</span>
+                </div>
             )}
 
-            <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg bg-black px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-gray-800 transition active:scale-[0.99] disabled:opacity-50"
-            >
-                {loading ? 'Menyimpan...' : 'Set Kata Sandi Pegawai'}
-            </button>
+            <div>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-700 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                >
+                    {loading ? 'Menyimpan...' : 'Set Kata Sandi Pegawai'}
+                </button>
+            </div>
         </form>
     )
 }

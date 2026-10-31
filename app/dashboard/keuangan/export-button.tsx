@@ -133,14 +133,9 @@ export default function ExportButton({
         <td>Modal bahan dari menu terjual</td>
       </tr>
       <tr class="total-row">
-        <td><strong>Margin Kotor (Laba Kotor)</strong></td>
+        <td><strong>Laba Kotor (Gross Profit)</strong></td>
         <td class="number">${summary.grossProfit.toLocaleString('id-ID')}</td>
         <td>Pendapatan Penjualan − HPP</td>
-      </tr>
-      <tr>
-        <td>Belanja Bahan Baku (Purchases)</td>
-        <td class="number">-${summary.totalPurchases.toLocaleString('id-ID')}</td>
-        <td>Pembelian stok bahan ke supplier</td>
       </tr>
       <tr>
         <td>Pengeluaran Operasional (Expenses)</td>
@@ -148,9 +143,19 @@ export default function ExportButton({
         <td>Gaji, sewa, listrik, utilitas, dll.</td>
       </tr>
       <tr class="${summary.netProfit >= 0 ? 'profit-positive' : 'profit-negative'}">
-        <td><strong>LABA BERSIH</strong></td>
+        <td><strong>LABA OPERASIONAL</strong></td>
         <td class="number"><strong>${summary.netProfit.toLocaleString('id-ID')}</strong></td>
-        <td><strong>${summary.netProfit >= 0 ? 'Surplus / Untung' : 'Defisit / Rugi'}</strong></td>
+        <td><strong>Laba Kotor − Pengeluaran Operasional${summary.netProfit >= 0 ? ' (Surplus)' : ' (Defisit)'}</strong></td>
+      </tr>
+      <tr>
+        <td>Belanja Bahan Baku (Purchases)</td>
+        <td class="number">-${summary.totalPurchases.toLocaleString('id-ID')}</td>
+        <td>Pembelian stok bahan ke supplier (pengeluaran kas)</td>
+      </tr>
+      <tr class="${(summary.totalRevenue - summary.totalPurchases - summary.totalExpenses) >= 0 ? 'profit-positive' : 'profit-negative'}">
+        <td><strong>ARUS KAS BERSIH</strong></td>
+        <td class="number"><strong>${(summary.totalRevenue - summary.totalPurchases - summary.totalExpenses).toLocaleString('id-ID')}</strong></td>
+        <td><strong>Pendapatan Penjualan − Belanja Bahan Baku − Pengeluaran Operasional${(summary.totalRevenue - summary.totalPurchases - summary.totalExpenses) >= 0 ? ' (Surplus Kas)' : ' (Defisit Kas)'}</strong></td>
       </tr>
     </tbody>
   </table>
@@ -251,17 +256,23 @@ export default function ExportButton({
             `"Cabang: ${branchLabel.replace(/"/g, '""')}"`,
             `"Periode: ${periodLabel} (${dateRangeStr})"`,
             `"Tanggal Export: ${new Date().toLocaleString('id-ID', { timeZone: TIMEZONE_INDONESIA })} WIB"`,
-            '',
-            '=== 1. RINGKASAN EKSEKUTIF (LABA RUGI) ===',
+            '=== 1. LAPORAN LABA RUGI OPERASIONAL (ACCRUAL BASIS) ===',
             'Komponen,Nominal (Rp),Keterangan',
-            `"Pendapatan Penjualan",${summary.totalRevenue},"Total omset kasir"`,
-            `"HPP (Bahan Terjual)",-${summary.totalHPP},"Modal bahan dari produk terjual"`,
-            `"Margin Kotor",${summary.grossProfit},"Pendapatan - HPP"`,
-            `"Belanja Bahan Baku",-${summary.totalPurchases},"Pembelian stok bahan"`,
-            `"Pengeluaran Operasional",-${summary.totalExpenses},"Gaji, sewa, listrik, dll."`,
-            `"LABA BERSIH",${summary.netProfit},"${summary.netProfit >= 0 ? 'Surplus / Untung' : 'Defisit / Rugi'}"`,
+            `"Pendapatan Penjualan (Omzet)",${summary.totalRevenue},"Total omset dari transaksi kasir"`,
+            `"HPP (Harga Pokok Penjualan)",-${summary.totalHPP},"Modal bahan dari produk yang terjual"`,
+            `"Laba Kotor (Gross Profit)",${summary.grossProfit},"Pendapatan Penjualan - HPP"`,
+            `"Beban Operasional",-${summary.totalExpenses},"Gaji, sewa, listrik, utilitas, dll."`,
+            `"LABA OPERASIONAL",${summary.netProfit},"${summary.netProfit >= 0 ? 'Surplus Operasional' : 'Defisit Operasional'}"`,
             '',
-            '=== 2. RINCIAN PENGELUARAN OPERASIONAL ===',
+            '=== 2. RINGKASAN ARUS KAS OPERASIONAL (CASH BASIS) ===',
+            'Komponen,Nominal (Rp),Keterangan',
+            `"Penerimaan Kas dari Penjualan",${summary.totalRevenue},"Total kas masuk dari transaksi kasir"`,
+            `"Pengeluaran Kas Belanja Bahan Baku",-${summary.totalPurchases},"Pembelian stok bahan ke supplier"`,
+            `"Pengeluaran Kas Operasional",-${summary.totalExpenses},"Biaya operasional yang dibayarkan"`,
+            `"ARUS KAS BERSIH",${summary.totalRevenue - summary.totalPurchases - summary.totalExpenses},"${(summary.totalRevenue - summary.totalPurchases - summary.totalExpenses) >= 0 ? 'Surplus Kas' : 'Defisit Kas'}"`,
+            `"Catatan: Dihitung berdasarkan transaksi kasir dan pengeluaran yang tercatat pada periode ini",,`,
+            '',
+            '=== 3. RINCIAN PENGELUARAN OPERASIONAL ===',
             'No,Tanggal,Kategori,Keterangan,Cabang,Nominal (Rp)',
         ]
 

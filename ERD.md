@@ -1,300 +1,200 @@
 # Entity Relationship Diagram (ERD) — **Rekapi**
 
-Dokumentasi skema database PostgreSQL Supabase untuk SaaS **Rekapi**, mencakup tabel multi-tenant, relasi entitas, enum, reporting views, triggers, dan kebijakan Row Level Security (RLS).
+Dokumentasi skema database PostgreSQL Supabase untuk SaaS **Rekapi**, mencakup arsitektur multi-tenant, seluruh tabel domain dari Fase 1 hingga Fase 3 (Migrasi 0001 s/d 0030), relasi entitas, enum, trigger konsistensi, serta Stored Procedures (RPC).
 
 ---
 
-## 1. Visual Diagram Relasi (Mermaid ERD)
+## 1. Visual Diagram Relasi Entitas (Mermaid ERD)
 
 ```mermaid
 erDiagram
-    businesses ||--o{ branches : "has"
+    %% Core Tenant & Organisasi
+    businesses ||--o{ branches : "owns"
     businesses ||--o{ profiles : "employs"
-    branches ||--o{ profiles : "assigned_to"
-    businesses ||--o{ products : "owns"
-    
-    businesses ||--o{ subscriptions : "has"
-    subscription_plans ||--o{ subscriptions : "plan_tier"
-    businesses ||--o{ payment_transactions : "pays"
-    subscriptions ||--o{ payment_transactions : "linked_to"
+    branches ||--o{ profiles : "stationed_at"
+
+    %% Pelanggan & Penjualan (POS)
+    businesses ||--o{ customers : "maintains"
+    businesses ||--o{ products : "sells"
+    products ||--o{ product_branch_stocks : "stocked_in"
+    branches ||--o{ product_branch_stocks : "holds"
 
     businesses ||--o{ sales : "tenant"
-    branches ||--o{ sales : "origin"
+    branches ||--o{ sales : "originates_at"
     profiles ||--o{ sales : "cashier"
+    customers ||--o{ sales : "purchaser"
     sales ||--|{ sale_items : "contains"
-    products ||--o{ sale_items : "item_definition"
-    sales ||--o{ sale_edit_logs : "audit_history"
+    products ||--o{ sale_items : "item_def"
+    sales ||--o{ sale_payments : "payments"
+    branches ||--o{ sale_payments : "received_at"
+    profiles ||--o{ sale_payments : "recorded_by"
+    sales ||--o{ sale_edit_logs : "audit_logs"
     profiles ||--o{ sale_edit_logs : "edited_by"
 
-    businesses ||--o{ purchases : "tenant"
-    branches ||--o{ purchases : "dest_branch"
+    %% Bahan Baku, Supplier & Mutasi Persediaan
+    businesses ||--o{ suppliers : "contracts"
+    businesses ||--o{ raw_materials : "catalogs"
+    raw_materials ||--o{ raw_material_branch_stocks : "material_stock"
+    branches ||--o{ raw_material_branch_stocks : "stores"
+    raw_materials ||--o{ inventory_mutations : "tracks"
+    branches ||--o{ inventory_mutations : "occurs_at"
+    profiles ||--o{ inventory_mutations : "logged_by"
+
+    businesses ||--o{ purchases : "buys"
+    branches ||--o{ purchases : "received_at"
+    suppliers ||--o{ purchases : "supplied_by"
     purchases ||--|{ purchase_items : "contains"
+    raw_materials ||--o{ purchase_items : "bought_item"
 
-    businesses ||--o{ expenses : "tenant"
-    branches ||--o{ expenses : "branch_cost"
+    %% Akuntansi & Keuangan
+    businesses ||--o{ financial_accounts : "accounts"
+    financial_accounts ||--o{ financial_transactions : "journal_entries"
+    businesses ||--o{ expenses : "incurs"
+    branches ||--o{ expenses : "allocated_to"
+    financial_accounts ||--o{ expenses : "paid_from"
 
-    businesses ||--o{ import_batches : "data_import"
+    businesses ||--o{ debts_payables : "owes"
+    suppliers ||--o{ debts_payables : "payable_to"
+    purchases ||--o| debts_payables : "credit_purchase_origin"
+    businesses ||--o{ receivables : "collects"
+    customers ||--o{ receivables : "owed_by"
+    sales ||--o| receivables : "credit_sale_origin"
 
-    businesses {
-        uuid id PK
-        text name
-        subscription_status subscription_status
-        timestamptz trial_ends_at
-        timestamptz created_at
-        timestamptz updated_at
-    }
+    businesses ||--o{ equity_records : "capital_records"
+    financial_accounts ||--o{ equity_records : "capital_account"
 
-    branches {
-        uuid id PK
-        uuid business_id FK
-        text name
-        timestamptz created_at
-    }
-
-    profiles {
-        uuid id PK "references auth.users"
-        uuid business_id FK
-        uuid branch_id FK "nullable for owner"
-        user_role role
-        text full_name
-        timestamptz created_at
-    }
-
-    subscription_plans {
-        uuid id PK
-        text code UK
-        text name
-        numeric price
-        int max_branches "null = unlimited"
-        timestamptz created_at
-    }
-
-    subscriptions {
-        uuid id PK
-        uuid business_id FK
-        uuid plan_id FK
-        subscription_status status
-        timestamptz started_at
-        timestamptz expires_at
-        text midtrans_order_id UK
-        timestamptz created_at
-    }
-
-    payment_transactions {
-        uuid id PK
-        uuid business_id FK
-        uuid subscription_id FK
-        text midtrans_order_id UK
-        text midtrans_transaction_id
-        numeric amount
-        text status
-        text payment_type
-        jsonb raw_notification
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    products {
-        uuid id PK
-        uuid business_id FK
-        text name
-        numeric selling_price
-        numeric cost_price "HPP (locked by trigger)"
-        text category
-        text status "aktif | nonaktif"
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    sales {
-        uuid id PK
-        uuid business_id FK
-        uuid branch_id FK
-        uuid user_id FK
-        timestamptz transaction_date
-        sale_channel channel
-        payment_method payment_method
-        numeric total
-        boolean is_edited
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    sale_items {
-        uuid id PK
-        uuid sale_id FK
-        uuid product_id FK
-        numeric quantity
-        numeric price "selling price snapshot"
-        numeric cost_price "HPP snapshot"
-        numeric subtotal
-    }
-
-    sale_edit_logs {
-        uuid id PK
-        uuid sale_id FK
-        uuid edited_by FK
-        timestamptz edited_at
-        jsonb old_data
-        jsonb new_data
-        text reason
-    }
-
-    purchases {
-        uuid id PK
-        uuid business_id FK
-        uuid branch_id FK
-        text supplier
-        date purchase_date
-        numeric total
-        timestamptz created_at
-    }
-
-    purchase_items {
-        uuid id PK
-        uuid purchase_id FK
-        text item_name
-        numeric quantity
-        numeric price
-        numeric subtotal
-    }
-
-    expenses {
-        uuid id PK
-        uuid business_id FK
-        uuid branch_id FK
-        expense_category category
-        numeric amount
-        date expense_date
-        text description
-        timestamptz created_at
-    }
-
-    import_batches {
-        uuid id PK
-        uuid business_id FK
-        text filename
-        text type "sales | products"
-        import_status status
-        int total_rows
-        int success_rows
-        int failed_rows
-        jsonb error_log
-        timestamptz imported_at
-    }
+    %% Langganan & Midtrans
+    businesses ||--o{ subscriptions : "subscribes"
+    subscription_plans ||--o{ subscriptions : "plan_tier"
+    businesses ||--o{ payment_transactions : "invoiced_for"
+    subscriptions ||--o{ payment_transactions : "covers"
 ```
 
 ---
 
-## 2. Definisi Custom Types (Enums)
+## 2. Kamus Data Entitas Utama (Domain Tables)
 
-| Enum Name | Allowed Values | Deskripsi |
-|---|---|---|
-| `user_role` | `'owner'`, `'pegawai'` | Role pengguna dalam sistem |
-| `subscription_status` | `'trial'`, `'active'`, `'expired'`, `'canceled'` | Status langganan tenant |
-| `sale_channel` | `'offline'`, `'gofood'`, `'grabfood'`, `'shopeefood'`, `'whatsapp'`, `'qris'`, `'lainnya'` | Saluran penjualan |
-| `payment_method` | `'cash'`, `'qris'`, `'transfer'`, `'lainnya'` | Metode pembayaran transaksi |
-| `expense_category` | `'gaji'`, `'listrik'`, `'air'`, `'sewa'`, `'gas'`, `'transportasi'`, `'marketing'`, `'packaging'`, `'peralatan'`, `'lainnya'` | Kategori pengeluaran operasional |
-| `import_status` | `'pending'`, `'processing'`, `'success'`, `'failed'`, `'partial'` | Status batch import Excel/CSV |
+### A. Tenant & Organisasi
+* **`businesses`**: Data entitas bisnis multi-tenant. Menyimpan konfigurasi nama usaha, alamat, telepon, logo URL, rekening bank default, string QRIS statis, status langganan (`subscription_status`), dan tanggal berakhir masa trial.
+* **`branches`**: Cabang fisik usaha. Setiap cabang memiliki nama unik dalam satu bisnis. Menjadi partition key untuk operasional kasir, stok, dan mutasi barang.
+* **`profiles`**: Pengguna aplikasi yang tertaut ke Supabase Auth (`auth.users`). Memiliki atribut role (`owner`, `pegawai`), `business_id`, dan `branch_id` (wajib untuk pegawai, nullable untuk owner).
+
+### B. Master Produk & POS Kasir
+* **`products`**: Katalog menu/barang jadi. Memiliki barcode/SKU, nama, satuan (`unit`), kategori (`product_category`), harga jual (`selling_price`), status aktif/archived, dan harga modal/HPP (`cost_price`) yang hanya boleh dimodifikasi oleh Owner.
+* **`product_branch_stocks`**: Saldo stok barang jadi per cabang. Dilengkapi ambang batas minimum (`min_stock`) untuk deteksi low-stock alert.
+* **`customers`**: Direktori pelanggan. Menyimpan nama, nomor telepon, alamat, catatan, serta plafon limit piutang (`receivable_limit`).
+* **`sales`**: Header transaksi penjualan.
+  * `status`: Enum check `('completed', 'voided')`.
+  * `payment_status`: Enum check `('unpaid', 'partial', 'paid')`.
+  * `paid_amount`: Total uang riil yang sudah disetorkan/diterima pelanggan.
+  * `due_date`: Tanggal jatuh tempo untuk penjualan kredit/tempo.
+  * `idempotency_key`: UUID unik untuk menangkal duplikasi transaksi saat jaringan tidak stabil.
+* **`sale_items`**: Rincian produk dalam transaksi penjualan. Mengunci snapshot harga jual (`price`) dan harga modal (`cost_price`) saat transaksi terjadi.
+* **`sale_payments`**: **Single Source of Truth (SSOT)** riwayat pembayaran kasir. Mencatat setiap pembayaran DP maupun cicilan pelunasan secara immutable dengan nomor pembayaran `PAY/YYYYMMDD/XXXX`, tautan ke `account_id`, `recorded_by`, dan `idempotency_key`.
+* **`sale_edit_logs`**: Catatan jejak audit modifikasi transaksi penjualan (data sebelum, data sesudah, selisih kuantitas, dan pengguna pengedit).
+
+### C. Bahan Baku, Supplier & Mutasi Persediaan
+* **`suppliers`**: Direktori pemasok bahan baku (nama kontak, telepon, alamat, syarat pembayaran).
+* **`raw_materials`**: Master bahan baku mentah (nama, satuan baku, ambang batas minimum peringatan stok, `cost_per_unit`).
+* **`raw_material_branch_stocks`**: Saldo stok fisik bahan baku pada masing-masing cabang (`quantity`).
+* **`inventory_mutations`**: Kartu mutasi stok bahan baku (*immutable persediaan ledger*). Mencatat jenis mutasi (`purchase_in`, `usage_out`, `adjustment`, `transfer_in`, `transfer_out`, `waste_loss`), kuantitas, serta saldo berjalan (`balance_after`).
+* **`purchases` & `purchase_items`**: Transaksi pengadaan/pembelian stok dari supplier, mencatat faktur pembelian, harga beli satuan, dan status penerimaan barang. Terintegrasi penuh dengan kas & utang melalui atribut:
+  * `payment_status`: Enum check `('paid', 'unpaid')`.
+  * `payment_method`: Tipe bayar (`cash`, `transfer`, `tempo`).
+  * `account_id`: Rekening/kas sumber bayar (`financial_accounts.id`).
+  * `paid_amount`: Nominal pembayaran riil yang sudah dikeluarkan.
+  * `due_date`: Tanggal jatuh tempo utang supplier.
+
+### D. Keuangan & Akuntansi
+* **`financial_accounts`**: Akun rekening kas & bank penampung dana (tipe: `cash`, `bank`, `e_wallet`). Memiliki saldo berjalan (`current_balance`) dan flag `is_default_cash` / `is_default_bank`.
+* **`financial_transactions`**: **Single Source of Truth (SSOT)** buku besar jurnal arus kas. Mencatat arah arus dana (`type: 'income' | 'expense'`), kategori (`sale`, `receivable_payment`, `debt_payment`, `expense`, `capital_injection`, `owner_drawing`, `transfer`), referensi entitas asal, dan nominal.
+* **`expenses`**: Pencatatan biaya operasional harian (gaji, listrik, sewa, marketing, perlengkapan, dll.) yang langsung memotong saldo rekening penampung kas/bank.
+* **`debts_payables`**: Buku utang usaha kepada supplier atau pihak ketiga, tanggal jatuh tempo, dan riwayat pembayaran cicilan. Memiliki partial unique index `uq_debts_business_purchase (business_id, purchase_id) WHERE purchase_id IS NOT NULL` untuk menjamin sinkronisasi 1:1 dengan transaksi pembelian tempo dari modul bahan baku.
+* **`receivables`**: Kartu piutang usaha. Memiliki partial unique index `uq_receivables_business_sale (business_id, sale_id) WHERE sale_id IS NOT NULL` untuk menjamin sinkronisasi 1:1 dengan transaksi penjualan POS.
+* **`equity_records`**: Buku modal pemilik (setoran modal awal, tambahan modal kerja, serta penarikan prive pribadi).
+
+### E. Billing & Langganan Midtrans
+* **`subscription_plans`**: Master tier langganan (`trial`, `lite`, `pro`, `enterprise`) beserta harga, fitur, dan batas maksimal cabang.
+* **`subscriptions`**: Status aktif langganan per bisnis, tanggal berakhir (`expires_at`), serta order ID transaksi pembayaran.
+* **`payment_transactions`**: Log histori pembayaran langganan melalui payment gateway Midtrans (Snap Token, tipe bayar, status transaksi, payload webhook).
 
 ---
 
-## 3. Detail Skema Tabel
+## 3. Tipe Data & Status Enum
 
-### 3.1. Multi-Tenant & Users
-- **`businesses`**: Data tenant utama. Setiap pendaftaran owner baru menginisialisasi satu baris di sini dengan masa trial 7 hari default.
-- **`branches`**: Cabang fisik di bawah tenant (`business_id`). Dihapus secara `CASCADE` jika tenant dihapus.
-- **`profiles`**: Ekstensi `auth.users` Supabase. Menghubungkan user dengan `business_id` dan cabang (`branch_id`).
-  - Owner: `branch_id = null` (dapat mengakses semua cabang).
-  - Pegawai: `branch_id` bernilai fixed (terkunci hanya pada cabang tersebut).
-
-### 3.2. Produk & Inventaris
-- **`products`**: Katalog produk tenant.
-  - Memiliki `cost_price` (HPP).
-  - Diproteksi trigger `trg_enforce_cost_price`: jika user pembuat bukan role `owner`, `cost_price` dipaksa bernilai 0 di level database.
-
-### 3.3. Penjualan & Kasir (Module 05)
-- **`sales`**: Header transaksi penjualan. Menyimpan `branch_id`, `user_id` kasir, `channel`, `payment_method`, dan flag `is_edited`.
-- **`sale_items`**: Detail item per transaksi.
-  - **Prinsip Penting**: Menyimpan snapshot `cost_price` (HPP) dan `price` saat transaksi berlangsung, agar perubahan harga di kemudian hari tidak mengubah akurasi laporan historis.
-- **`sale_edit_logs`**: Tabel audit trail append-only. Menyimpan snapshot `old_data` dan `new_data` dalam format JSONB setiap kali sebuah transaksi diedit.
-
-### 3.4. Pembelian & Pengeluaran (Module 06-07)
-- **`purchases` & `purchase_items`**: Pencatatan pembelian bahan baku/stok per cabang.
-- **`expenses`**: Pengeluaran operasional di luar HPP (sewa, listrik, gaji, packaging, dll.).
-
-### 3.5. Langganan & Pembayaran (Billing Midtrans)
-- **`subscription_plans`**: Master harga paket: Basic (Rp100.000 / 1 cabang), Bisnis (Rp250.000 / 3 cabang), Profesional (Rp300.000 / unlimited cabang).
-- **`subscriptions`**: Status langganan aktif tenant.
-- **`payment_transactions`**: Riwayat transaksi webhook Midtrans.
-
-### 3.6. Utilitas & Onboarding (Module 03)
-- **`import_batches`**: Audit log import Excel (riwayat file, jumlah baris berhasil/gagal, log error).
-
----
-
-## 4. Views & Reporting (Module 08-09)
-
-### `v_sale_profit`
-Menghitung omzet, total HPP snapshot, dan laba kotor per transaksi:
 ```sql
-select
-  s.id as sale_id,
-  s.business_id,
-  s.branch_id,
-  s.transaction_date,
-  s.channel,
-  s.payment_method,
-  s.total as omzet,
-  coalesce(sum(si.cost_price * si.quantity), 0) as hpp,
-  s.total - coalesce(sum(si.cost_price * si.quantity), 0) as laba_kotor
-from sales s
-left join sale_items si on si.sale_id = s.id
-group by s.id, s.business_id, s.branch_id, s.transaction_date, s.channel, s.payment_method, s.total;
-```
+-- Peran Pengguna
+create type user_role as enum ('owner', 'pegawai');
 
-### `v_daily_recap`
-Agregasi harian per cabang:
-```sql
-select
-  business_id,
-  branch_id,
-  date(transaction_date) as tanggal,
-  sum(omzet) as omzet,
-  sum(hpp) as hpp,
-  sum(laba_kotor) as laba_kotor
-from v_sale_profit
-group by business_id, branch_id, date(transaction_date);
+-- Kanal Penjualan
+create type sale_channel as enum (
+  'offline', 'gofood', 'grabfood', 'shopeefood', 'whatsapp', 'qris', 'lainnya'
+);
+
+-- Metode Pembayaran
+create type payment_method as enum (
+  'cash', 'qris', 'transfer', 'lainnya'
+);
+
+-- Kategori Produk
+create type product_category as enum (
+  'makanan', 'minuman', 'snack', 'paket', 'dessert', 'bahan', 'retail', 'jasa', 'lainnya'
+);
+
+-- Status Langganan
+create type subscription_status as enum (
+  'trial', 'active', 'past_due', 'canceled', 'expired'
+);
+
+-- Status Penjualan (Tabel sales)
+status in ('completed', 'voided')
+
+-- Status Pembayaran (Tabel sales & receivables)
+payment_status in ('unpaid', 'partial', 'paid')
+
+-- Jenis Mutasi Stok Bahan Baku
+mutation_type in ('purchase_in', 'usage_out', 'adjustment', 'transfer_in', 'transfer_out', 'waste_loss')
 ```
 
 ---
 
-## 5. Triggers & Stored Procedures
+## 4. Stored Procedures / RPC (Atomic Database Functions)
 
-1. **`handle_new_user()`** (Trigger: `on_auth_user_created` pada `auth.users`):
-   - **Mode Register Owner**: Jika `raw_user_meta_data->>'invited_business_id'` kosong, otomatis membuat baris baru di `businesses` dan `profiles` dengan role `owner`.
-   - **Mode Invite Pegawai**: Jika metadata berisi `invited_business_id`, trigger mengaitkan pegawai ke bisnis dan cabang (`invited_branch_id`) yang ditentukan owner tanpa membuat bisnis baru.
-2. **`enforce_cost_price_owner_only()`** (Trigger: `trg_enforce_cost_price` sebelum insert pada `products`):
-   - Jika pengguna bukan owner (`not auth_is_owner()`), memaksa `new.cost_price := 0`.
-3. **`expire_trials()`** (Eksekusi berkala via `pg_cron` tiap jam):
-   - Mengubah status langganan menjadi `expired` jika melewati `trial_ends_at`.
+### 1. `create_sale_atomic`
+* **Tujuan:** Membuat transaksi penjualan kasir (POS) secara atomik.
+* **Parameter:** `p_business_id`, `p_branch_id`, `p_user_id`, `p_channel`, `p_payment_method`, `p_total`, `p_items (jsonb)`, `p_idempotency_key`, `p_invoice_number`, `p_customer_id`, `p_payment_status`, `p_paid_amount`, `p_due_date`, `p_notes`, `p_account_id`.
+* **Jaminan Transaksi:**
+  1. Validasi otorisasi pemanggil & integritas cabang.
+  2. Pengecekan idempotensi untuk menangkal klik ganda.
+  3. Pemotongan stok produk cabang secara otomatis (`product_branch_stocks`).
+  4. Pencatatan piutang pelanggan ke `receivables` jika transaksi berstatus `unpaid` atau `partial`.
+  5. Pencatatan mutasi penerimaan kas nyata (DP) ke `sale_payments` dan `financial_transactions` tanpa membuat penerimaan kas fiktif untuk piutang tanpa DP.
 
----
+### 2. `record_sale_payment_atomic`
+* **Tujuan:** Mencatat pembayaran cicilan atau pelunasan piutang penjualan secara terpadu.
+* **Parameter:** `p_business_id`, `p_sale_id`, `p_amount`, `p_payment_method`, `p_account_id`, `p_recorded_by`, `p_payment_date`, `p_notes`, `p_idempotency_key`, `p_user_id`.
+* **Jaminan Transaksi:**
+  1. Menerima alias `p_recorded_by` dan `p_user_id` dengan fallback aman ke `auth.uid()`.
+  2. Menerima `p_idempotency_key` bertipe teks dan memvalidasi format UUID menggunakan pola regex resmi sebelum casting ke UUID.
+  3. Mengunci baris `sales` dan `receivables` menggunakan `FOR UPDATE` untuk mencegah race-condition.
+  4. Menolak pembayaran jika nominal melebihi sisa tagihan piutang (*overpayment protection*).
+  5. Memperbarui `paid_amount` dan `payment_status` pada `sales` dan `receivables` secara simultan.
+  6. Menambahkan entri pembayaran pada `sale_payments` dan menambah saldo rekening pada `financial_accounts` serta mencatat jurnal di `financial_transactions`.
 
-## 6. Matrix Row Level Security (RLS)
+### 3. `void_sale_atomic`
+* **Tujuan:** Membatalkan transaksi penjualan (Soft-Void) demi menjaga integritas audit finansial dan inventaris.
+* **Parameter:** `p_business_id`, `p_sale_id`, `p_user_id`, `p_reason`.
+* **Jaminan Transaksi:**
+  1. Otorisasi ketat: hanya dapat dieksekusi oleh Owner.
+  2. Menandai penjualan sebagai `status = 'voided'`.
+  3. Mengembalikan seluruh kuantitas stok produk yang terjual kembali ke `product_branch_stocks`.
+  4. Menandai piutang terkait sebagai voided.
+  5. Membalikkan saldo kas/bank sejumlah akumulasi uang yang pernah disetor pada `sale_payments`.
 
-| Tabel | Role Owner | Role Pegawai | Keterangan |
-|---|---|---|---|
-| `businesses` | Read & Update (milik sendiri) | Read (milik sendiri) | Tenant isolation |
-| `branches` | Read, Create, Update, Delete | Read (milik sendiri) | Pegawai hanya baca |
-| `profiles` | Read, Create, Update | Read sesama tenant | Owner kelola akun pegawai |
-| `products` | Full CRUD | Read & Insert (HPP dipaksa 0 via trigger) | Pegawai lapor barang baru |
-| `sales` | Full CRUD (semua cabang) | Read, Insert, Update (hanya cabangnya & transaksi miliknya) | Pegawai terkunci di `branch_id` |
-| `sale_items` | Full CRUD | Read & Insert via `sales` miliknya | Mengikuti akses header `sales` |
-| `sale_edit_logs` | Read all logs, Insert log saat edit | Read & Insert log saat edit transaksi sendiri | Append-only, tidak bisa diedit/dihapus |
-| `purchases` | Full CRUD | **DIBLOKIR** (No Access) | Finansial owner-only |
-| `purchase_items` | Full CRUD | **DIBLOKIR** (No Access) | Finansial owner-only |
-| `expenses` | Full CRUD | **DIBLOKIR** (No Access) | Finansial owner-only |
-| `subscriptions` | Read (milik sendiri) | **DIBLOKIR** (No Access) | Billing owner-only |
-| `payment_transactions` | Read (milik sendiri) | **DIBLOKIR** (No Access) | Billing owner-only |
-| `import_batches` | Full CRUD | **DIBLOKIR** (No Access) | Owner-only |
+### 4. `record_inventory_mutation_atomic`
+* **Tujuan:** Mencatat kartu stok mutasi bahan baku dan memperbarui saldo fisik secara bersamaan.
+* **Parameter:** `p_business_id`, `p_branch_id`, `p_raw_material_id`, `p_type`, `p_quantity`, `p_notes`, `p_user_id`.
+* **Jaminan Transaksi:**
+  1. Menghitung saldo berjalan (`balance_after`) secara kumulatif.
+  2. Menolak mutasi jika kuantitas mengakibatkan saldo negatif pada operasi keluar (`P0003`).
+  3. Menjaga sifat *immutable* pada riwayat buku besar mutasi persediaan.

@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { toggleProductStatus } from './actions'
-import CostPriceEditor from './cost-price-editor'
-import StockEditor from './stock-editor'
-import AddProductForm from './add-product-form'
+import { getActiveBranchId } from '@/lib/active-branch'
+import { resolveEffectiveBranchFilter } from '@/lib/inventory-valuation'
 import SubTabNav from '@/components/sub-tab-nav'
+import ProductCatalogClient from './product-catalog-client'
 
 export default async function ProdukPage({
     searchParams,
@@ -12,7 +11,7 @@ export default async function ProdukPage({
     searchParams?: Promise<{ branch?: string }>
 }) {
     const params = searchParams ? await searchParams : {}
-    const selectedBranchFilter = params?.branch || 'all'
+    const activeBranchId = await getActiveBranchId()
 
     const supabase = await createClient()
 
@@ -23,51 +22,133 @@ export default async function ProdukPage({
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id')
+        .select('role, business_id, branch_id, branches(name)')
         .eq('id', user.id)
         .single()
 
-    const isOwner = profile?.role === 'owner'
-    if (!isOwner) {
-        redirect('/dashboard/penjualan')
+    if (!profile?.business_id) {
+        redirect('/login')
     }
 
+    const isOwner = profile.role === 'owner'
+
+    // KUNCI ISOLASI CABANG:
+    // Owner membaca filter cabang aktif atau URL params.
+    // Pegawai selalu terkunci ke cabang tugasnya (profile.branch_id).
+    const candidateBranchFilter = isOwner
+        ? (params?.branch
+            ? (params.branch !== 'all' ? params.branch : 'all')
+            : (activeBranchId && activeBranchId !== 'all' ? activeBranchId : 'all'))
+        : (profile.branch_id || 'all')
+
     // Fetch branches, products, and branch stocks in parallel
+    // Owner menggunakan owner_products_view (Migration 0019) untuk akses aman HPP.
+    // Pegawai hanya mengakses tabel products tanpa kolom cost_price.
     let hasStockColumn = true
+    let prodsResult = await (isOwner
+        ? supabase
+            .from('owner_products_view')
+            .select('id, name, selling_price, cost_price, category, status, stock, unit, created_at')
+        : supabase
+            .from('products')
+            .select('id, name, selling_price, category, status, stock, unit, created_at')
+    )
+        .eq('business_id', profile.business_id)
+        .order('created_at', { ascending: true })
+
+    // Jika view 0019 belum ada di database (42P01), fallback ke tabel products langsung
+    if (isOwner && prodsResult.error && prodsResult.error.code === '42P01') {
+        prodsResult = await supabase
+            .from('products')
+            .select('id, name, selling_price, cost_price, category, status, stock, unit, created_at')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+    }
+
     const [
         { data: branches },
-        prodsResult,
         { data: branchStocks },
     ] = await Promise.all([
-        supabase
-            .from('branches')
-            .select('id, name')
-            .order('name'),
-        supabase
-            .from('products')
-            .select('id, name, selling_price, cost_price, category, status, stock, unit')
-            .order('created_at', { ascending: true }),
-        supabase
-            .from('product_branch_stocks')
-            .select('product_id, branch_id, stock'),
+        isOwner
+            ? supabase
+                .from('branches')
+                .select('id, name')
+                .eq('business_id', profile.business_id)
+                .order('created_at', { ascending: true })
+                .order('name')
+            : profile.branch_id
+            ? supabase
+                .from('branches')
+                .select('id, name')
+                .eq('id', profile.branch_id)
+                .limit(1)
+            : Promise.resolve({ data: [] }),
+        isOwner
+            ? supabase
+                .from('product_branch_stocks')
+                .select('product_id, branch_id, stock')
+                .eq('business_id', profile.business_id)
+            : profile.branch_id
+            ? supabase
+                .from('product_branch_stocks')
+                .select('product_id, branch_id, stock')
+                .eq('business_id', profile.business_id)
+                .eq('branch_id', profile.branch_id)
+            : Promise.resolve({ data: [] }),
     ])
 
-    let products: any[] | null = prodsResult.data
+    const branchList = branches ?? []
+    const { selectedBranchId: selectedBranchFilter, selectedBranch } = resolveEffectiveBranchFilter(
+        candidateBranchFilter,
+        branchList
+    )
+
+    type ProductItem = {
+        id: string
+        name: string
+        selling_price: number
+        cost_price: number
+        category?: string | null
+        status: string
+        stock: number
+        unit: string
+        created_at?: string
+    }
+
+    type DbProductRow = {
+        id: string
+        name: string
+        selling_price: number
+        cost_price?: number | null
+        category?: string | null
+        status?: string | null
+        stock?: number | null
+        unit?: string | null
+        created_at?: string
+    }
+
+    let products: DbProductRow[] | null = prodsResult.data as DbProductRow[] | null
     if (prodsResult.error && prodsResult.error.code === '42703') {
         hasStockColumn = false
         const { data: prodsFallback } = await supabase
-            .from('products')
+            .from('owner_products_view')
             .select('id, name, selling_price, cost_price, category, status')
             .order('created_at', { ascending: true })
-        products = prodsFallback
+        products = prodsFallback as DbProductRow[] | null
     }
 
-    // Peta stok cabang: branch_id -> Map(product_id -> stock)
+    // Peta stok cabang & agregat per produk dari sumber kebenaran product_branch_stocks
     const branchStockMap = new Map<string, number>()
-    if (branchStocks && selectedBranchFilter !== 'all') {
+    const aggregateBranchStockMap = new Map<string, number>()
+    const productsWithBranchRows = new Set<string>()
+
+    if (branchStocks) {
         for (const bs of branchStocks) {
-            if (bs.branch_id === selectedBranchFilter) {
-                branchStockMap.set(bs.product_id, Number(bs.stock))
+            const qty = Math.max(0, Number(bs.stock ?? 0))
+            productsWithBranchRows.add(bs.product_id)
+            aggregateBranchStockMap.set(bs.product_id, (aggregateBranchStockMap.get(bs.product_id) ?? 0) + qty)
+            if (selectedBranchFilter !== 'all' && bs.branch_id === selectedBranchFilter) {
+                branchStockMap.set(bs.product_id, qty)
             }
         }
     }
@@ -76,21 +157,32 @@ export default async function ProdukPage({
     type ProductVariantGroup = {
         name: string
         category?: string | null
-        variants: any[]
+        variants: ProductItem[]
     }
 
     const groupedProducts: ProductVariantGroup[] = []
     const groupMap = new Map<string, ProductVariantGroup>()
 
     for (const rawP of products || []) {
-        // Tentukan nilai stok yang ditampilkan (stok spesifik cabang atau stok global)
-        const displayStock = (selectedBranchFilter !== 'all' && branchStockMap.has(rawP.id))
-            ? branchStockMap.get(rawP.id)!
-            : (rawP.stock ?? 0)
+        // Jika filter cabang spesifik dipilih, tampilkan stok cabang tersebut (0 jika belum ada baris).
+        // Jika 'all', tampilkan SUM(product_branch_stocks) atau fallback ke rawP.stock untuk data lama.
+        const displayStock =
+            selectedBranchFilter !== 'all'
+                ? (branchStockMap.get(rawP.id) ?? 0)
+                : productsWithBranchRows.has(rawP.id)
+                ? (aggregateBranchStockMap.get(rawP.id) ?? 0)
+                : Math.max(0, Number(rawP.stock ?? 0))
 
-        const p = {
-            ...rawP,
+        const p: ProductItem = {
+            id: rawP.id,
+            name: rawP.name,
+            selling_price: Number(rawP.selling_price),
+            cost_price: Number(rawP.cost_price ?? 0),
+            category: rawP.category ?? null,
+            status: rawP.status || 'aktif',
+            unit: rawP.unit || 'pcs',
             stock: displayStock,
+            created_at: rawP.created_at,
         }
 
         const key = p.name.trim().toLowerCase()
@@ -108,28 +200,40 @@ export default async function ProdukPage({
         }
     }
 
-    const currentBranchName = branches?.find((b) => b.id === selectedBranchFilter)?.name
+    const currentBranchName = selectedBranch?.name || (profile.branches as { name?: string } | null)?.name || undefined
 
     return (
-        <div className="mx-auto max-w-2xl px-4 py-8 sm:py-16">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Master Produk</h1>
-                <p className="mt-1 text-sm text-gray-600">
-                    Kelola menu makanan, minuman, atau barang dagangan.
-                </p>
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                        {isOwner ? 'Katalog Produk & Inventori' : 'Katalog Produk & Stok'}
+                    </h1>
+                    <p className="mt-1 text-xs font-semibold text-emerald-800">
+                        {isOwner
+                            ? selectedBranchFilter === 'all'
+                                ? `Konsolidasi Semua Cabang (${branchList.length} cabang)`
+                                : `Cabang: ${currentBranchName || 'Terpilih'}`
+                            : `Cabang: ${currentBranchName || 'Cabang Anda'}`}
+                    </p>
+                </div>
             </div>
 
-            {/* Sub-Tab Navigation (Katalog Produk vs Bahan Baku) */}
-            <SubTabNav
-                items={[
-                    { href: '/dashboard/produk', label: 'Katalog Produk', active: true },
-                    { href: '/dashboard/bahan-baku', label: 'Bahan Baku', active: false },
-                ]}
-            />
+            {/* Sub-Tab Navigation hanya untuk Owner */}
+            {isOwner && (
+                <SubTabNav
+                    items={[
+                        { href: '/dashboard/data', label: 'Pusat Data', active: false },
+                        { href: '/dashboard/produk', label: 'Katalog Produk', active: true },
+                        { href: '/dashboard/bahan-baku', label: 'Bahan Baku & Stok', active: false },
+                        { href: '/dashboard/bahan-baku?tab=supplier', label: 'Data Supplier', active: false },
+                    ]}
+                />
+            )}
 
-            {/* Banner peringatan jika migrasi 0008 belum dijalankan di Supabase */}
+            {/* Banner peringatan jika migrasi belum dijalankan di Supabase */}
             {!hasStockColumn && isOwner && (
-                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs">
                     <div className="flex items-center gap-2 font-bold text-amber-900">
                         <span className="text-base">⚠️</span> Migrasi Stok Database Belum Dijalankan
                     </div>
@@ -139,261 +243,16 @@ export default async function ProdukPage({
                 </div>
             )}
 
-            {/* Form Tambah Produk dengan Feedback Interaktif */}
-            <AddProductForm isOwner={isOwner} hasStockColumn={hasStockColumn} />
-
-            {/* Filter / Pilihan Cabang untuk Kelola Stok Cabang */}
-            {branches && branches.length > 0 && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                            <span>🏢</span> Inventori Stok Cabang
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-0.5">
-                            {selectedBranchFilter === 'all'
-                                ? 'Menampilkan stok global. Pilih cabang untuk melihat & menyesuaikan stok per cabang.'
-                                : `Mengelola stok khusus untuk: ${currentBranchName}`}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                        <a
-                            href="/dashboard/produk"
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                                selectedBranchFilter === 'all'
-                                    ? 'bg-black text-white shadow-xs'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        >
-                            🌐 Semua / Global
-                        </a>
-                        {branches.map((b) => (
-                            <a
-                                key={b.id}
-                                href={`/dashboard/produk?branch=${b.id}`}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                                    selectedBranchFilter === b.id
-                                        ? 'bg-blue-600 text-white shadow-xs'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                📍 {b.name}
-                            </a>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
-                        Daftar Produk ({groupedProducts.length} produk, {products?.length ?? 0} varian satuan)
-                    </h2>
-                    {selectedBranchFilter !== 'all' && (
-                        <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                            Stok: {currentBranchName}
-                        </span>
-                    )}
-                </div>
-
-                {groupedProducts.map((group) => {
-                    const isMulti = group.variants.length > 1
-
-                    if (!isMulti) {
-                        const p = group.variants[0]
-                        return (
-                            <div
-                                key={p.id}
-                                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="font-semibold text-gray-900">{p.name}</div>
-                                        <div className="text-sm font-medium text-gray-700">
-                                            Rp{p.selling_price.toLocaleString('id-ID')}
-                                            <span className="text-xs text-gray-500 font-normal"> / {p.unit || 'pcs'}</span>
-                                            {p.category ? (
-                                                <span className="ml-2 rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 font-normal">
-                                                    {p.category}
-                                                </span>
-                                            ) : ''}
-                                        </div>
-                                    </div>
-                                    <form
-                                        action={async () => {
-                                            'use server'
-                                            await toggleProductStatus(p.id, p.status)
-                                        }}
-                                    >
-                                        <button
-                                            type="submit"
-                                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
-                                                p.status === 'aktif'
-                                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                            }`}
-                                        >
-                                            {p.status}
-                                        </button>
-                                    </form>
-                                </div>
-
-                                {/* Baris Stok */}
-                                <div className="mt-2.5 flex items-center gap-2 border-t border-gray-100 pt-2.5">
-                                    <span className="text-xs font-medium text-gray-500">Stok:</span>
-                                    {hasStockColumn ? (
-                                        isOwner ? (
-                                            <StockEditor
-                                                productId={p.id}
-                                                initialStock={p.stock ?? 0}
-                                                unit={p.unit || 'pcs'}
-                                                branchId={selectedBranchFilter !== 'all' ? selectedBranchFilter : null}
-                                            />
-                                        ) : (
-                                            <span
-                                                className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
-                                                    (p.stock ?? 0) === 0
-                                                        ? 'border-red-200 bg-red-50 text-red-600'
-                                                        : (p.stock ?? 0) <= 5
-                                                        ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                                        : 'border-green-200 bg-green-50 text-green-700'
-                                                }`}
-                                            >
-                                                {(p.stock ?? 0) === 0
-                                                    ? '🔴 Habis'
-                                                    : (p.stock ?? 0) <= 5
-                                                    ? `🟡 ${p.stock} ${p.unit || 'pcs'}`
-                                                    : `🟢 ${p.stock} ${p.unit || 'pcs'}`}
-                                            </span>
-                                        )
-                                    ) : (
-                                        <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 border border-gray-200">
-                                            Migrasi 0008/0009 diperlukan
-                                        </span>
-                                    )}
-                                </div>
-
-                                {isOwner && (
-                                    <div className="mt-2.5 flex items-center gap-2 border-t border-gray-100 pt-2.5 text-sm text-gray-600">
-                                        <span className="font-medium text-gray-500">HPP:</span>
-                                        <CostPriceEditor productId={p.id} initialValue={p.cost_price} />
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    }
-
-                    // Multi-satuan varian untuk produk dengan nama yang sama
-                    return (
-                        <div
-                            key={group.name}
-                            className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm space-y-3"
-                        >
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-base font-bold text-gray-900">{group.name}</span>
-                                        {group.category && (
-                                            <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                                {group.category}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        {group.variants.length} satuan pilihan penjualan
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2.5">
-                                {group.variants.map((v) => (
-                                    <div
-                                        key={v.id}
-                                        className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 space-y-2.5"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-xs font-medium text-gray-500">Satuan:</span>
-                                                    <span className="text-xs font-bold uppercase text-gray-900">
-                                                        {v.unit || 'pcs'}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm font-bold text-gray-900 mt-0.5">
-                                                    Rp{v.selling_price.toLocaleString('id-ID')}
-                                                </div>
-                                            </div>
-                                            <form
-                                                action={async () => {
-                                                    'use server'
-                                                    await toggleProductStatus(v.id, v.status)
-                                                }}
-                                            >
-                                                <button
-                                                    type="submit"
-                                                    className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
-                                                        v.status === 'aktif'
-                                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                    }`}
-                                                >
-                                                    {v.status}
-                                                </button>
-                                            </form>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 border-t border-gray-200/60 pt-2 text-xs">
-                                            <span className="font-medium text-gray-500">Stok:</span>
-                                            {hasStockColumn ? (
-                                                isOwner ? (
-                                                    <StockEditor
-                                                        productId={v.id}
-                                                        initialStock={v.stock ?? 0}
-                                                        unit={v.unit || 'pcs'}
-                                                        branchId={selectedBranchFilter !== 'all' ? selectedBranchFilter : null}
-                                                    />
-                                                ) : (
-                                                    <span
-                                                        className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
-                                                            (v.stock ?? 0) === 0
-                                                                ? 'border-red-200 bg-red-50 text-red-600'
-                                                                : (v.stock ?? 0) <= 5
-                                                                ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                                                : 'border-green-200 bg-green-50 text-green-700'
-                                                        }`}
-                                                    >
-                                                        {(v.stock ?? 0) === 0
-                                                            ? '🔴 Habis'
-                                                            : (v.stock ?? 0) <= 5
-                                                            ? `🟡 ${v.stock} ${v.unit || 'pcs'}`
-                                                            : `🟢 ${v.stock} ${v.unit || 'pcs'}`}
-                                                    </span>
-                                                )
-                                            ) : (
-                                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 border border-gray-200">
-                                                    Migrasi diperlukan
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {isOwner && (
-                                            <div className="flex items-center gap-2 border-t border-gray-200/60 pt-2 text-sm text-gray-600">
-                                                <span className="font-medium text-gray-500 text-xs">HPP:</span>
-                                                <CostPriceEditor productId={v.id} initialValue={v.cost_price} />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )
-                })}
-
-                {groupedProducts.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                        Belum ada produk. Tambahkan produk pertama di atas.
-                    </div>
-                )}
-            </div>
+            {/* Katalog Produk dengan UI-Card & Inventori Stok */}
+            <ProductCatalogClient
+                key={selectedBranchFilter}
+                groupedProducts={groupedProducts}
+                branches={branches ?? []}
+                selectedBranchFilter={selectedBranchFilter}
+                currentBranchName={currentBranchName}
+                isOwner={isOwner}
+                hasStockColumn={hasStockColumn}
+            />
         </div>
     )
 }

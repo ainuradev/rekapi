@@ -59,6 +59,58 @@ export async function updateBusinessName(formData: FormData) {
 
     revalidatePath('/dashboard/profil')
     revalidatePath('/dashboard')
+    revalidatePath('/dashboard/penjualan')
+    return { success: true }
+}
+
+// ─── Update profil bisnis (Nama, Alamat, No. Telp, Logo, QRIS) ─────────────────
+export async function updateBusinessProfile(formData: FormData) {
+    const ctx = await getOwnerProfile()
+    if (!ctx) return { error: 'Unauthorized' }
+
+    const name = String(formData.get('business_name') ?? '').trim()
+    if (!name) return { error: 'Nama bisnis tidak boleh kosong.' }
+
+    const rawAddress = String(formData.get('business_address') ?? '').trim()
+    const address = rawAddress.length > 0 ? rawAddress : null
+
+    const rawPhone = String(formData.get('business_phone') ?? '').trim()
+    const phone = rawPhone.length > 0 ? rawPhone : null
+
+    const rawLogoUrl = String(formData.get('business_logo_url') ?? '').trim()
+    let logoUrl: string | null = null
+    if (rawLogoUrl.length > 0) {
+        if (!rawLogoUrl.startsWith('http://') && !rawLogoUrl.startsWith('https://') && !rawLogoUrl.startsWith('/') && !rawLogoUrl.startsWith('data:image/')) {
+            return { error: 'URL logo harus diawali http://, https://, atau /' }
+        }
+        logoUrl = rawLogoUrl
+    }
+
+    const rawQrisUrl = String(formData.get('business_qris_url') ?? '').trim()
+    let qrisUrl: string | null = null
+    if (rawQrisUrl.length > 0) {
+        if (!rawQrisUrl.startsWith('http://') && !rawQrisUrl.startsWith('https://') && !rawQrisUrl.startsWith('/') && !rawQrisUrl.startsWith('data:image/')) {
+            return { error: 'Format QRIS tidak valid. Gunakan URL (http/https) atau unggah file gambar langsung.' }
+        }
+        qrisUrl = rawQrisUrl
+    }
+
+    const { error } = await ctx.supabase
+        .from('businesses')
+        .update({
+            name,
+            address,
+            phone,
+            logo_url: logoUrl,
+            qris_url: qrisUrl,
+        })
+        .eq('id', ctx.profile.business_id)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/profil')
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/penjualan')
     return { success: true }
 }
 

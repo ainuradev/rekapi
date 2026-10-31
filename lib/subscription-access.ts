@@ -122,3 +122,69 @@ export function getExpiredMessage(subscription: SubscriptionData): string {
     }
     return 'Langganan Anda telah berakhir. Perpanjang langganan untuk melanjutkan menggunakan Rekapi.'
 }
+
+export class SubscriptionExpiredError extends Error {
+    constructor(
+        message = 'Masa aktif langganan atau trial Anda telah berakhir. Silakan perpanjang paket langganan Anda.'
+    ) {
+        super(message)
+        this.name = 'SubscriptionExpiredError'
+    }
+}
+
+/**
+ * Guard untuk Server Actions mutasi bisnis.
+ * Memastikan bisnis pengguna memiliki langganan yang masih aktif (trial atau berbayar).
+ */
+export async function checkActiveSubscription(
+    businessId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabaseClient: any
+): Promise<{ allowed: boolean; error?: string }> {
+    if (!businessId) {
+        return { allowed: false, error: 'Identitas bisnis tidak valid.' }
+    }
+
+    const { data: business, error } = await supabaseClient
+        .from('businesses')
+        .select('id, subscription_status, trial_ends_at, subscription_expires_at')
+        .eq('id', businessId)
+        .single()
+
+    if (error || !business) {
+        return { allowed: false, error: 'Data langganan bisnis tidak ditemukan.' }
+    }
+
+    const active = hasActiveAccess({
+        status: (business.subscription_status as SubscriptionStatus) || 'expired',
+        planCode: null,
+        expiresAt: business.subscription_expires_at,
+        trialEndsAt: business.trial_ends_at,
+    })
+
+    if (!active) {
+        return {
+            allowed: false,
+            error:
+                business.subscription_status === 'trial'
+                    ? 'Masa trial 7 hari bisnis Anda telah berakhir. Silakan pilih paket langganan untuk melanjutkan.'
+                    : 'Masa aktif langganan bisnis Anda telah berakhir. Silakan perpanjang paket langganan Anda.',
+        }
+    }
+
+    return { allowed: true }
+}
+
+/**
+ * Memastikan bisnis memiliki akses aktif, melempar SubscriptionExpiredError jika kedaluwarsa.
+ */
+export async function requireActiveSubscription(
+    businessId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabaseClient: any
+): Promise<void> {
+    const res = await checkActiveSubscription(businessId, supabaseClient)
+    if (!res.allowed) {
+        throw new SubscriptionExpiredError(res.error)
+    }
+}

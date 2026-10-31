@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
-import { getMidtransSnap } from '@/lib/midtrans/config'
+import { getMidtransSnap, validateMidtransConfig, MidtransConfigError } from '@/lib/midtrans/config'
 
 export async function POST(request: NextRequest) {
     try {
@@ -43,17 +43,13 @@ export async function POST(request: NextRequest) {
         }
 
         const businessId = profile.business_id
-        const businessName = (profile as any).businesses?.name || 'Business'
 
         // Generate unique order ID
         const orderId = `REKAPI-${businessId.substring(0, 8)}-${Date.now()}`
 
-        // Create subscription record
-        const expiresAt = new Date()
-        // duration_days comes from subscription_plans in the DB — no hard-coding here
-        expiresAt.setDate(expiresAt.getDate() + (plan.duration_days ?? 28))
-
-        // Use service role client to bypass RLS for subscription insert
+        // Use service role client to bypass RLS for subscription insert.
+        // Catatan penting: `expires_at` dibiarkan `null` saat status `pending` dan baru dihitung
+        // secara akurat saat `settlement` di `syncPaymentStatus` (mengakumulasi sisa hari aktif dari `businesses`).
         const supabaseAdmin = createServiceRoleClient()
 
         const { data: subscription, error: subError } = await supabaseAdmin
@@ -61,8 +57,8 @@ export async function POST(request: NextRequest) {
             .insert({
                 business_id: businessId,
                 plan_id: planId,
-                status: 'pending', // Will be updated to 'active' after payment
-                expires_at: expiresAt.toISOString(),
+                status: 'pending', // Will be updated to 'active' after payment settlement
+                expires_at: null,
                 midtrans_order_id: orderId,
             })
             .select()
@@ -81,7 +77,8 @@ export async function POST(request: NextRequest) {
             status: 'pending',
         })
 
-        // Create Midtrans transaction
+        // Validasi konfigurasi Midtrans secara fail-closed
+        const midtransConfig = validateMidtransConfig()
         const snap = getMidtransSnap()
 
         const origin =
@@ -90,13 +87,15 @@ export async function POST(request: NextRequest) {
             request.nextUrl.origin ||
             'http://localhost:3000'
 
+        const customerName = (profile.full_name && profile.full_name.trim()) || user.email?.split('@')[0] || 'Owner'
+
         const parameter = {
             transaction_details: {
                 order_id: orderId,
                 gross_amount: Number(plan.price),
             },
             customer_details: {
-                first_name: profile.full_name,
+                first_name: customerName,
                 email: user.email || '',
             },
             item_details: [
@@ -120,11 +119,20 @@ export async function POST(request: NextRequest) {
             token: transaction.token,
             redirectUrl: transaction.redirect_url,
             orderId,
+            snapUrl: midtransConfig.snapUrl,
+            clientKey: midtransConfig.clientKey,
         })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create transaction error:', error)
+        if (error instanceof MidtransConfigError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 500 }
+            )
+        }
+        const message = error instanceof Error ? error.message : 'Failed to create transaction'
         return NextResponse.json(
-            { error: error.message || 'Failed to create transaction' },
+            { error: message },
             { status: 500 }
         )
     }

@@ -1,5 +1,5 @@
 -- Update subscription plans with new pricing and features
--- Standard (149k), Business (249k), Pro (499k) - all 28 days duration
+-- Standard (149k), Business (299k), Pro (499k) - all 28 days duration
 
 -- First, delete existing plans
 DELETE FROM subscriptions;
@@ -8,7 +8,7 @@ delete from subscription_plans;
 -- Insert new plans with updated pricing and features
 insert into subscription_plans (code, name, price, max_branches) values
   ('standard', 'Standard', 149000, 3),
-  ('business', 'Business', 249000, 5),
+  ('business', 'Business', 299000, 5),
   ('pro', 'Pro', 499000, null); -- unlimited branches
 
 -- Add subscription_plan_id to businesses table to track which plan they subscribed to

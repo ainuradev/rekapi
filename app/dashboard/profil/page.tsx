@@ -18,11 +18,9 @@ export default async function ProfilPage() {
 
     if (!profile) redirect('/login')
 
-    const isOwner = profile.role === 'owner'
-
     const { data: business } = await supabase
         .from('businesses')
-        .select('id, name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name)')
+        .select('id, name, address, phone, logo_url, qris_url, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name)')
         .eq('id', profile.business_id)
         .single()
 
@@ -46,24 +44,61 @@ export default async function ProfilPage() {
     // Cek apakah user SUDAH punya password (punya identity email/password)
     const hasPasswordSet = !!(user.identities?.some((i) => i.provider === 'email'))
 
+interface ProfileWithBranch {
+    id: string
+    role: string | null
+    full_name: string | null
+    business_id: string | null
+    branch_id: string | null
+    branches: { name: string } | null
+}
+
+interface BusinessWithPlan {
+    id: string
+    name: string | null
+    address: string | null
+    phone: string | null
+    logo_url: string | null
+    qris_url: string | null
+    subscription_status: string | null
+    trial_ends_at: string | null
+    subscription_expires_at: string | null
+    subscription_plan_id: string | null
+    subscription_plans: { name: string } | null
+}
+
+interface EmployeeItem {
+    id: string
+    full_name: string | null
+    branches: { name: string } | null
+}
+
+    const prof = profile as unknown as ProfileWithBranch
+    const biz = business as unknown as BusinessWithPlan | null
+    const empList = (employees ?? []) as unknown as EmployeeItem[]
+
     return (
         <ProfilClient
             userId={user.id}
             email={user.email ?? ''}
-            fullName={profile.full_name ?? ''}
-            role={profile.role ?? 'pegawai'}
-            branchName={(profile as any)?.branches?.name ?? null}
-            businessName={business?.name ?? ''}
-            subscriptionStatus={business?.subscription_status ?? 'trial'}
-            trialEndsAt={business?.trial_ends_at ?? null}
-            subscriptionExpiresAt={business?.subscription_expires_at ?? null}
-            planName={(business as any)?.subscription_plans?.name ?? null}
+            fullName={prof.full_name ?? ''}
+            role={prof.role ?? 'pegawai'}
+            branchName={prof.branches?.name ?? null}
+            businessName={biz?.name ?? ''}
+            businessAddress={biz?.address ?? ''}
+            businessPhone={biz?.phone ?? ''}
+            businessLogoUrl={biz?.logo_url ?? ''}
+            businessQrisUrl={biz?.qris_url ?? ''}
+            subscriptionStatus={biz?.subscription_status ?? 'trial'}
+            trialEndsAt={biz?.trial_ends_at ?? null}
+            subscriptionExpiresAt={biz?.subscription_expires_at ?? null}
+            planName={biz?.subscription_plans?.name ?? null}
             isGoogleUser={isGoogleUser}
             hasPasswordSet={hasPasswordSet}
             isNewUser={isNewUser}
-            employees={(employees ?? []).map((e: any) => ({
+            employees={empList.map((e) => ({
                 id: e.id,
-                full_name: e.full_name,
+                full_name: e.full_name ?? '',
                 branch_name: e.branches?.name ?? null,
             }))}
         />

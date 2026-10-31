@@ -26,12 +26,12 @@ export default function SubTabNav({ items, className = '' }: SubTabNavProps) {
                             href={tab.href}
                             className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
                                 tab.active
-                                    ? 'bg-white text-blue-600 font-bold shadow-xs'
+                                    ? 'bg-white text-emerald-800 font-bold shadow-xs border border-slate-200/60'
                                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
                             }`}
                         >
                             {tab.icon && (
-                                <span className={tab.active ? 'text-blue-600' : 'text-slate-400'}>
+                                <span className={tab.active ? 'text-emerald-800' : 'text-slate-400'}>
                                     {tab.icon}
                                 </span>
                             )}
@@ -40,7 +40,7 @@ export default function SubTabNav({ items, className = '' }: SubTabNavProps) {
                                 <span
                                     className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                                         tab.active
-                                            ? 'bg-blue-100 text-blue-700'
+                                            ? 'bg-emerald-100 text-emerald-800'
                                             : 'bg-slate-200 text-slate-600'
                                     }`}
                                 >

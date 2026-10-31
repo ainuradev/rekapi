@@ -55,8 +55,10 @@ export default function ResetPasswordPage() {
             <div className="w-full max-w-sm">
                 <div className="mb-6 text-center">
                     <div className="flex justify-center mb-3">
-                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white text-xl shadow-lg shadow-blue-600/25">
-                            ⚡
+                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-white shadow-lg shadow-emerald-900/30 hover:scale-105 transition-transform">
+                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
                         </Link>
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Atur Kata Sandi Baru</h1>
@@ -66,7 +68,7 @@ export default function ResetPasswordPage() {
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                     {success ? (
                         <div className="text-center py-4 space-y-3">
-                            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl font-bold">
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto text-xl font-bold">
                                 ✓
                             </div>
                             <h3 className="text-base font-bold text-slate-900">Kata Sandi Berhasil Diperbarui!</h3>
@@ -75,7 +77,7 @@ export default function ResetPasswordPage() {
                             </p>
                             <Link
                                 href="/dashboard"
-                                className="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline"
+                                className="inline-block mt-2 text-xs font-bold text-emerald-800 hover:underline"
                             >
                                 Buka Dashboard Sekarang →
                             </Link>
@@ -92,7 +94,7 @@ export default function ResetPasswordPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Minimal 6 karakter"
-                                        className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition"
+                                        className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
                                     />
                                     <button
                                         type="button"
@@ -125,7 +127,7 @@ export default function ResetPasswordPage() {
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Ulangi kata sandi baru"
-                                        className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition"
+                                        className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
                                     />
                                     <button
                                         type="button"
@@ -153,7 +155,7 @@ export default function ResetPasswordPage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 hover:bg-blue-700 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                                className="w-full rounded-xl bg-emerald-800 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/25 hover:bg-emerald-900 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                             >
                                 {loading ? 'Menyimpan...' : 'Perbarui Kata Sandi'}
                             </button>
@@ -163,7 +165,7 @@ export default function ResetPasswordPage() {
 
                 <p className="mt-6 text-center text-sm text-slate-500">
                     Kembali ke{' '}
-                    <Link href="/login" className="font-semibold text-blue-600 hover:underline">
+                    <Link href="/login" className="font-semibold text-emerald-800 hover:underline">
                         Halaman Masuk
                     </Link>
                 </p>

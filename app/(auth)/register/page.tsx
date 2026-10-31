@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkEmailExists } from './actions'
@@ -73,128 +74,136 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="mx-auto max-w-sm px-4 py-16">
-            <div className="mb-6 text-center">
-                <div className="text-3xl mb-2">⚡</div>
-                <h1 className="text-2xl font-bold text-gray-900">Daftar Rekapi</h1>
-                <p className="mt-1 text-sm text-gray-600">Mulai kelola cabang dan keuangan UMKM Anda.</p>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-                {/* Tombol Google */}
-                <button
-                    type="button"
-                    onClick={handleGoogleRegister}
-                    disabled={googleLoading || loading}
-                    className="w-full flex items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition active:scale-[0.99] disabled:opacity-50"
-                >
-                    {/* Google logo SVG */}
-                    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-                        <path fill="none" d="M0 0h48v48H0z" />
-                    </svg>
-                    {googleLoading ? 'Mengarahkan...' : 'Daftar dengan Google'}
-                </button>
-
-                {/* Divider */}
-                <div className="flex items-center gap-3">
-                    <div className="flex-1 border-t border-gray-200" />
-                    <span className="text-xs text-gray-400">atau daftar dengan email</span>
-                    <div className="flex-1 border-t border-gray-200" />
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-sm">
+                <div className="mb-6 text-center">
+                    <div className="flex justify-center mb-3">
+                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-white shadow-lg shadow-emerald-900/30 hover:scale-105 transition-transform">
+                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </Link>
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Daftar Rekapi</h1>
+                    <p className="mt-1 text-sm text-slate-500">Mulai kelola cabang dan keuangan UMKM Anda.</p>
                 </div>
 
-                {/* Form email/password */}
-                <form onSubmit={handleRegister} className="space-y-4">
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Nama Bisnis / Brand</label>
-                        <input
-                            type="text"
-                            required
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            placeholder="Contoh: Dimsum Mentai"
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Nama Pemilik (Owner)</label>
-                        <input
-                            type="text"
-                            required
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="Budi Santoso"
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Email Login</label>
-                        <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="owner@dimsum.com"
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-700">Password (Minimal 6 karakter)</label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                minLength={6}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full rounded-lg border border-gray-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition cursor-pointer"
-                                title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                                tabIndex={-1}
-                            >
-                                {showPassword ? (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
-
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                    {/* Tombol Google */}
                     <button
-                        type="submit"
-                        disabled={loading || googleLoading}
-                        className="w-full rounded-lg bg-black py-2.5 text-sm font-semibold text-white shadow hover:bg-gray-800 transition active:scale-[0.99] disabled:opacity-50"
+                        type="button"
+                        onClick={handleGoogleRegister}
+                        disabled={googleLoading || loading}
+                        className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-slate-300 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                     >
-                        {loading ? 'Mendaftarkan...' : 'Daftar Sekarang'}
+                        {/* Google logo SVG */}
+                        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                            <path fill="none" d="M0 0h48v48H0z" />
+                        </svg>
+                        {googleLoading ? 'Mengarahkan...' : 'Daftar dengan Google'}
                     </button>
-                </form>
-            </div>
 
-            <p className="mt-6 text-center text-sm text-gray-600">
-                Sudah punya akun?{' '}
-                <a href="/login" className="font-semibold text-black underline hover:text-gray-800">
-                    Masuk di sini
-                </a>
-            </p>
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 border-t border-slate-200" />
+                        <span className="text-xs text-slate-400">atau daftar dengan email</span>
+                        <div className="flex-1 border-t border-slate-200" />
+                    </div>
+
+                    {/* Form email/password */}
+                    <form onSubmit={handleRegister} className="space-y-4">
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-700">Nama Bisnis / Brand</label>
+                            <input
+                                type="text"
+                                required
+                                value={businessName}
+                                onChange={(e) => setBusinessName(e.target.value)}
+                                placeholder="Contoh: Dimsum Mentai"
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-700">Nama Pemilik (Owner)</label>
+                            <input
+                                type="text"
+                                required
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                placeholder="Budi Santoso"
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-700">Email Login</label>
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="owner@dimsum.com"
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-700">Password (Minimal 6 karakter)</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    minLength={6}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                                    title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && <p className="text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">{error}</p>}
+
+                        <button
+                            type="submit"
+                            disabled={loading || googleLoading}
+                            className="w-full rounded-xl bg-emerald-800 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/25 hover:bg-emerald-900 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                        >
+                            {loading ? 'Mendaftarkan...' : 'Daftar Sekarang'}
+                        </button>
+                    </form>
+                </div>
+
+                <p className="mt-6 text-center text-sm text-slate-500">
+                    Sudah punya akun?{' '}
+                    <Link href="/login" className="font-semibold text-emerald-800 hover:underline">
+                        Masuk di sini
+                    </Link>
+                </p>
+            </div>
         </div>
     )
 }

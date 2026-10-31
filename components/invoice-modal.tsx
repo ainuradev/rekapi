@@ -1,30 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useReactToPrint } from 'react-to-print'
-
-interface InvoiceItem {
-    name: string
-    quantity: number
-    price: number
-    subtotal: number
-}
-
-interface InvoiceData {
-    invoiceNumber: string
-    date: string
-    businessName: string
-    branchName?: string
-    address?: string
-    phone?: string
-    items: InvoiceItem[]
-    subtotal: number
-    tax?: number
-    discount?: number
-    total: number
-    paymentMethod?: string
-    cashierName?: string
-}
+export type { InvoiceItem, InvoiceData } from '@/lib/invoice'
+import type { InvoiceData } from '@/lib/invoice'
 
 interface InvoiceModalProps {
     isOpen: boolean
@@ -33,181 +12,399 @@ interface InvoiceModalProps {
 }
 
 export default function InvoiceModal({ isOpen, onClose, data }: InvoiceModalProps) {
+    const [printFormat, setPrintFormat] = useState<'thermal' | 'standard'>('thermal')
+    const [paperSize, setPaperSize] = useState<'58mm' | '80mm'>('58mm')
     const invoiceRef = useRef<HTMLDivElement>(null)
 
     const handlePrint = useReactToPrint({
         contentRef: invoiceRef,
     })
 
-    const handleDownload = () => {
-        if (handlePrint) {
-            handlePrint()
-        }
-    }
-
     const handleShare = async () => {
-        const text = `Invoice #${data.invoiceNumber}\n${data.businessName}\nTotal: Rp ${data.total.toLocaleString('id-ID')}\nTanggal: ${data.date}`
+        const text = `Nota #${data.invoiceNumber}\n${data.businessName} ${data.branchName ? `(${data.branchName})` : ''}\nTotal: Rp ${data.total.toLocaleString('id-ID')}\nTanggal: ${data.date}\nMetode: ${data.paymentMethod || 'Tunai'}`
 
         if (typeof window !== 'undefined' && navigator.share) {
             try {
                 await navigator.share({
-                    title: `Invoice #${data.invoiceNumber}`,
+                    title: `Nota #${data.invoiceNumber}`,
                     text: text,
                 })
-            } catch (err) {
-                console.log('Error sharing:', err)
+            } catch {
+                // User cancelled share
             }
         } else if (typeof window !== 'undefined' && navigator.clipboard) {
             await navigator.clipboard.writeText(text)
-            alert('Invoice disalin ke clipboard!')
+            alert('Rincian nota berhasil disalin ke clipboard!')
         }
     }
 
     if (!isOpen) return null
 
+    const hasAddress = Boolean(data.address && data.address.trim() !== '' && data.address !== 'undefined' && data.address !== 'null')
+    const hasPhone = Boolean(data.phone && data.phone.trim() !== '' && data.phone !== 'undefined' && data.phone !== 'null')
+    const hasLogo = Boolean(data.logoUrl && data.logoUrl.trim() !== '' && data.logoUrl !== 'undefined' && data.logoUrl !== 'null')
+
+    const cashReceived = data.cashReceived ?? (data.paymentMethod?.toLowerCase().includes('cash') || data.paymentMethod?.toLowerCase().includes('tunai') ? data.total : undefined)
+    const changeAmount = data.change ?? (cashReceived !== undefined ? Math.max(0, cashReceived - data.total) : undefined)
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="relative w-full max-w-2xl rounded-lg bg-white shadow-xl">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                    <h2 className="text-lg font-bold text-slate-900">Invoice Transaksi</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="relative w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+                {/* Header Modal */}
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+                    <div>
+                        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span>🧾 Struk &amp; Nota Transaksi</span>
+                            <span className="text-[10px] font-mono font-medium text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                #{data.invoiceNumber}
+                            </span>
+                        </h2>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Pratinjau sebelum cetak thermal atau download invoice.</p>
+                    </div>
+
                     <button
                         onClick={onClose}
-                        className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        className="rounded-full w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
                     >
                         ✕
                     </button>
                 </div>
 
-                {/* Invoice Content */}
-                <div className="max-h-[70vh] overflow-y-auto p-6">
-                    <div ref={invoiceRef} className="space-y-6 bg-white p-8">
-                        {/* Business Header */}
-                        <div className="border-b-2 border-slate-900 pb-4 text-center">
-                            <h1 className="text-2xl font-bold text-slate-900">{data.businessName}</h1>
-                            {data.branchName && (
-                                <p className="mt-1 text-sm text-slate-600">{data.branchName}</p>
-                            )}
-                            {data.address && (
-                                <p className="mt-1 text-xs text-slate-600">{data.address}</p>
-                            )}
-                            {data.phone && (
-                                <p className="mt-1 text-xs text-slate-600">Telp: {data.phone}</p>
-                            )}
+                {/* Format Selector Bar */}
+                <div className="flex items-center justify-between px-6 py-2.5 bg-slate-100/70 border-b border-slate-200/60 text-xs">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-slate-500 font-medium text-[11px]">Format:</span>
+                        <div className="inline-flex rounded-lg bg-white p-0.5 shadow-2xs border border-slate-200">
+                            <button
+                                type="button"
+                                onClick={() => setPrintFormat('thermal')}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                    printFormat === 'thermal'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                🖨️ Struk Thermal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPrintFormat('standard')}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                    printFormat === 'standard'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                📄 Invoice A4
+                            </button>
                         </div>
+                    </div>
 
-                        {/* Invoice Info */}
-                        <div className="flex justify-between text-sm">
-                            <div>
-                                <p className="font-semibold text-slate-900">Invoice No:</p>
-                                <p className="text-slate-600">{data.invoiceNumber}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-semibold text-slate-900">Tanggal:</p>
-                                <p className="text-slate-600">{data.date}</p>
+                    {printFormat === 'thermal' && (
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium text-[11px]">Lebar Kertas:</span>
+                            <div className="inline-flex rounded-lg bg-white p-0.5 shadow-2xs border border-slate-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setPaperSize('58mm')}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition cursor-pointer ${
+                                        paperSize === '58mm'
+                                            ? 'bg-slate-900 text-white'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    58 mm
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaperSize('80mm')}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition cursor-pointer ${
+                                        paperSize === '80mm'
+                                            ? 'bg-slate-900 text-white'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                >
+                                    80 mm
+                                </button>
                             </div>
                         </div>
+                    )}
+                </div>
 
-                        {/* Items Table */}
-                        <div className="overflow-hidden rounded-lg border border-slate-200">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-2 text-left font-semibold text-slate-700">
-                                            Item
-                                        </th>
-                                        <th className="px-4 py-2 text-center font-semibold text-slate-700">
-                                            Qty
-                                        </th>
-                                        <th className="px-4 py-2 text-right font-semibold text-slate-700">
-                                            Harga
-                                        </th>
-                                        <th className="px-4 py-2 text-right font-semibold text-slate-700">
-                                            Subtotal
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                {/* Printable Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-100/50 flex justify-center">
+                    <div
+                        ref={invoiceRef}
+                        className={`bg-white transition-all text-slate-900 ${
+                            printFormat === 'thermal'
+                                ? `shadow-lg border border-slate-300/80 rounded-xl p-4.5 font-mono text-xs leading-tight ${
+                                      paperSize === '58mm' ? 'w-[300px]' : 'w-[380px]'
+                                  }`
+                                : 'w-full rounded-2xl shadow-sm border border-slate-200 p-8 space-y-6 font-sans'
+                        }`}
+                        style={{
+                            colorScheme: 'light',
+                        }}
+                    >
+                        {/* ────────────── FORMAT STRUK THERMAL (POS MINI PRINTER) ────────────── */}
+                        {printFormat === 'thermal' ? (
+                            <div className="space-y-2 text-slate-900 print:text-black">
+                                {/* Header Struk */}
+                                <div className="text-center pb-2">
+                                    {hasLogo && (
+                                        <img
+                                            src={data.logoUrl}
+                                            alt={data.businessName}
+                                            className="mx-auto mb-1.5 max-h-12 max-w-[120px] object-contain filter grayscale"
+                                            onError={(e) => {
+                                                (e.target as HTMLElement).style.display = 'none'
+                                            }}
+                                        />
+                                    )}
+                                    <div className="font-extrabold text-sm uppercase tracking-wider">{data.businessName}</div>
+                                    {data.branchName && (
+                                        <div className="text-[11px] font-semibold text-slate-700">{data.branchName}</div>
+                                    )}
+                                    {hasAddress && (
+                                        <div className="text-[10px] text-slate-600 leading-tight mt-0.5">{data.address}</div>
+                                    )}
+                                    {hasPhone && (
+                                        <div className="text-[10px] text-slate-600 mt-0.5">Telp: {data.phone}</div>
+                                    )}
+                                </div>
+
+                                <div className="border-b border-dashed border-slate-400 my-1" />
+
+                                {/* Info Transaksi */}
+                                <div className="text-[10px] space-y-0.5 text-slate-700">
+                                    <div className="flex justify-between">
+                                        <span>No: {data.invoiceNumber}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Tgl: {data.date}</span>
+                                    </div>
+                                    {data.cashierName && (
+                                        <div className="flex justify-between">
+                                            <span>Kasir: {data.cashierName}</span>
+                                        </div>
+                                    )}
+                                    {data.customerName && (
+                                        <div className="flex justify-between font-bold text-slate-900">
+                                            <span>Plg: {data.customerName}</span>
+                                        </div>
+                                    )}
+                                    {data.tableNumber && (
+                                        <div className="flex justify-between font-bold text-slate-900">
+                                            <span>Meja: {data.tableNumber}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-b border-dashed border-slate-400 my-1" />
+
+                                {/* Daftar Item */}
+                                <div className="space-y-1.5 text-[11px]">
                                     {data.items.map((item, idx) => (
-                                        <tr key={idx} className="border-t border-slate-200">
-                                            <td className="px-4 py-2 text-slate-900">{item.name}</td>
-                                            <td className="px-4 py-2 text-center text-slate-600">
-                                                {item.quantity}
-                                            </td>
-                                            <td className="px-4 py-2 text-right text-slate-600">
-                                                Rp {item.price.toLocaleString('id-ID')}
-                                            </td>
-                                            <td className="px-4 py-2 text-right font-medium text-slate-900">
-                                                Rp {item.subtotal.toLocaleString('id-ID')}
-                                            </td>
-                                        </tr>
+                                        <div key={idx} className="space-y-0.5">
+                                            <div className="font-semibold text-slate-900 truncate">{item.name}</div>
+                                            <div className="flex justify-between text-[10px] text-slate-600">
+                                                <span>
+                                                    {item.quantity} x {item.price.toLocaleString('id-ID')}
+                                                </span>
+                                                <span className="font-medium text-slate-900">
+                                                    {item.subtotal.toLocaleString('id-ID')}
+                                                </span>
+                                            </div>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Totals */}
-                        <div className="space-y-2 border-t-2 border-slate-900 pt-4">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Subtotal:</span>
-                                <span className="font-medium text-slate-900">
-                                    Rp {data.subtotal.toLocaleString('id-ID')}
-                                </span>
-                            </div>
-                            {data.discount !== undefined && data.discount > 0 && (
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600">Diskon:</span>
-                                    <span className="font-medium text-red-600">
-                                        - Rp {data.discount.toLocaleString('id-ID')}
-                                    </span>
                                 </div>
-                            )}
-                            {data.tax !== undefined && data.tax > 0 && (
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600">Pajak:</span>
-                                    <span className="font-medium text-slate-900">
-                                        Rp {data.tax.toLocaleString('id-ID')}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="flex justify-between border-t border-slate-300 pt-2 text-lg">
-                                <span className="font-bold text-slate-900">Total:</span>
-                                <span className="font-bold text-slate-900">
-                                    Rp {data.total.toLocaleString('id-ID')}
-                                </span>
-                            </div>
-                        </div>
 
-                        {/* Footer Info */}
-                        <div className="space-y-1 border-t border-slate-200 pt-4 text-center text-xs text-slate-600">
-                            {data.paymentMethod && (
-                                <p>Metode Pembayaran: {data.paymentMethod}</p>
-                            )}
-                            {data.cashierName && <p>Kasir: {data.cashierName}</p>}
-                            <p className="mt-2">Terima kasih atas kunjungan Anda!</p>
-                        </div>
+                                <div className="border-b border-dashed border-slate-400 my-1" />
+
+                                {/* Rincian Pembayaran */}
+                                <div className="space-y-1 text-[11px] pt-0.5">
+                                    <div className="flex justify-between text-slate-600">
+                                        <span>Subtotal</span>
+                                        <span>Rp {data.subtotal.toLocaleString('id-ID')}</span>
+                                    </div>
+
+                                    {data.discount !== undefined && data.discount > 0 && (
+                                        <div className="flex justify-between text-rose-600 font-medium">
+                                            <span>Diskon</span>
+                                            <span>- Rp {data.discount.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+
+                                    {data.tax !== undefined && data.tax > 0 && (
+                                        <div className="flex justify-between text-slate-600">
+                                            <span>Pajak</span>
+                                            <span>Rp {data.tax.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between font-extrabold text-xs text-slate-900 border-t border-dotted border-slate-400 pt-1">
+                                        <span>TOTAL</span>
+                                        <span>Rp {data.total.toLocaleString('id-ID')}</span>
+                                    </div>
+
+                                    <div className="border-b border-dotted border-slate-300 my-1" />
+
+                                    <div className="flex justify-between text-[10px] text-slate-700">
+                                        <span>Metode Bayar</span>
+                                        <span className="font-bold uppercase">{data.paymentMethod || 'TUNAI'}</span>
+                                    </div>
+
+                                    {cashReceived !== undefined && cashReceived > 0 && (
+                                        <>
+                                            <div className="flex justify-between text-[10px] text-slate-700">
+                                                <span>Uang Diterima</span>
+                                                <span className="font-semibold">Rp {cashReceived.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[11px] font-bold text-slate-900">
+                                                <span>Kembalian</span>
+                                                <span>Rp {(changeAmount ?? 0).toLocaleString('id-ID')}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="border-b border-dashed border-slate-400 my-1" />
+
+                                {/* Catatan & Footer Struk */}
+                                {data.notes && (
+                                    <div className="text-[10px] text-slate-600 text-center italic">
+                                        Catatan: {data.notes}
+                                    </div>
+                                )}
+
+                                <div className="text-center pt-2 text-[9px] text-slate-500 leading-tight space-y-0.5">
+                                    <p className="font-semibold">Terima kasih atas kunjungan Anda!</p>
+                                    <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
+                                    <p className="pt-1 text-[8px] text-slate-400">Powered by Rekapi POS</p>
+                                </div>
+                            </div>
+                        ) : (
+                            /* ────────────── FORMAT INVOICE STANDAR A4 ────────────── */
+                            <div className="space-y-6">
+                                <div className="border-b-2 border-slate-900 pb-4 text-center">
+                                    {hasLogo && (
+                                        <img
+                                            src={data.logoUrl}
+                                            alt={data.businessName}
+                                            className="mx-auto mb-2 max-h-14 max-w-[140px] object-contain"
+                                            onError={(e) => {
+                                                (e.target as HTMLElement).style.display = 'none'
+                                            }}
+                                        />
+                                    )}
+                                    <h1 className="text-2xl font-bold text-slate-900">{data.businessName}</h1>
+                                    {data.branchName && (
+                                        <p className="mt-1 text-sm font-semibold text-slate-700">{data.branchName}</p>
+                                    )}
+                                    {hasAddress && <p className="mt-1 text-xs text-slate-600">{data.address}</p>}
+                                    {hasPhone && <p className="mt-0.5 text-xs text-slate-600">Telp: {data.phone}</p>}
+                                </div>
+
+                                <div className="flex justify-between text-sm">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">Invoice No:</p>
+                                        <p className="text-slate-600">{data.invoiceNumber}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-semibold text-slate-900">Tanggal:</p>
+                                        <p className="text-slate-600">{data.date}</p>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-hidden rounded-lg border border-slate-200">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-100">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left font-semibold text-slate-700">Item</th>
+                                                <th className="px-4 py-2 text-center font-semibold text-slate-700">Qty</th>
+                                                <th className="px-4 py-2 text-right font-semibold text-slate-700">Harga</th>
+                                                <th className="px-4 py-2 text-right font-semibold text-slate-700">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.items.map((item, idx) => (
+                                                <tr key={idx} className="border-t border-slate-200">
+                                                    <td className="px-4 py-2 text-slate-900">{item.name}</td>
+                                                    <td className="px-4 py-2 text-center text-slate-600">{item.quantity}</td>
+                                                    <td className="px-4 py-2 text-right text-slate-600">
+                                                        Rp {item.price.toLocaleString('id-ID')}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right font-medium text-slate-900">
+                                                        Rp {item.subtotal.toLocaleString('id-ID')}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="space-y-2 border-t-2 border-slate-900 pt-4">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600">Subtotal:</span>
+                                        <span className="font-medium text-slate-900">
+                                            Rp {data.subtotal.toLocaleString('id-ID')}
+                                        </span>
+                                    </div>
+                                    {data.discount !== undefined && data.discount > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-slate-600">Diskon:</span>
+                                            <span className="font-medium text-rose-600">
+                                                - Rp {data.discount.toLocaleString('id-ID')}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {data.tax !== undefined && data.tax > 0 && (
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-slate-600">Pajak:</span>
+                                            <span className="font-medium text-slate-900">
+                                                Rp {data.tax.toLocaleString('id-ID')}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between border-t border-slate-300 pt-2 text-lg">
+                                        <span className="font-bold text-slate-900">Total:</span>
+                                        <span className="font-bold text-slate-900">
+                                            Rp {data.total.toLocaleString('id-ID')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1 border-t border-slate-200 pt-4 text-center text-xs text-slate-600">
+                                    {data.paymentMethod && <p>Metode Pembayaran: {data.paymentMethod}</p>}
+                                    {data.cashierName && <p>Kasir: {data.cashierName}</p>}
+                                    <p className="mt-2 font-medium">Terima kasih atas kunjungan Anda!</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3 border-t border-slate-200 px-6 py-4">
+                {/* Footer Modal Action Buttons */}
+                <div className="flex items-center gap-2.5 border-t border-slate-200 px-6 py-3.5 bg-white">
                     <button
                         onClick={handlePrint}
-                        className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                        className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-700 active:scale-[0.99] transition cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                        🖨️ Print
-                    </button>
-                    <button
-                        onClick={handleDownload}
-                        className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                        📥 Download PDF
+                        <span>🖨️</span>
+                        <span>Cetak {printFormat === 'thermal' ? `Struk (${paperSize})` : 'Invoice'}</span>
                     </button>
                     <button
                         onClick={handleShare}
-                        className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5"
                     >
-                        📤 Share
+                        <span>📤</span>
+                        <span className="hidden sm:inline">Bagikan</span>
+                    </button>
+                    <button
+                        onClick={onClose}
+                        className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                        Selesai
                     </button>
                 </div>
             </div>

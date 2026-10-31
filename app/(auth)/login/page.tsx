@@ -93,8 +93,10 @@ export default function LoginPage() {
             <div className="w-full max-w-sm">
                 <div className="mb-6 text-center">
                     <div className="flex justify-center mb-3">
-                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white text-xl shadow-lg shadow-blue-600/25 hover:scale-105 transition-transform">
-                            ⚡
+                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-white shadow-lg shadow-emerald-900/30 hover:scale-105 transition-transform">
+                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
                         </Link>
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Masuk ke Rekapi</h1>
@@ -136,7 +138,7 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="nama@bisnis.com"
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition"
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
                             />
                         </div>
 
@@ -151,7 +153,7 @@ export default function LoginPage() {
                                         setForgotError(null)
                                         setShowForgotModal(true)
                                     }}
-                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
+                                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:underline transition cursor-pointer"
                                 >
                                     Lupa Kata Sandi?
                                 </button>
@@ -163,7 +165,7 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition"
+                                    className="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
                                 />
                                 <button
                                     type="button"
@@ -193,7 +195,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading || googleLoading}
-                            className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 hover:bg-blue-700 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                            className="w-full rounded-xl bg-emerald-800 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/25 hover:bg-emerald-900 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                         >
                             {loading ? 'Memproses...' : 'Masuk'}
                         </button>
@@ -202,7 +204,7 @@ export default function LoginPage() {
 
                 <p className="mt-6 text-center text-sm text-slate-500">
                     Belum punya akun?{' '}
-                    <Link href="/register" className="font-semibold text-blue-600 hover:underline">
+                    <Link href="/register" className="font-semibold text-emerald-800 hover:underline">
                         Daftar di sini
                     </Link>
                 </p>
@@ -214,7 +216,7 @@ export default function LoginPage() {
                     <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 text-base">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 text-base">
                                     🔑
                                 </span>
                                 <h3 className="text-base font-bold text-slate-900">Lupa Kata Sandi?</h3>
@@ -243,7 +245,7 @@ export default function LoginPage() {
                                     value={forgotEmail}
                                     onChange={(e) => setForgotEmail(e.target.value)}
                                     placeholder="nama@bisnis.com"
-                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 transition"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
                                 />
                             </div>
 
@@ -270,7 +272,7 @@ export default function LoginPage() {
                                 <button
                                     type="submit"
                                     disabled={forgotLoading}
-                                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shadow-blue-500/20 transition disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg shadow-sm shadow-emerald-900/20 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {forgotLoading ? 'Mengirim...' : 'Kirim Tautan'}
                                 </button>

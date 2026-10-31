@@ -5,17 +5,18 @@ export function isSuperAdmin(email: string | null | undefined): boolean {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // 1. Cek dari environment variable SUPERADMIN_EMAILS (koma terpisah)
-    const envEmails = process.env.SUPERADMIN_EMAILS
-        ? process.env.SUPERADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase())
-        : []
+    // Cek dari environment variable SUPER_ADMIN_EMAILS atau SUPERADMIN_EMAILS (koma terpisah)
+    const rawEnv = process.env.SUPER_ADMIN_EMAILS || process.env.SUPERADMIN_EMAILS
+    if (!rawEnv || !rawEnv.trim()) {
+        // FAIL-CLOSED: Jika variabel environment belum diatur, tolak seluruh akses admin
+        return false
+    }
 
-    // 2. Default email administrator / developer pemilik sistem
-    const defaultAdmins = [
-        'adtyanugraha654@gmail.com',
-        'pajar123@gmail.com',
-    ]
+    const envEmails = rawEnv
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
 
-    const allowed = new Set([...envEmails, ...defaultAdmins])
+    const allowed = new Set(envEmails)
     return allowed.has(cleanEmail)
 }

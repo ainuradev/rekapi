@@ -19,6 +19,17 @@ const CATEGORIES = [
 
 type Category = typeof CATEGORIES[number]['value']
 
+export interface FinancialAccountOption {
+    id: string
+    name: string
+    type: 'cash' | 'bank' | 'e_wallet' | string
+    bank_name?: string | null
+    account_number?: string | null
+    current_balance: number
+    is_default_cash?: boolean
+    is_default_bank?: boolean
+}
+
 interface Branch {
     id: string
     name: string
@@ -26,13 +37,17 @@ interface Branch {
 
 interface ExpenseFormProps {
     branches: Branch[]
+    accounts?: FinancialAccountOption[]
     initialBranchId?: string
 }
 
-export default function ExpenseForm({ branches, initialBranchId }: ExpenseFormProps) {
+export default function ExpenseForm({ branches, accounts = [], initialBranchId }: ExpenseFormProps) {
+    const defaultAccount = accounts.find((a) => a.is_default_cash || a.is_default_bank) || accounts[0]
+
     const [open, setOpen] = useState(false)
     const [category, setCategory] = useState<Category>('lainnya')
     const [amount, setAmount] = useState('')
+    const [accountId, setAccountId] = useState(defaultAccount?.id || '')
     const [description, setDescription] = useState('')
     const [date, setDate] = useState(() => getIndonesianDate())
     const [branchId, setBranchId] = useState(initialBranchId || '')
@@ -51,12 +66,19 @@ export default function ExpenseForm({ branches, initialBranchId }: ExpenseFormPr
             return
         }
 
+        if (accounts.length > 0 && !accountId) {
+            setMessage({ type: 'error', text: 'Pilih akun kas atau rekening bank pembayaran.' })
+            setLoading(false)
+            return
+        }
+
         const result = await addExpense({
             category,
             amount: parsed,
             description: description || undefined,
             expense_date: date,
             branch_id: branchId || undefined,
+            account_id: accountId || undefined,
         })
 
         setLoading(false)
@@ -64,11 +86,12 @@ export default function ExpenseForm({ branches, initialBranchId }: ExpenseFormPr
         if (result.error) {
             setMessage({ type: 'error', text: result.error })
         } else {
-            setMessage({ type: 'success', text: 'Pengeluaran berhasil disimpan!' })
+            setMessage({ type: 'success', text: 'Pengeluaran berhasil disimpan dan saldo akun terpotong!' })
             setAmount('')
             setDescription('')
             setCategory('lainnya')
             setBranchId(initialBranchId || '')
+            setAccountId(defaultAccount?.id || '')
             setDate(getIndonesianDate())
             setTimeout(() => {
                 setMessage(null)
@@ -148,6 +171,40 @@ export default function ExpenseForm({ branches, initialBranchId }: ExpenseFormPr
                                 className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm font-bold text-gray-900 focus:border-black focus:outline-none"
                             />
                         </div>
+                    </div>
+
+                    {/* Sumber Dana / Akun Pembayaran */}
+                    <div>
+                        <label className="mb-1 block text-xs font-semibold text-gray-700">
+                            Sumber Dana / Akun Pembayaran{' '}
+                            <span className="font-normal text-gray-400">
+                                (Saldo akun akan langsung terpotong)
+                            </span>
+                        </label>
+                        {accounts.length > 0 ? (
+                            <select
+                                value={accountId}
+                                onChange={(e) => setAccountId(e.target.value)}
+                                required
+                                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 focus:border-black focus:outline-none"
+                            >
+                                <option value="" disabled>-- Pilih Akun Kas / Rekening Bank --</option>
+                                {accounts.map((acc) => {
+                                    const icon = acc.type === 'cash' ? '💵' : acc.type === 'e_wallet' ? '📱' : '🏦'
+                                    const bal = 'Rp' + Math.round(acc.current_balance || 0).toLocaleString('id-ID')
+                                    const defLabel = acc.is_default_cash ? ' (Kas Utama)' : acc.is_default_bank ? ' (Bank Utama)' : ''
+                                    return (
+                                        <option key={acc.id} value={acc.id}>
+                                            {icon} {acc.name}{defLabel} — Saldo: {bal}
+                                        </option>
+                                    )
+                                })}
+                            </select>
+                        ) : (
+                            <p className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+                                Belum ada akun kas/bank terdaftar. Pengeluaran akan dicatat tanpa memotong saldo akun.
+                            </p>
+                        )}
                     </div>
 
                     {/* Keterangan */}

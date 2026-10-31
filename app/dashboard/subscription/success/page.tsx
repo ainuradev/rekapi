@@ -58,7 +58,7 @@ export default async function SubscriptionSuccessPage({ searchParams }: SuccessP
             .eq('id', user.id)
             .single()
 
-        const businessStatus = (profile as any)?.businesses?.subscription_status
+        const businessStatus = (profile as unknown as { businesses?: { subscription_status: string } | null } | null)?.businesses?.subscription_status
 
         // Jika statusnya bukan active, cegah akses langsung dan kembalikan ke pilihan paket
         if (businessStatus !== 'active') {

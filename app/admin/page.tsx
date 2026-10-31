@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { isSuperAdmin } from '@/lib/auth-admin'
 import AdminClient, {
     AdminUserItem,
     AdminBusinessItem,
@@ -8,7 +11,68 @@ import AdminClient, {
 
 export const dynamic = 'force-dynamic'
 
+interface ProfileRow {
+    id: string
+    full_name: string | null
+    role: string | null
+    business_id: string | null
+    branch_id: string | null
+    created_at: string
+    branches: { id: string; name: string } | null
+    businesses: {
+        id: string
+        name: string
+        subscription_status: string | null
+        trial_ends_at: string | null
+        created_at: string
+    } | null
+}
+
+interface BusinessRow {
+    id: string
+    name: string
+    subscription_status: string | null
+    trial_ends_at: string | null
+    created_at: string
+    branches: { id: string; name: string }[] | null
+}
+
+interface SaleRow {
+    id: string
+    business_id: string | null
+    branch_id: string | null
+    user_id: string | null
+    total: number | null
+    channel: string | null
+    payment_method: string | null
+    created_at: string
+    businesses: { name: string } | null
+    branches: { name: string } | null
+}
+
+interface UserIdentityItem {
+    provider?: string
+}
+
+function calculateRemainingDays(targetDateStr: string | null, subStatus?: string): { daysRemaining: number; isExpired: boolean } {
+    if (!targetDateStr) return { daysRemaining: 0, isExpired: false }
+    const ms = new Date(targetDateStr).getTime() - Date.now()
+    return {
+        daysRemaining: Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24))),
+        isExpired: subStatus === 'expired' || ms <= 0,
+    }
+}
+
 export default async function AdminPage() {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user || !isSuperAdmin(user.email)) {
+        redirect('/dashboard')
+    }
+
     const admin = createAdminClient()
 
     // 1. Ambil semua user dari Auth (hingga 1000 user)
@@ -39,10 +103,10 @@ export default async function AdminPage() {
         )
         .order('created_at', { ascending: false })
 
-    const salesList = allSales ?? []
+    const salesList = (allSales ?? []) as unknown as SaleRow[]
     const userListRaw = users ?? []
-    const profileList = profiles ?? []
-    const businessList = businesses ?? []
+    const profileList = (profiles ?? []) as unknown as ProfileRow[]
+    const businessList = (businesses ?? []) as unknown as BusinessRow[]
 
     // Agregasi penjualan per bisnis & user
     const salesByBusiness: Record<string, { count: number; total: number }> = {}
@@ -69,29 +133,22 @@ export default async function AdminPage() {
     // Mapping item pengguna
     const enrichedUsers: AdminUserItem[] = userListRaw.map((u) => {
         const prof = profileList.find((p) => p.id === u.id)
-        const b = (prof as any)?.businesses
-        const br = (prof as any)?.branches
+        const b = prof?.businesses
+        const br = prof?.branches
 
         const subStatus = b?.subscription_status ?? 'trial'
         const trialEnd = b?.trial_ends_at ?? null
-
-        let daysRemaining = 0
-        let isExpired = false
-
-        if (trialEnd) {
-            const ms = new Date(trialEnd).getTime() - Date.now()
-            daysRemaining = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
-            isExpired = subStatus === 'expired' || ms <= 0
-        }
+        const { daysRemaining, isExpired } = calculateRemainingDays(trialEnd, subStatus)
 
         // Cek cabang bisnis
         const bizItem = businessList.find((item) => item.id === prof?.business_id)
-        const branchCount = bizItem?.branches ? (bizItem.branches as any[]).length : 0
+        const branchCount = bizItem?.branches ? bizItem.branches.length : 0
 
         // Provider: google atau email
+        const identities = (u.identities ?? []) as UserIdentityItem[]
         const isGoogle =
             u.app_metadata?.provider === 'google' ||
-            u.identities?.some((i: any) => i.provider === 'google')
+            identities.some((i) => i.provider === 'google')
 
         const uSales = salesByUser[u.id] ?? { count: 0, total: 0 }
 
@@ -99,7 +156,7 @@ export default async function AdminPage() {
             id: u.id,
             email: u.email ?? 'Tanpa Email',
             fullName: prof?.full_name || 'Tanpa Nama',
-            role: prof?.role || 'owner',
+            role: prof?.role === 'pegawai' ? 'pegawai' : 'owner',
             provider: isGoogle ? 'google' : 'email',
             createdAt: u.created_at,
             lastSignInAt: u.last_sign_in_at ?? null,
@@ -121,17 +178,9 @@ export default async function AdminPage() {
     const enrichedBusinesses: AdminBusinessItem[] = businessList.map((b) => {
         const subStatus = b.subscription_status ?? 'trial'
         const trialEnd = b.trial_ends_at ?? null
+        const { daysRemaining, isExpired } = calculateRemainingDays(trialEnd, subStatus)
 
-        let daysRemaining = 0
-        let isExpired = false
-
-        if (trialEnd) {
-            const ms = new Date(trialEnd).getTime() - Date.now()
-            daysRemaining = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
-            isExpired = subStatus === 'expired' || ms <= 0
-        }
-
-        const bBranches = (b.branches as any[]) ?? []
+        const bBranches = b.branches ?? []
         const bEmployees = profileList.filter(
             (p) => p.business_id === b.id && p.role === 'pegawai'
         )
@@ -155,8 +204,8 @@ export default async function AdminPage() {
     // Mapping 30 transaksi terbaru
     const recentSalesFormatted: AdminSaleItem[] = salesList.slice(0, 30).map((s) => ({
         id: s.id,
-        businessName: (s as any).businesses?.name ?? 'Bisnis',
-        branchName: (s as any).branches?.name ?? 'Cabang',
+        businessName: s.businesses?.name ?? 'Bisnis',
+        branchName: s.branches?.name ?? 'Cabang',
         total: Number(s.total || 0),
         channel: s.channel ?? 'offline',
         paymentMethod: s.payment_method ?? 'cash',
@@ -180,7 +229,7 @@ export default async function AdminPage() {
 
     const totalRevenue = salesList.reduce((acc, s) => acc + Number(s.total || 0), 0)
     const totalBranches = businessList.reduce(
-        (acc, b) => acc + (b.branches ? (b.branches as any[]).length : 0),
+        (acc, b) => acc + (b.branches ? b.branches.length : 0),
         0
     )
 
