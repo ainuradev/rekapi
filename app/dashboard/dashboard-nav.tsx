@@ -666,6 +666,18 @@ export default function DashboardNav({
                                                     <span>Paket Langganan</span>
                                                 </Link>
                                             )}
+                                            {isSuperAdminUser && (
+                                                <Link
+                                                    href="/admin"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition"
+                                                >
+                                                    <svg className="w-4 h-4 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span>Portal Super Admin</span>
+                                                </Link>
+                                            )}
                                         </div>
 
                                         <div className="border-t border-slate-100 pt-1">
@@ -791,9 +803,20 @@ export default function DashboardNav({
                                     </svg>
                                 </div>
                                 <div>
-                                    <span className="text-lg font-bold tracking-tight text-white block leading-tight">
-                                        Rekapi
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg font-bold tracking-tight text-white block leading-tight">
+                                            Rekapi
+                                        </span>
+                                        {isSuperAdminUser && (
+                                            <Link
+                                                href="/admin"
+                                                onClick={() => setMobileDrawerOpen(false)}
+                                                className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                            >
+                                                Admin
+                                            </Link>
+                                        )}
+                                    </div>
                                     <span className="text-[10px] text-[#84a595] block">
                                         {isOwner ? 'Owner Bisnis' : 'Kasir'}
                                     </span>

@@ -5,8 +5,8 @@ export function isSuperAdmin(email: string | null | undefined): boolean {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // Cek dari environment variable SUPER_ADMIN_EMAILS atau SUPERADMIN_EMAILS (koma terpisah)
-    const rawEnv = process.env.SUPER_ADMIN_EMAILS || process.env.SUPERADMIN_EMAILS
+    // Cek dari environment variable SUPER_ADMIN_EMAILS, SUPERADMIN_EMAILS, atau ADMIN_EMAILS (koma terpisah)
+    const rawEnv = process.env.SUPER_ADMIN_EMAILS || process.env.SUPERADMIN_EMAILS || process.env.ADMIN_EMAILS
     if (!rawEnv || !rawEnv.trim()) {
         // FAIL-CLOSED: Jika variabel environment belum diatur, tolak seluruh akses admin
         return false

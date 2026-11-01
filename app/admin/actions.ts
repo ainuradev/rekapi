@@ -158,3 +158,112 @@ export async function adminResetUserPassword(userId: string, newPassword: string
     revalidatePath('/admin')
     return { success: true }
 }
+
+// ─── 5. Override Langganan Manual (Paket & Tanggal Aktif) ──────────────────────
+export interface OverrideSubscriptionParams {
+    businessId: string
+    planCode: 'trial' | 'standard' | 'business' | 'pro'
+    status: 'active' | 'trial' | 'expired'
+    expiresAtDate?: string // YYYY-MM-DD
+    daysToAdd?: number
+    notes?: string
+}
+
+export async function adminOverrideSubscription(params: OverrideSubscriptionParams) {
+    await requireSuperAdmin()
+
+    const { businessId, planCode, status, expiresAtDate, daysToAdd, notes } = params
+    if (!businessId) {
+        return { error: 'ID bisnis wajib diisi.' }
+    }
+
+    const admin = createAdminClient()
+
+    // Ambil data bisnis saat ini
+    const { data: business, error: bErr } = await admin
+        .from('businesses')
+        .select('id, name, subscription_status, subscription_plan_id, subscription_expires_at, trial_ends_at')
+        .eq('id', businessId)
+        .single()
+
+    if (bErr || !business) {
+        return { error: 'Bisnis tidak ditemukan.' }
+    }
+
+    // Resolusi tanggal kadaluarsa
+    let targetExpiry: Date
+    if (expiresAtDate) {
+        targetExpiry = new Date(expiresAtDate)
+        targetExpiry.setUTCHours(23, 59, 59, 999)
+    } else if (daysToAdd && daysToAdd > 0) {
+        const now = new Date()
+        const currentExp = business.subscription_expires_at
+            ? new Date(business.subscription_expires_at)
+            : business.trial_ends_at
+            ? new Date(business.trial_ends_at)
+            : now
+        const baseDate = currentExp > now ? currentExp : now
+        targetExpiry = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000)
+    } else {
+        targetExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    }
+
+    const targetIso = targetExpiry.toISOString()
+
+    let planId: string | null = null
+    if (planCode !== 'trial') {
+        const { data: planRow, error: pErr } = await admin
+            .from('subscription_plans')
+            .select('id')
+            .eq('code', planCode)
+            .single()
+
+        if (pErr || !planRow) {
+            return { error: `Paket ${planCode} tidak ditemukan di database.` }
+        }
+        planId = planRow.id
+    }
+
+    const updatePayload: {
+        subscription_status: string
+        subscription_plan_id: string | null
+        subscription_expires_at: string | null
+        trial_ends_at: string | null
+        updated_at: string
+    } = {
+        subscription_status: status,
+        subscription_plan_id: planId,
+        subscription_expires_at: status === 'active' ? targetIso : null,
+        trial_ends_at: status === 'trial' ? targetIso : (status === 'expired' ? targetIso : null),
+        updated_at: new Date().toISOString(),
+    }
+
+    const { error: updateErr } = await admin
+        .from('businesses')
+        .update(updatePayload)
+        .eq('id', businessId)
+
+    if (updateErr) {
+        return { error: 'Gagal memperbarui langganan: ' + updateErr.message }
+    }
+
+    // Catat histori override ke subscriptions tabel jika plan berbayar
+    if (planId) {
+        try {
+            await admin.from('subscriptions').insert({
+                business_id: businessId,
+                plan_id: planId,
+                status: status,
+                started_at: new Date().toISOString(),
+                expires_at: targetIso,
+                midtrans_order_id: `MANUAL_${Date.now()}_${notes ? notes.replace(/\s+/g, '_').substring(0, 15) : 'ADMIN'}`,
+            })
+        } catch (subErr) {
+            console.warn('Gagal mencatat audit log ke tabel subscriptions:', subErr)
+        }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/dashboard')
+    return { success: true, newExpiresAt: targetIso }
+}

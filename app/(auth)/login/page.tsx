@@ -40,7 +40,16 @@ export default function LoginPage() {
             return
         }
 
-        router.push('/dashboard')
+        const nextUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') : null
+        const isSuperAdminEmail = email.trim().toLowerCase() === 'admin@rekapi.id'
+
+        if (nextUrl && nextUrl.startsWith('/')) {
+            router.push(nextUrl)
+        } else if (isSuperAdminEmail) {
+            router.push('/admin')
+        } else {
+            router.push('/dashboard')
+        }
         router.refresh()
     }
 

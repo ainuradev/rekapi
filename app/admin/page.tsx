@@ -7,6 +7,7 @@ import AdminClient, {
     AdminBusinessItem,
     AdminSaleItem,
     PlatformMetrics,
+    SubscriptionPlanItem,
 } from './admin-client'
 
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,8 @@ interface ProfileRow {
         name: string
         subscription_status: string | null
         trial_ends_at: string | null
+        subscription_expires_at: string | null
+        subscription_plan_id: string | null
         created_at: string
     } | null
 }
@@ -33,8 +36,11 @@ interface BusinessRow {
     name: string
     subscription_status: string | null
     trial_ends_at: string | null
+    subscription_expires_at: string | null
+    subscription_plan_id: string | null
     created_at: string
     branches: { id: string; name: string }[] | null
+    subscription_plans: { id: string; code: string; name: string; max_branches: number; max_employees: number } | null
 }
 
 interface SaleRow {
@@ -75,7 +81,7 @@ export default async function AdminPage() {
 
     const admin = createAdminClient()
 
-    // 1. Ambil semua user dari Auth (hingga 1000 user)
+    // 1. Ambil daftar user auth (hingga 1000 user)
     const {
         data: { users },
     } = await admin.auth.admin.listUsers({
@@ -87,15 +93,24 @@ export default async function AdminPage() {
     const { data: profiles } = await admin
         .from('profiles')
         .select(
-            'id, full_name, role, business_id, branch_id, created_at, branches(id, name), businesses(id, name, subscription_status, trial_ends_at, created_at)'
+            'id, full_name, role, business_id, branch_id, created_at, branches(id, name), businesses(id, name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, created_at)'
         )
 
-    // 3. Ambil semua bisnis dan cabangnya
+    // 3. Ambil semua bisnis, cabang, dan paket langganan
     const { data: businesses } = await admin
         .from('businesses')
-        .select('id, name, subscription_status, trial_ends_at, created_at, branches(id, name)')
+        .select(
+            'id, name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, created_at, branches(id, name), subscription_plans(id, code, name, max_branches, max_employees)'
+        )
+        .order('created_at', { ascending: false })
 
-    // 4. Ambil ringkasan penjualan (sales)
+    // 4. Ambil master subscription_plans
+    const { data: plans } = await admin
+        .from('subscription_plans')
+        .select('id, code, name, price, max_branches, max_employees, duration_days')
+        .order('price', { ascending: true })
+
+    // 5. Ambil ringkasan penjualan (sales)
     const { data: allSales } = await admin
         .from('sales')
         .select(
@@ -107,6 +122,15 @@ export default async function AdminPage() {
     const userListRaw = users ?? []
     const profileList = (profiles ?? []) as unknown as ProfileRow[]
     const businessList = (businesses ?? []) as unknown as BusinessRow[]
+    const planList: SubscriptionPlanItem[] = (plans ?? []).map((p) => ({
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        price: Number(p.price || 0),
+        maxBranches: p.max_branches,
+        maxEmployees: p.max_employees,
+        durationDays: p.duration_days || 28,
+    }))
 
     // Agregasi penjualan per bisnis & user
     const salesByBusiness: Record<string, { count: number; total: number }> = {}
@@ -137,8 +161,8 @@ export default async function AdminPage() {
         const br = prof?.branches
 
         const subStatus = b?.subscription_status ?? 'trial'
-        const trialEnd = b?.trial_ends_at ?? null
-        const { daysRemaining, isExpired } = calculateRemainingDays(trialEnd, subStatus)
+        const effectiveExpiry = subStatus === 'active' ? b?.subscription_expires_at : b?.trial_ends_at
+        const { daysRemaining, isExpired } = calculateRemainingDays(effectiveExpiry ?? null, subStatus)
 
         // Cek cabang bisnis
         const bizItem = businessList.find((item) => item.id === prof?.business_id)
@@ -165,7 +189,9 @@ export default async function AdminPage() {
             branchId: prof?.branch_id ?? null,
             branchName: br?.name ?? null,
             subscriptionStatus: subStatus,
-            trialEndsAt: trialEnd,
+            trialEndsAt: b?.trial_ends_at ?? null,
+            subscriptionExpiresAt: b?.subscription_expires_at ?? null,
+            effectiveExpiresAt: effectiveExpiry ?? null,
             daysRemaining,
             isExpired,
             branchCount,
@@ -177,8 +203,8 @@ export default async function AdminPage() {
     // Mapping item bisnis
     const enrichedBusinesses: AdminBusinessItem[] = businessList.map((b) => {
         const subStatus = b.subscription_status ?? 'trial'
-        const trialEnd = b.trial_ends_at ?? null
-        const { daysRemaining, isExpired } = calculateRemainingDays(trialEnd, subStatus)
+        const effectiveExpiry = subStatus === 'active' ? b.subscription_expires_at : b.trial_ends_at
+        const { daysRemaining, isExpired } = calculateRemainingDays(effectiveExpiry ?? null, subStatus)
 
         const bBranches = b.branches ?? []
         const bEmployees = profileList.filter(
@@ -186,11 +212,27 @@ export default async function AdminPage() {
         )
         const bSales = salesByBusiness[b.id] ?? { count: 0, total: 0 }
 
+        // Temukan owner bisnis
+        const ownerProf = profileList.find(
+            (p) => p.business_id === b.id && p.role === 'owner'
+        )
+        const ownerAuth = ownerProf ? userListRaw.find((u) => u.id === ownerProf.id) : null
+
+        const planCode = b.subscription_plans?.code ?? (subStatus === 'active' ? 'pro' : null)
+        const planName = b.subscription_plans?.name || (subStatus === 'active' ? 'Pro' : 'Trial')
+
         return {
             id: b.id,
             name: b.name,
+            ownerName: ownerProf?.full_name || ownerAuth?.email?.split('@')[0] || 'Belum ada owner',
+            ownerEmail: ownerAuth?.email || 'Tanpa Email',
             subscriptionStatus: subStatus,
-            trialEndsAt: trialEnd,
+            planId: b.subscription_plan_id,
+            planCode,
+            planName,
+            trialEndsAt: b.trial_ends_at,
+            subscriptionExpiresAt: b.subscription_expires_at,
+            effectiveExpiresAt: effectiveExpiry ?? null,
             createdAt: b.created_at,
             branchCount: bBranches.length,
             employeeCount: bEmployees.length,
@@ -216,10 +258,16 @@ export default async function AdminPage() {
     let trialActiveCount = 0
     let trialExpiredCount = 0
     let subscribedCount = 0
+    let standardCount = 0
+    let businessTierCount = 0
+    let proCount = 0
 
     enrichedBusinesses.forEach((b) => {
         if (b.subscriptionStatus === 'active') {
             subscribedCount += 1
+            if (b.planCode === 'standard') standardCount += 1
+            else if (b.planCode === 'business') businessTierCount += 1
+            else proCount += 1
         } else if (b.isExpired) {
             trialExpiredCount += 1
         } else {
@@ -241,6 +289,9 @@ export default async function AdminPage() {
         trialActiveCount,
         trialExpiredCount,
         subscribedCount,
+        standardCount,
+        businessTierCount,
+        proCount,
         totalBranches,
         totalSalesCount: salesList.length,
         totalPlatformRevenue: totalRevenue,
@@ -252,6 +303,7 @@ export default async function AdminPage() {
             businesses={enrichedBusinesses}
             recentSales={recentSalesFormatted}
             metrics={metrics}
+            plans={planList}
         />
     )
 }
