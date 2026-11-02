@@ -147,7 +147,7 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="min-h-screen w-full bg-[#f8fafc] text-slate-900 font-sans">
+        <div className="min-h-screen w-full max-w-full min-w-0 bg-[#f8fafc] text-slate-900 font-sans">
             <DashboardNav
                 isOwner={isOwner}
                 userName={userName}

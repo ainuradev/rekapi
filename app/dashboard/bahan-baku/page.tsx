@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getActiveBranchId } from '@/lib/active-branch'
+import { checkModuleAccess } from '@/lib/subscription-access'
+import PlanFeatureGate from '@/components/plan-feature-gate'
 import BahanBakuClient from './bahan-baku-client'
 import {
     RawMaterialWithStocks,
@@ -19,7 +21,7 @@ export default async function BahanBakuPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, branch_id')
+        .select('role, business_id, branch_id, businesses(subscription_status, trial_ends_at, subscription_expires_at, subscription_plans(code, name))')
         .eq('id', user.id)
         .single()
 
@@ -30,6 +32,35 @@ export default async function BahanBakuPage() {
     // Hanya Owner yang memiliki akses ke modul Bahan Baku & Pembelian
     if (profile.role !== 'owner') {
         redirect('/dashboard/penjualan')
+    }
+
+    const businessData = profile.businesses as unknown as {
+        subscription_status: string | null
+        trial_ends_at: string | null
+        subscription_expires_at: string | null
+        subscription_plans?: { code: string; name: string } | null
+    } | null
+
+    const moduleAccess = checkModuleAccess(
+        {
+            status: businessData?.subscription_status || 'trial',
+            planCode: businessData?.subscription_plans?.code || null,
+            trialEndsAt: businessData?.trial_ends_at || null,
+            expiresAt: businessData?.subscription_expires_at || null,
+        },
+        'raw_materials'
+    )
+
+    if (!moduleAccess.allowed) {
+        return (
+            <PlanFeatureGate
+                module="raw_materials"
+                currentPlanName={
+                    businessData?.subscription_plans?.name ||
+                    (businessData?.subscription_status === 'trial' ? 'Trial 7 Hari' : 'Standard')
+                }
+            />
+        )
     }
 
     const isOwner = profile.role === 'owner'

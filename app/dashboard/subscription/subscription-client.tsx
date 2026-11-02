@@ -406,82 +406,42 @@ export default function SubscriptionClient({
                                             </div>
                                         ))
                                     ) : (
-                                        <>
-                                            <div className="flex items-start gap-2.5 text-xs text-slate-700">
+                                        (plan.code === 'standard'
+                                            ? [
+                                                'Maksimal 1 cabang & 1 akun kasir',
+                                                'Kasir POS lengkap (7 channel & cetak struk)',
+                                                'Katalog produk, HPP & kalkulasi margin',
+                                                'CRM pelanggan & diskon member otomatis',
+                                                'Pencatatan beban & Laporan Laba Rugi',
+                                                'Laporan kinerja produk & cetak PDF',
+                                            ]
+                                            : plan.code === 'business'
+                                            ? [
+                                                'Maksimal 3 cabang & 3 akun kasir',
+                                                'Semua fitur paket Standard',
+                                                'Stok bahan baku, belanja & data supplier',
+                                                'Buku kas, multi-rekening & setoran cabang',
+                                                'Buku utang supplier & piutang pelanggan',
+                                                'Ekspor laporan ke Excel (.xls) & CSV',
+                                            ]
+                                            : [
+                                                'Maksimal 5 cabang & 5 akun kasir',
+                                                'Semua fitur paket Business',
+                                                'Laporan Neraca SAK EMKM (Posisi Keuangan)',
+                                                'Laporan Arus Kas (Operasi, Investasi, Pendanaan)',
+                                                'Manajemen modal disetor & prive pemilik',
+                                                'Konsolidasi keuangan penuh lintas cabang',
+                                            ]
+                                        ).map((feat, idx) => (
+                                            <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700">
                                                 <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                                     </svg>
                                                 </div>
-                                                <span className="leading-tight font-medium">
-                                                    {plan.max_branches
-                                                        ? `Maksimal ${plan.max_branches} cabang`
-                                                        : 'Unlimited cabang'}
-                                                </span>
+                                                <span className="leading-tight">{feat}</span>
                                             </div>
-                                            <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
-                                                <span className="leading-tight font-medium">
-                                                    {plan.max_employees
-                                                        ? `Maksimal ${plan.max_employees} akun pegawai (1 per cabang)`
-                                                        : 'Unlimited pegawai kasir'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
-                                                <span className="leading-tight">
-                                                    Laporan laba rugi &amp; HPP {plan.code === 'pro' ? 'advanced' : 'lengkap'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
-                                                <span className="leading-tight">
-                                                    Support WhatsApp {plan.code === 'pro' ? 'prioritas 24/7' : plan.code === 'business' ? 'prioritas' : 'standar'}
-                                                </span>
-                                            </div>
-                                            {plan.code === 'business' && (
-                                                <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                    <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    </div>
-                                                    <span className="leading-tight">Analisis tren penjualan &amp; grafik omzet</span>
-                                                </div>
-                                            )}
-                                            {plan.code === 'pro' && (
-                                                <>
-                                                    <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                        <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        </div>
-                                                        <span className="leading-tight">Analisis multi-cabang lanjutan</span>
-                                                    </div>
-                                                    <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                                                        <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mt-0.5">
-                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        </div>
-                                                        <span className="leading-tight">Akses API &amp; kustomisasi integrasi</span>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </>
+                                        ))
                                     )}
                                 </div>
                             </div>

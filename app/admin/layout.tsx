@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth-admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export const metadata = {
     title: 'Super Admin Portal — Rekapi',
@@ -35,10 +36,16 @@ export default async function AdminLayout({
                     {/* Brand */}
                     <div className="flex items-center gap-3">
                         <Link href="/admin" className="flex items-center gap-2.5 group">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-black text-sm shadow-md shadow-emerald-950/50">
-                                <svg className="w-4.5 h-4.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
+                            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                                <Image
+                                    src="/logo.png?v=2"
+                                    alt="Logo Rekapi"
+                                    width={32}
+                                    height={32}
+                                    className="w-full h-full object-contain"
+                                    priority
+                                    unoptimized
+                                />
                             </div>
                             <span className="text-lg font-bold tracking-tight text-white flex items-center font-sans">
                                 Rekapi

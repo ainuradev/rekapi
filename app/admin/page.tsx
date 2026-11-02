@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { isSuperAdmin } from '@/lib/auth-admin'
+import { ensureSubscriptionPlans } from '@/lib/subscription-plans'
 import AdminClient, {
     AdminUserItem,
     AdminBusinessItem,
@@ -104,11 +105,8 @@ export default async function AdminPage() {
         )
         .order('created_at', { ascending: false })
 
-    // 4. Ambil master subscription_plans
-    const { data: plans } = await admin
-        .from('subscription_plans')
-        .select('id, code, name, price, max_branches, max_employees, duration_days')
-        .order('price', { ascending: true })
+    // 4. Ambil master subscription_plans (Self-healing jika kosong)
+    const plans = await ensureSubscriptionPlans(admin)
 
     // 5. Ambil ringkasan penjualan (sales)
     const { data: allSales } = await admin

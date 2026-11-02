@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { getActiveBranchId } from '@/lib/active-branch'
 import { getIndonesianPeriodRange, formatIndonesianDate, parseCustomOrPeriodRange } from '@/lib/date-utils'
 import { resolveEffectiveBranchFilter } from '@/lib/inventory-valuation'
+import { checkModuleAccess } from '@/lib/subscription-access'
+import PlanFeatureGate from '@/components/plan-feature-gate'
 import PeriodSelect from '../period-select'
 
 function fmt(n: number) {
@@ -29,7 +31,7 @@ export default async function ArusKasPage({
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(name)')
+        .select('role, business_id, businesses(name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plans(code, name))')
         .eq('id', user.id)
         .single()
 
@@ -37,8 +39,38 @@ export default async function ArusKasPage({
         redirect('/dashboard')
     }
 
+    const businessData = profile.businesses as unknown as {
+        name: string
+        subscription_status: string | null
+        trial_ends_at: string | null
+        subscription_expires_at: string | null
+        subscription_plans?: { code: string; name: string } | null
+    } | null
+
+    const moduleAccess = checkModuleAccess(
+        {
+            status: businessData?.subscription_status || 'trial',
+            planCode: businessData?.subscription_plans?.code || null,
+            trialEndsAt: businessData?.trial_ends_at || null,
+            expiresAt: businessData?.subscription_expires_at || null,
+        },
+        'cash_flow_report'
+    )
+
+    if (!moduleAccess.allowed) {
+        return (
+            <PlanFeatureGate
+                module="cash_flow_report"
+                currentPlanName={
+                    businessData?.subscription_plans?.name ||
+                    (businessData?.subscription_status === 'trial' ? 'Trial 7 Hari' : 'Standard')
+                }
+            />
+        )
+    }
+
     const businessId = profile.business_id
-    const businessName = (profile.businesses as unknown as { name: string } | null)?.name || 'Bisnis Anda'
+    const businessName = businessData?.name || 'Bisnis Anda'
 
     const params = await searchParams
     const { dateFrom, dateTo, timestampFrom, timestampTo, period, isCustom, label: periodLabel } = parseCustomOrPeriodRange(

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { checkEmailExists } from './actions'
@@ -78,10 +79,16 @@ export default function RegisterPage() {
             <div className="w-full max-w-sm">
                 <div className="mb-6 text-center">
                     <div className="flex justify-center mb-3">
-                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-white shadow-lg shadow-emerald-900/30 hover:scale-105 transition-transform">
-                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
+                        <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-2xl overflow-hidden hover:scale-105 transition-transform shadow-md shadow-emerald-900/20">
+                            <Image
+                                src="/logo.png?v=2"
+                                alt="Logo Rekapi"
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-contain"
+                                priority
+                                unoptimized
+                            />
                         </Link>
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Daftar Rekapi</h1>

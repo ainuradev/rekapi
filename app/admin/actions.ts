@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isSuperAdmin } from '@/lib/auth-admin'
 import { revalidatePath } from 'next/cache'
+import { ensureSubscriptionPlans } from '@/lib/subscription-plans'
 
 // Helper verifikasi sesi super admin
 async function requireSuperAdmin() {
@@ -212,13 +213,11 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
 
     let planId: string | null = null
     if (planCode !== 'trial') {
-        const { data: planRow, error: pErr } = await admin
-            .from('subscription_plans')
-            .select('id')
-            .eq('code', planCode)
-            .single()
+        // Self-healing: pastikan tabel subscription_plans terisi jika kosong
+        const plans = await ensureSubscriptionPlans(admin)
+        const planRow = plans.find((p) => p.code === planCode)
 
-        if (pErr || !planRow) {
+        if (!planRow) {
             return { error: `Paket ${planCode} tidak ditemukan di database.` }
         }
         planId = planRow.id
@@ -228,14 +227,21 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
         subscription_status: string
         subscription_plan_id: string | null
         subscription_expires_at: string | null
-        trial_ends_at: string | null
+        trial_ends_at?: string
         updated_at: string
     } = {
         subscription_status: status,
         subscription_plan_id: planId,
         subscription_expires_at: status === 'active' ? targetIso : null,
-        trial_ends_at: status === 'trial' ? targetIso : (status === 'expired' ? targetIso : null),
         updated_at: new Date().toISOString(),
+    }
+
+    // CRITICAL: Jangan pernah mengirim trial_ends_at: null karena kolom ini NOT NULL di PostgreSQL.
+    // Hanya perbarui trial_ends_at jika status diubah ke 'trial', atau sediakan fallback timestamp jika kosong.
+    if (status === 'trial') {
+        updatePayload.trial_ends_at = targetIso
+    } else if (!business.trial_ends_at) {
+        updatePayload.trial_ends_at = new Date().toISOString()
     }
 
     const { error: updateErr } = await admin

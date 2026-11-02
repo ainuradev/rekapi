@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { checkModuleAccess } from '@/lib/subscription-access'
+import PlanFeatureGate from '@/components/plan-feature-gate'
 import ModalClient, { EquityRecord } from './modal-client'
 import { FinancialAccount } from '../kas-rekening/kas-rekening-client'
 
@@ -14,7 +16,7 @@ export default async function ModalPage() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, business_id, businesses(name)')
+        .select('role, business_id, businesses(name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plans(code, name))')
         .eq('id', user.id)
         .single()
 
@@ -22,8 +24,38 @@ export default async function ModalPage() {
         redirect('/dashboard')
     }
 
+    const businessData = profile.businesses as unknown as {
+        name: string
+        subscription_status: string | null
+        trial_ends_at: string | null
+        subscription_expires_at: string | null
+        subscription_plans?: { code: string; name: string } | null
+    } | null
+
+    const moduleAccess = checkModuleAccess(
+        {
+            status: businessData?.subscription_status || 'trial',
+            planCode: businessData?.subscription_plans?.code || null,
+            trialEndsAt: businessData?.trial_ends_at || null,
+            expiresAt: businessData?.subscription_expires_at || null,
+        },
+        'capital_equity'
+    )
+
+    if (!moduleAccess.allowed) {
+        return (
+            <PlanFeatureGate
+                module="capital_equity"
+                currentPlanName={
+                    businessData?.subscription_plans?.name ||
+                    (businessData?.subscription_status === 'trial' ? 'Trial 7 Hari' : 'Standard')
+                }
+            />
+        )
+    }
+
     const businessId = profile.business_id
-    const businessName = (profile.businesses as unknown as { name: string } | null)?.name || 'Bisnis Anda'
+    const businessName = businessData?.name || 'Bisnis Anda'
 
     // Fetch equity records and accounts
     const [

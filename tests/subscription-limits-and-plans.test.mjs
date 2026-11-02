@@ -17,6 +17,8 @@ import {
     hasActiveAccess,
     canAccessAdvancedReports,
     canAccessAPI,
+    checkModuleAccess,
+    getSubscriptionPlanTier,
 } from '../lib/subscription-access.ts'
 
 const ROOT = process.cwd()
@@ -124,7 +126,7 @@ describe('Subscription Limits, Official Plan Quotas & Midtrans Sync Consistency'
         const futureIso = new Date(Date.now() + 7 * 86_400_000).toISOString()
         const pastIso = new Date(Date.now() - 86_400_000).toISOString()
 
-        // Trial aktif: akses dasar boleh, laporan lanjutan & API ditolak
+        // Trial aktif: akses dasar & laporan lanjutan boleh (setara Pro selama trial), API ditolak
         const trialSub = {
             status: 'trial',
             planCode: null,
@@ -133,7 +135,7 @@ describe('Subscription Limits, Official Plan Quotas & Midtrans Sync Consistency'
             planFeatures: null,
         }
         assert.equal(hasActiveAccess(trialSub), true)
-        assert.equal(canAccessAdvancedReports(trialSub).allowed, false)
+        assert.equal(canAccessAdvancedReports(trialSub).allowed, true)
         assert.equal(canAccessAPI(trialSub).allowed, false)
 
         // Standard aktif: laporan lanjutan & API ditolak
@@ -247,6 +249,67 @@ describe('Subscription Limits, Official Plan Quotas & Midtrans Sync Consistency'
         const mig0034 = fs.readFileSync(path.join(migrationsDir, '0034_strict_stock_validation_no_oversell.sql'), 'utf8')
         assert.match(mig0031, /drop\s+function\s+if\s+exists\s+record_purchase_with_stock_atomic\(uuid,\s*uuid,\s*uuid,\s*text,\s*date,\s*jsonb,\s*text\)/i)
         assert.match(mig0034, /drop\s+function\s+if\s+exists\s+record_purchase_with_stock_atomic\(uuid,\s*uuid,\s*uuid,\s*text,\s*date,\s*jsonb,\s*text\)/i)
+    })
+
+    test('7. Value-Based Feature Gating per modul (Standard vs Business vs Pro vs Trial)', () => {
+        const futureIso = new Date(Date.now() + 7 * 86_400_000).toISOString()
+        const pastIso = new Date(Date.now() - 86_400_000).toISOString()
+
+        const businessModules = ['raw_materials', 'cash_accounts', 'debts_receivables']
+        const proModules = ['capital_equity', 'cash_flow_report', 'balance_sheet']
+
+        const trialSub = { status: 'trial', planCode: null, trialEndsAt: futureIso }
+        const standardSub = { status: 'active', planCode: 'standard', expiresAt: futureIso }
+        const businessSub = { status: 'active', planCode: 'business', expiresAt: futureIso }
+        const proSub = { status: 'active', planCode: 'pro', expiresAt: futureIso }
+        const expiredSub = { status: 'expired', planCode: 'pro', expiresAt: pastIso }
+
+        // Verifikasi resolusi tier paket
+        assert.equal(getSubscriptionPlanTier(trialSub), 'trial')
+        assert.equal(getSubscriptionPlanTier(standardSub), 'standard')
+        assert.equal(getSubscriptionPlanTier(businessSub), 'business')
+        assert.equal(getSubscriptionPlanTier(proSub), 'pro')
+
+        // 1. Trial Aktif: Semua 6 modul terbuka penuh
+        for (const mod of [...businessModules, ...proModules]) {
+            const res = checkModuleAccess(trialSub, mod)
+            assert.equal(res.allowed, true, `Trial aktif harus membuka modul ${mod}`)
+        }
+
+        // 2. Standard Aktif: 3 modul min-business terkunci, 3 modul min-pro terkunci
+        for (const mod of businessModules) {
+            const res = checkModuleAccess(standardSub, mod)
+            assert.equal(res.allowed, false, `Standard tidak boleh mengakses ${mod}`)
+            assert.equal(res.requiredPlan, 'business')
+        }
+        for (const mod of proModules) {
+            const res = checkModuleAccess(standardSub, mod)
+            assert.equal(res.allowed, false, `Standard tidak boleh mengakses ${mod}`)
+            assert.equal(res.requiredPlan, 'pro')
+        }
+
+        // 3. Business Aktif: 3 modul min-business terbuka, 3 modul min-pro terkunci
+        for (const mod of businessModules) {
+            const res = checkModuleAccess(businessSub, mod)
+            assert.equal(res.allowed, true, `Business harus membuka ${mod}`)
+        }
+        for (const mod of proModules) {
+            const res = checkModuleAccess(businessSub, mod)
+            assert.equal(res.allowed, false, `Business tidak boleh mengakses ${mod}`)
+            assert.equal(res.requiredPlan, 'pro')
+        }
+
+        // 4. Pro Aktif: Semua 6 modul terbuka penuh
+        for (const mod of [...businessModules, ...proModules]) {
+            const res = checkModuleAccess(proSub, mod)
+            assert.equal(res.allowed, true, `Pro harus membuka ${mod}`)
+        }
+
+        // 5. Expired: Semua modul ditolak
+        for (const mod of [...businessModules, ...proModules]) {
+            const res = checkModuleAccess(expiredSub, mod)
+            assert.equal(res.allowed, false, `Expired tidak boleh membuka ${mod}`)
+        }
     })
 })
 

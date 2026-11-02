@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 
@@ -23,11 +24,16 @@ export default async function HomePage() {
                 <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-10 lg:px-12">
                     {/* Brand Logo */}
                     <Link href="/" className="flex items-center gap-2.5 group">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0f7654] text-white shadow-sm shadow-[#0f7654]/20 transition-transform group-hover:scale-105">
-                            {/* Stylized 'R' Logo */}
-                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                                <path d="M6 4h7.5a5.5 5.5 0 0 1 3.889 9.389L21 20h-4l-3.2-6H9v6H6V4zm3 3v4h4.5a2.5 2.5 0 0 0 0-5H9z" />
-                            </svg>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-sm shadow-emerald-950/20 transition-transform group-hover:scale-105">
+                            <Image
+                                src="/logo.png?v=2"
+                                alt="Logo Rekapi"
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-contain"
+                                priority
+                                unoptimized
+                            />
                         </div>
                         <span className="text-xl font-bold tracking-tight text-slate-900">
                             Rekapi
@@ -827,8 +833,15 @@ export default async function HomePage() {
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800/80">
                         {/* Logo */}
                         <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0f7654] text-white font-bold text-sm">
-                                R
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden">
+                                <Image
+                                    src="/logo.png?v=2"
+                                    alt="Logo Rekapi"
+                                    width={32}
+                                    height={32}
+                                    className="w-full h-full object-contain"
+                                    unoptimized
+                                />
                             </div>
                             <span className="text-lg font-bold text-white tracking-tight">Rekapi</span>
                         </div>

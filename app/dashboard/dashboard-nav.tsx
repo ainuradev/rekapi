@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 
@@ -282,10 +283,16 @@ export default function DashboardNav({
                     {/* Brand Header */}
                     <div className="px-2 pb-5 flex items-center justify-between">
                         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-black text-sm shadow-md shadow-emerald-900/40 group-hover:scale-105 transition-transform">
-                                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
+                            <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                                <Image
+                                    src="/logo.png?v=2"
+                                    alt="Logo Rekapi"
+                                    width={36}
+                                    height={36}
+                                    className="w-full h-full object-contain"
+                                    priority
+                                    unoptimized
+                                />
                             </div>
                             <span className="text-xl font-bold tracking-tight text-white flex items-center font-sans">
                                 Rekapi
@@ -311,8 +318,8 @@ export default function DashboardNav({
                                 item.href === '/dashboard'
                                     ? pathname === '/dashboard'
                                     : item.href
-                                    ? pathname === item.href || pathname.startsWith(item.href + '/')
-                                    : false
+                                        ? pathname === item.href || pathname.startsWith(item.href + '/')
+                                        : false
 
                             if (hasChildren) {
                                 return (
@@ -320,11 +327,10 @@ export default function DashboardNav({
                                         <button
                                             type="button"
                                             onClick={() => toggleExpand(item.label)}
-                                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                                                isParentActive
+                                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${isParentActive
                                                     ? 'bg-[#0f4a33] text-white font-semibold'
                                                     : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <span className={isParentActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
@@ -333,9 +339,8 @@ export default function DashboardNav({
                                                 <span>{item.label}</span>
                                             </div>
                                             <svg
-                                                className={`w-3.5 h-3.5 transition-transform text-[#94b3a4] ${
-                                                    isExpanded ? 'rotate-180 text-white' : ''
-                                                }`}
+                                                className={`w-3.5 h-3.5 transition-transform text-[#94b3a4] ${isExpanded ? 'rotate-180 text-white' : ''
+                                                    }`}
                                                 fill="none"
                                                 viewBox="0 0 24 24"
                                                 stroke="currentColor"
@@ -352,11 +357,10 @@ export default function DashboardNav({
                                                         <Link
                                                             key={child.href}
                                                             href={child.href}
-                                                            className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                                                childActive
+                                                            className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${childActive
                                                                     ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
                                                                     : 'text-[#84a595] hover:text-white hover:bg-white/5'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {child.label}
                                                         </Link>
@@ -372,11 +376,10 @@ export default function DashboardNav({
                                 <Link
                                     key={item.href}
                                     href={item.href!}
-                                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                                        isSelfActive
+                                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${isSelfActive
                                             ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
                                             : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
-                                    }`}
+                                        }`}
                                 >
                                     <span className={isSelfActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
                                         {item.icon}
@@ -454,7 +457,7 @@ export default function DashboardNav({
             </aside>
 
             {/* ── Right Main Column (Header + Content) ── */}
-            <div className="sm:pl-64 flex-1 min-w-0 flex flex-col min-h-screen">
+            <div className="sm:pl-64 flex-1 min-w-0 max-w-full w-full flex flex-col min-h-screen">
                 {/* ── Top Header on Desktop & Mobile ── */}
                 <header className="sticky top-0 z-30 h-16 w-full bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4">
                     {/* Left: Mobile hamburger & Branch Selector Pill */}
@@ -506,9 +509,8 @@ export default function DashboardNav({
                                                 <button
                                                     type="button"
                                                     onClick={() => handleBranchSelect('all')}
-                                                    className={`w-full text-left px-3 py-2.5 hover:bg-emerald-50/70 flex items-center justify-between text-xs transition cursor-pointer ${
-                                                        activeBranchId === 'all' ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''
-                                                    }`}
+                                                    className={`w-full text-left px-3 py-2.5 hover:bg-emerald-50/70 flex items-center justify-between text-xs transition cursor-pointer ${activeBranchId === 'all' ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''
+                                                        }`}
                                                 >
                                                     <div className="min-w-0">
                                                         <p className="font-bold text-slate-800">Semua Cabang (Konsolidasi)</p>
@@ -524,9 +526,8 @@ export default function DashboardNav({
                                                         key={b.id}
                                                         type="button"
                                                         onClick={() => handleBranchSelect(b.id)}
-                                                        className={`w-full text-left px-3 py-2 hover:bg-emerald-50/70 flex items-center justify-between text-xs transition cursor-pointer ${
-                                                            activeBranchId === b.id ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''
-                                                        }`}
+                                                        className={`w-full text-left px-3 py-2 hover:bg-emerald-50/70 flex items-center justify-between text-xs transition cursor-pointer ${activeBranchId === b.id ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''
+                                                            }`}
                                                     >
                                                         <div className="min-w-0">
                                                             <p className="font-semibold text-slate-800 truncate">{b.name}</p>
@@ -714,9 +715,8 @@ export default function DashboardNav({
                 <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around h-16 border-t border-slate-200 bg-white/95 backdrop-blur-md px-2 sm:hidden shadow-xl">
                     <Link
                         href="/dashboard"
-                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                            pathname === '/dashboard' ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
-                        }`}
+                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname === '/dashboard' ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
                     >
                         <HomeIcon />
                         <span>Dashboard</span>
@@ -725,9 +725,8 @@ export default function DashboardNav({
                     {/* Tab 2: Riwayat Transaksi */}
                     <Link
                         href="/dashboard/penjualan/riwayat"
-                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                            pathname.startsWith('/dashboard/penjualan/riwayat') ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
-                        }`}
+                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/penjualan/riwayat') ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
                     >
                         <TransaksiIcon />
                         <span>Riwayat</span>
@@ -750,11 +749,10 @@ export default function DashboardNav({
                     {isOwner ? (
                         <Link
                             href="/dashboard/keuangan"
-                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                                pathname.startsWith('/dashboard/keuangan')
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/keuangan')
                                     ? 'text-emerald-700 font-bold'
                                     : 'text-slate-400 hover:text-slate-700'
-                            }`}
+                                }`}
                         >
                             <KeuanganIcon />
                             <span>Keuangan</span>
@@ -762,11 +760,10 @@ export default function DashboardNav({
                     ) : (
                         <Link
                             href="/dashboard/produk"
-                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                                pathname.startsWith('/dashboard/produk')
+                            className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/produk')
                                     ? 'text-emerald-700 font-bold'
                                     : 'text-slate-400 hover:text-slate-700'
-                            }`}
+                                }`}
                         >
                             <StokIcon />
                             <span>Produk</span>
@@ -776,9 +773,8 @@ export default function DashboardNav({
                     {/* Tab 5: Profil */}
                     <Link
                         href="/dashboard/profil"
-                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${
-                            pathname.startsWith('/dashboard/profil') ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
-                        }`}
+                        className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/profil') ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-700'
+                            }`}
                     >
                         <ProfilIcon />
                         <span>Profil</span>
@@ -797,10 +793,15 @@ export default function DashboardNav({
                     <div className="fixed inset-y-0 left-0 w-[84%] max-w-xs bg-[#06281b] text-white shadow-2xl flex flex-col justify-between z-50 animate-in slide-in-from-left duration-200 border-r border-[#093d2a]">
                         <div className="px-5 py-5 border-b border-[#0e442f] flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white font-black text-sm shadow-md">
-                                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
+                                <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                                    <Image
+                                        src="/logo.png?v=2"
+                                        alt="Logo Rekapi"
+                                        width={32}
+                                        height={32}
+                                        className="w-full h-full object-contain"
+                                        unoptimized
+                                    />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
@@ -847,11 +848,10 @@ export default function DashboardNav({
                                             <button
                                                 type="button"
                                                 onClick={() => toggleExpand(item.label)}
-                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
-                                                    isParentActive
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${isParentActive
                                                         ? 'bg-[#0f4a33] text-white font-semibold'
                                                         : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <span className={isParentActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
@@ -860,9 +860,8 @@ export default function DashboardNav({
                                                     <span>{item.label}</span>
                                                 </div>
                                                 <svg
-                                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                                        isExpanded ? 'rotate-180 text-white' : 'text-[#94b3a4]'
-                                                    }`}
+                                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-white' : 'text-[#94b3a4]'
+                                                        }`}
                                                     fill="none"
                                                     viewBox="0 0 24 24"
                                                     stroke="currentColor"
@@ -880,11 +879,10 @@ export default function DashboardNav({
                                                                 key={cIdx}
                                                                 href={child.href}
                                                                 onClick={() => setMobileDrawerOpen(false)}
-                                                                className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                                                    isChildActive
+                                                                className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition ${isChildActive
                                                                         ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
                                                                         : 'text-[#84a595] hover:bg-white/5 hover:text-white'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {child.label}
                                                             </Link>
@@ -900,19 +898,18 @@ export default function DashboardNav({
                                     item.href === '/dashboard'
                                         ? pathname === '/dashboard'
                                         : item.href
-                                        ? pathname === item.href || pathname.startsWith(item.href + '/')
-                                        : false
+                                            ? pathname === item.href || pathname.startsWith(item.href + '/')
+                                            : false
 
                                 return (
                                     <Link
                                         key={idx}
                                         href={item.href || '#'}
                                         onClick={() => setMobileDrawerOpen(false)}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
-                                            isActive
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${isActive
                                                 ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
                                                 : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         <span className={isActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
                                             {item.icon}

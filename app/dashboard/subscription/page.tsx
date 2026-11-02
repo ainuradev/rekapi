@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureSubscriptionPlans } from '@/lib/subscription-plans'
 import { redirect } from 'next/navigation'
 import SubscriptionClient from './subscription-client'
 
@@ -51,7 +53,11 @@ export default async function SubscriptionPage() {
             .maybeSingle(),
     ])
 
-    const plans = plansRes.data || []
+    let plans = plansRes.data || []
+    if (plans.length === 0) {
+        const admin = createAdminClient()
+        plans = await ensureSubscriptionPlans(admin)
+    }
     const pendingTxRaw = pendingTxRes.data
 
     interface ProfileWithSubscription {

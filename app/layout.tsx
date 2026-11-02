@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Rekapi — SaaS Pendataan & Rekap UMKM",
   description: "Membantu pemilik UMKM mencatat transaksi dan membuat rekap omzet, HPP, serta laba/rugi otomatis.",
+  icons: {
+    icon: '/logo.png?v=2',
+    shortcut: '/logo.png?v=2',
+    apple: '/logo.png?v=2',
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getActiveBranchId } from '@/lib/active-branch'
 import { resolveEffectiveBranchFilter } from '@/lib/inventory-valuation'
+import { getSubscriptionPlanTier } from '@/lib/subscription-access'
 
 function fmt(n: number) {
     return 'Rp' + Math.round(n).toLocaleString('id-ID')
@@ -18,7 +19,7 @@ export default async function KeuanganHubPage() {
 
     const { data: profileRaw } = await supabase
         .from('profiles')
-        .select('role, business_id, full_name, businesses(name)')
+        .select('role, business_id, full_name, businesses(name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plans(code, name))')
         .eq('id', user.id)
         .single()
 
@@ -26,7 +27,13 @@ export default async function KeuanganHubPage() {
         role: string
         business_id: string
         full_name: string | null
-        businesses: { name: string } | null
+        businesses: {
+            name: string
+            subscription_status: string | null
+            trial_ends_at: string | null
+            subscription_expires_at: string | null
+            subscription_plans?: { code: string; name: string } | null
+        } | null
     } | null
 
     if (!profile || profile.role !== 'owner' || !profile.business_id) {
@@ -36,6 +43,14 @@ export default async function KeuanganHubPage() {
     const businessId = profile.business_id
     const businessName = profile.businesses?.name || 'Bisnis Anda'
     const candidateBranchId = await getActiveBranchId()
+
+    const subData = profile.businesses
+    const userTier = getSubscriptionPlanTier({
+        status: subData?.subscription_status || 'trial',
+        planCode: subData?.subscription_plans?.code || null,
+        trialEndsAt: subData?.trial_ends_at || null,
+        expiresAt: subData?.subscription_expires_at || null,
+    })
 
     // Ambil daftar cabang milik bisnis pengguna & validasi cabang efektif
     const { data: branches } = await supabase
@@ -126,6 +141,7 @@ export default async function KeuanganHubPage() {
         {
             title: 'Buku Kas & Rekening Bank',
             href: '/dashboard/keuangan/kas-rekening',
+            planBadge: userTier === 'standard' ? 'Paket Business' : undefined,
             countBadge: selectedBranchId === 'all'
                 ? (totalCashAndBank > 0 ? fmt(totalCashAndBank) : 'Atur Saldo Awal')
                 : 'Rekening Pusat',
@@ -143,6 +159,7 @@ export default async function KeuanganHubPage() {
         {
             title: 'Buku Utang & Piutang Usaha',
             href: '/dashboard/keuangan/utang-piutang',
+            planBadge: userTier === 'standard' ? 'Paket Business' : undefined,
             countBadge: activeDebtsCount > 0 || activeRecCount > 0
                 ? `${activeDebtsCount} Utang • ${activeRecCount} Piutang`
                 : 'Kontrol Tagihan',
@@ -160,6 +177,7 @@ export default async function KeuanganHubPage() {
         {
             title: 'Modal Usaha & Ekuitas Pemilik',
             href: '/dashboard/keuangan/modal',
+            planBadge: userTier === 'standard' || userTier === 'business' ? 'Paket Pro' : undefined,
             countBadge: selectedBranchId === 'all'
                 ? (netEquityTotal > 0 ? fmt(netEquityTotal) : 'Modal Disetor')
                 : 'Modal Terpusat',
@@ -181,6 +199,7 @@ export default async function KeuanganHubPage() {
         {
             title: 'Laporan Posisi Keuangan (Neraca)',
             href: '/dashboard/keuangan/neraca',
+            planBadge: userTier === 'standard' || userTier === 'business' ? 'Paket Pro' : undefined,
             countBadge: 'SAK EMKM • Seimbang',
             badgeStyle: 'bg-sky-50 text-sky-700 border-sky-200/60',
             hoverBorder: 'hover:border-sky-500 hover:shadow-sky-500/10',
@@ -211,6 +230,7 @@ export default async function KeuanganHubPage() {
         {
             title: 'Laporan Arus Kas',
             href: '/dashboard/keuangan/arus-kas',
+            planBadge: userTier === 'standard' || userTier === 'business' ? 'Paket Pro' : undefined,
             countBadge: purchaseCount > 0 ? `${purchaseCount} Belanja Stok` : 'Kas Masuk & Keluar',
             badgeStyle: 'bg-teal-50 text-teal-700 border-teal-200/60',
             hoverBorder: 'hover:border-teal-500 hover:shadow-teal-500/10',
@@ -314,6 +334,15 @@ export default async function KeuanganHubPage() {
                                         {card.icon}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {card.planBadge && (
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                                card.planBadge === 'Paket Pro'
+                                                    ? 'bg-amber-50 text-amber-900 border border-amber-200/90'
+                                                    : 'bg-emerald-50 text-emerald-900 border border-emerald-200/90'
+                                            }`}>
+                                                {card.planBadge}
+                                            </span>
+                                        )}
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${card.badgeStyle}`}>
                                             {card.countBadge}
                                         </span>
@@ -358,6 +387,15 @@ export default async function KeuanganHubPage() {
                                         {card.icon}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {card.planBadge && (
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                                card.planBadge === 'Paket Pro'
+                                                    ? 'bg-amber-50 text-amber-900 border border-amber-200/90'
+                                                    : 'bg-emerald-50 text-emerald-900 border border-emerald-200/90'
+                                            }`}>
+                                                {card.planBadge}
+                                            </span>
+                                        )}
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${card.badgeStyle}`}>
                                             {card.countBadge}
                                         </span>

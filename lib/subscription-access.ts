@@ -2,6 +2,29 @@
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'canceled' | 'pending'
 
+export type PlanTier = 'trial' | 'standard' | 'business' | 'pro'
+
+export type GatedModule =
+    | 'raw_materials'     // /dashboard/bahan-baku (Min: business)
+    | 'cash_accounts'     // /dashboard/keuangan/kas-rekening (Min: business)
+    | 'debts_receivables' // /dashboard/keuangan/utang-piutang (Min: business)
+    | 'capital_equity'    // /dashboard/keuangan/modal (Min: pro)
+    | 'cash_flow_report'  // /dashboard/keuangan/arus-kas (Min: pro)
+    | 'balance_sheet'     // /dashboard/keuangan/neraca (Min: pro)
+
+export interface ModuleAccessResult {
+    allowed: boolean
+    requiredPlan: 'business' | 'pro'
+    reason?: string
+}
+
+export interface CheckModuleAccessParams {
+    status: SubscriptionStatus | string
+    planCode?: string | null
+    expiresAt?: string | null
+    trialEndsAt?: string | null
+}
+
 export interface SubscriptionData {
     status: SubscriptionStatus
     planCode: string | null
@@ -12,6 +35,98 @@ export interface SubscriptionData {
         can_advanced_reports: boolean
         can_api_access: boolean
     } | null
+}
+
+/**
+ * Resolusi tier langganan aktif:
+ * - 'trial': Masa uji coba 7 hari masih aktif
+ * - 'pro': Paket Pro aktif
+ * - 'business': Paket Business aktif
+ * - 'standard': Paket Standard aktif atau fallback default
+ */
+export function getSubscriptionPlanTier(sub: {
+    status: string
+    planCode?: string | null
+    trialEndsAt?: string | null
+    expiresAt?: string | null
+}): PlanTier {
+    if (sub.status === 'trial') {
+        return 'trial'
+    }
+    const code = (sub.planCode || '').toLowerCase().trim()
+    if (code === 'pro') return 'pro'
+    if (code === 'business') return 'business'
+    return 'standard'
+}
+
+/**
+ * Pengecekan Value-Based Feature Gating per modul:
+ * 1. Standard (Rp149k): Bahan baku, Kas rekening, Utang piutang terkunci (Min: Business).
+ *    Modal prive, Arus kas, Neraca SAK EMKM terkunci (Min: Pro).
+ * 2. Business (Rp299k): Bahan baku, Kas rekening, Utang piutang terbuka.
+ *    Modal prive, Arus kas, Neraca SAK EMKM terkunci (Min: Pro).
+ * 3. Pro (Rp499k) & Trial Aktif: Seluruh 6 modul terbuka penuh.
+ */
+export function checkModuleAccess(
+    sub: CheckModuleAccessParams,
+    module: GatedModule
+): ModuleAccessResult {
+    const isProRequired =
+        module === 'capital_equity' ||
+        module === 'cash_flow_report' ||
+        module === 'balance_sheet'
+
+    const requiredPlan: 'business' | 'pro' = isProRequired ? 'pro' : 'business'
+
+    // Pastikan masa aktif langganan / trial masih valid
+    const active = hasActiveAccess({
+        status: (sub.status as SubscriptionStatus) || 'expired',
+        planCode: sub.planCode || null,
+        expiresAt: sub.expiresAt || null,
+        trialEndsAt: sub.trialEndsAt || null,
+    })
+
+    if (!active) {
+        return {
+            allowed: false,
+            requiredPlan,
+            reason:
+                sub.status === 'trial'
+                    ? 'Masa trial 7 hari telah berakhir. Silakan pilih paket langganan untuk mengakses fitur ini.'
+                    : 'Masa aktif langganan telah berakhir. Silakan perpanjang paket untuk mengakses fitur ini.',
+        }
+    }
+
+    // Selama masa trial 7 hari masih aktif, berikan akses penuh setara Pro
+    if (sub.status === 'trial') {
+        return { allowed: true, requiredPlan }
+    }
+
+    const tier = getSubscriptionPlanTier(sub)
+
+    if (tier === 'pro') {
+        return { allowed: true, requiredPlan }
+    }
+
+    if (tier === 'business') {
+        if (isProRequired) {
+            return {
+                allowed: false,
+                requiredPlan: 'pro',
+                reason: 'Modul ini eksklusif untuk paket Pro. Tingkatkan paket bisnis Anda untuk membuka akses.',
+            }
+        }
+        return { allowed: true, requiredPlan }
+    }
+
+    // tier === 'standard'
+    return {
+        allowed: false,
+        requiredPlan,
+        reason: isProRequired
+            ? 'Modul ini eksklusif untuk paket Pro. Tingkatkan paket bisnis Anda untuk membuka akses.'
+            : 'Modul ini tersedia mulai dari paket Business. Tingkatkan paket bisnis Anda untuk membuka akses.',
+    }
 }
 
 /**
@@ -54,12 +169,9 @@ export function canAccessAdvancedReports(
         }
     }
 
-    // During trial, no advanced features
+    // Selama masa trial 7 hari masih aktif, berikan akses penuh setara Pro
     if (subscription.status === 'trial') {
-        return {
-            allowed: false,
-            reason: 'Fitur analisis lanjutan hanya tersedia untuk paket berbayar. Upgrade sekarang!',
-        }
+        return { allowed: true }
     }
 
     // Prefer DB-sourced flag; fall back to plan code for backward compatibility
