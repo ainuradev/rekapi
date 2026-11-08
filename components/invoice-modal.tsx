@@ -48,30 +48,33 @@ export default function InvoiceModal({ isOpen, onClose, data }: InvoiceModalProp
     const changeAmount = data.change ?? (cashReceived !== undefined ? Math.max(0, cashReceived - data.total) : undefined)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-            <div className="relative w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-                {/* Header Modal */}
-                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+            <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-200 animate-in zoom-in-95 duration-150">
+                {/* Header Modal Pinned */}
+                <div className="shrink-0 flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 bg-slate-50/50">
                     <div>
-                        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                            <span>🧾 Struk &amp; Nota Transaksi</span>
+                        <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>Struk &amp; Nota Transaksi</span>
                             <span className="text-[10px] font-mono font-medium text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
                                 #{data.invoiceNumber}
                             </span>
                         </h2>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Pratinjau sebelum cetak thermal atau download invoice.</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">Pratinjau sebelum cetak thermal atau download invoice.</p>
                     </div>
 
                     <button
                         onClick={onClose}
-                        className="rounded-full w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
+                        className="rounded-full w-7 h-7 flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition cursor-pointer"
                     >
                         ✕
                     </button>
                 </div>
 
-                {/* Format Selector Bar */}
-                <div className="flex items-center justify-between px-6 py-2.5 bg-slate-100/70 border-b border-slate-200/60 text-xs">
+                {/* Format Selector Bar Pinned */}
+                <div className="shrink-0 flex flex-wrap items-center justify-between px-4 sm:px-6 py-2 bg-slate-100/70 border-b border-slate-200/60 text-xs gap-2">
                     <div className="flex items-center gap-1.5">
                         <span className="text-slate-500 font-medium text-[11px]">Format:</span>
                         <div className="inline-flex rounded-lg bg-white p-0.5 shadow-2xs border border-slate-200">
@@ -84,7 +87,7 @@ export default function InvoiceModal({ isOpen, onClose, data }: InvoiceModalProp
                                         : 'text-slate-600 hover:text-slate-900'
                                 }`}
                             >
-                                🖨️ Struk Thermal
+                                Struk Thermal
                             </button>
                             <button
                                 type="button"
@@ -95,7 +98,7 @@ export default function InvoiceModal({ isOpen, onClose, data }: InvoiceModalProp
                                         : 'text-slate-600 hover:text-slate-900'
                                 }`}
                             >
-                                📄 Invoice A4
+                                Invoice A4
                             </button>
                         </div>
                     </div>
@@ -384,25 +387,29 @@ export default function InvoiceModal({ isOpen, onClose, data }: InvoiceModalProp
                     </div>
                 </div>
 
-                {/* Footer Modal Action Buttons */}
-                <div className="flex items-center gap-2.5 border-t border-slate-200 px-6 py-3.5 bg-white">
+                {/* Footer Modal Action Buttons Pinned */}
+                <div className="shrink-0 flex items-center gap-2 border-t border-slate-200 px-4 sm:px-6 py-3 bg-slate-50">
                     <button
                         onClick={handlePrint}
-                        className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-700 active:scale-[0.99] transition cursor-pointer flex items-center justify-center gap-1.5"
+                        className="flex-1 rounded-xl bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 active:scale-[0.99] transition cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                        <span>🖨️</span>
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
                         <span>Cetak {printFormat === 'thermal' ? `Struk (${paperSize})` : 'Invoice'}</span>
                     </button>
                     <button
                         onClick={handleShare}
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                     >
-                        <span>📤</span>
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
                         <span className="hidden sm:inline">Bagikan</span>
                     </button>
                     <button
                         onClick={onClose}
-                        className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                        className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 transition cursor-pointer"
                     >
                         Selesai
                     </button>

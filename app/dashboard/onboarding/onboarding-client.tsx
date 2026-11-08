@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -55,7 +56,16 @@ export default function OnboardingClient({ userId, businessId, currentFullName, 
         <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
             <div className="w-full max-w-sm">
                 <div className="mb-8 text-center">
-                    <div className="text-4xl mb-3">⚡</div>
+                    <div className="flex justify-center mb-3">
+                        <Image
+                            src="/logo.png?v=2"
+                            alt="Logo Rekapi"
+                            width={48}
+                            height={48}
+                            className="w-12 h-12 object-contain"
+                            unoptimized
+                        />
+                    </div>
                     <h1 className="text-2xl font-bold text-gray-900">Selamat Datang!</h1>
                     <p className="mt-2 text-sm text-gray-600">
                         Satu langkah lagi — lengkapi info bisnis Anda.

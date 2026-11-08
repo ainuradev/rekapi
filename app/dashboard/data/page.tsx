@@ -204,8 +204,11 @@ export default async function DataHubPage() {
                     <span>•</span>
                     <span className="text-slate-500">{businessName}</span>
                     <span>•</span>
-                    <span className="font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md normal-case">
-                        🏢 {activeBranch ? `Cabang ${activeBranch.name}` : 'Semua Cabang (Konsolidasi)'}
+                    <span className="inline-flex items-center gap-1 font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md normal-case">
+                        <svg className="w-3.5 h-3.5 text-sky-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span>{activeBranch ? `Cabang ${activeBranch.name}` : 'Semua Cabang (Konsolidasi)'}</span>
                     </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">

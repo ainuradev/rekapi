@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import ProductTour from '@/components/product-tour'
 
 type NavItem = {
     href?: string
     label: string
     icon: React.ReactNode
+    tourId?: string
     children?: { href: string; label: string }[]
 }
 
@@ -70,9 +72,41 @@ const ProfilIcon = () => (
 )
 
 import { switchActiveBranch } from './branch-actions'
+import {
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    getLatestUserNotifications,
+    DashboardNotificationItem,
+} from './notification-actions'
+
+function formatRelativeTime(dateStr: string): string {
+    try {
+        const date = new Date(dateStr)
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffSec = Math.floor(diffMs / 1000)
+        const diffMin = Math.floor(diffSec / 60)
+        const diffHour = Math.floor(diffMin / 60)
+        const diffDay = Math.floor(diffHour / 24)
+
+        if (diffSec < 60) return 'Baru saja'
+        if (diffMin < 60) return `${diffMin} mnt lalu`
+        if (diffHour < 24) return `${diffHour} jam lalu`
+        if (diffDay === 1) return 'Kemarin'
+        if (diffDay < 7) return `${diffDay} hr lalu`
+
+        return date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+        })
+    } catch {
+        return '-'
+    }
+}
 
 interface DashboardNavProps {
     children?: React.ReactNode
+    userId?: string
     isOwner: boolean
     userName: string
     activeBranchId?: string
@@ -85,13 +119,15 @@ interface DashboardNavProps {
     subscriptionExpiresAt?: string | null
     daysRemaining?: number
     isExpired?: boolean
-    branchesList?: { id: string; name: string; address?: string | null }[]
+    branchesList?: { id: string; name: string; address?: string | null; code?: string | null; status?: string | null; is_primary?: boolean }[]
     maxBranches?: number
     isSuperAdminUser?: boolean
+    initialNotifications?: DashboardNotificationItem[]
 }
 
 export default function DashboardNav({
     children,
+    userId,
     isOwner,
     userName,
     activeBranchId = 'all',
@@ -107,6 +143,7 @@ export default function DashboardNav({
     branchesList = [],
     maxBranches = 5,
     isSuperAdminUser = false,
+    initialNotifications = [],
 }: DashboardNavProps) {
     const pathname = usePathname()
     const router = useRouter()
@@ -114,11 +151,12 @@ export default function DashboardNav({
 
     const OWNER_NAV: NavItem[] = [
         { href: '/dashboard', label: 'Dashboard', icon: <HomeIcon /> },
-        { href: '/dashboard/penjualan', label: 'Kasir', icon: <KasirIcon /> },
-        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', icon: <TransaksiIcon /> },
+        { href: '/dashboard/penjualan', label: 'Kasir', icon: <KasirIcon />, tourId: 'nav-kasir' },
+        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', icon: <TransaksiIcon />, tourId: 'nav-riwayat' },
         {
             label: 'Stok & Bahan',
             icon: <StokIcon />,
+            tourId: 'nav-stok',
             children: [
                 { href: '/dashboard/produk', label: 'Stok Produk' },
                 { href: '/dashboard/bahan-baku', label: 'Bahan Baku & Pembelian' },
@@ -128,6 +166,7 @@ export default function DashboardNav({
         {
             label: 'Keuangan',
             icon: <KeuanganIcon />,
+            tourId: 'nav-keuangan',
             children: [
                 { href: '/dashboard/keuangan', label: 'Ringkasan Keuangan' },
                 { href: '/dashboard/keuangan/laba-rugi', label: 'Laba Rugi' },
@@ -140,7 +179,7 @@ export default function DashboardNav({
             ],
         },
         { href: '/dashboard/pelanggan', label: 'Pelanggan', icon: <PelangganIcon /> },
-        { href: '/dashboard/cabang', label: 'Cabang', icon: <CabangIcon /> },
+        { href: '/dashboard/cabang', label: 'Cabang', icon: <CabangIcon />, tourId: 'nav-cabang-pegawai' },
         {
             label: 'Pengaturan',
             icon: <PengaturanIcon />,
@@ -154,9 +193,9 @@ export default function DashboardNav({
 
     const PEGAWAI_NAV: NavItem[] = [
         { href: '/dashboard', label: 'Dashboard', icon: <HomeIcon /> },
-        { href: '/dashboard/penjualan', label: 'Kasir', icon: <KasirIcon /> },
-        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', icon: <TransaksiIcon /> },
-        { href: '/dashboard/produk', label: 'Katalog Produk', icon: <StokIcon /> },
+        { href: '/dashboard/penjualan', label: 'Kasir', icon: <KasirIcon />, tourId: 'nav-kasir' },
+        { href: '/dashboard/penjualan/riwayat', label: 'Riwayat Transaksi', icon: <TransaksiIcon />, tourId: 'nav-riwayat' },
+        { href: '/dashboard/produk', label: 'Katalog Produk', icon: <StokIcon />, tourId: 'nav-stok' },
         { href: '/dashboard/profil', label: 'Profil Saya', icon: <PengaturanIcon /> },
     ]
 
@@ -196,6 +235,106 @@ export default function DashboardNav({
     const [branchPickerOpen, setBranchPickerOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const searchInputRef = useRef<HTMLInputElement>(null)
+
+    // Interactive Spotlight Product Tour State
+    const [tourOpen, setTourOpen] = useState(false)
+    const [tourStep, setTourStep] = useState(0)
+
+    const handleAutoOpenTour = useCallback(() => {
+        setTourStep(0)
+        setTourOpen(true)
+    }, [])
+
+    const handleStartTour = () => {
+        setUserMenuOpen(false)
+        setMobileDrawerOpen(false)
+        setNotifDropdownOpen(false)
+        setBranchPickerOpen(false)
+        setTourStep(0)
+        if (pathname !== '/dashboard') {
+            router.push('/dashboard')
+            window.setTimeout(() => {
+                setTourOpen(true)
+            }, 350)
+        } else {
+            setTourOpen(true)
+        }
+    }
+
+    // Notification Bell & Popover State
+    const [localReadIds, setLocalReadIds] = useState<string[]>([])
+    const [fetchedAdminNotifs, setFetchedAdminNotifs] = useState<DashboardNotificationItem[] | null>(null)
+    const [notifDropdownOpen, setNotifDropdownOpen] = useState(false)
+    const [markingAll, setMarkingAll] = useState(false)
+
+    const refreshNotifications = async () => {
+        try {
+            const res = await getLatestUserNotifications()
+            if (!res.error) {
+                setFetchedAdminNotifs(res.notifications)
+            }
+        } catch {
+            // Abaikan error jaringan sementara
+        }
+    }
+
+    useEffect(() => {
+        let active = true
+        getLatestUserNotifications()
+            .then((res) => {
+                if (active && !res.error) {
+                    setFetchedAdminNotifs(res.notifications)
+                }
+            })
+            .catch(() => {})
+
+        const handleWindowFocus = () => {
+            getLatestUserNotifications()
+                .then((res) => {
+                    if (active && !res.error) {
+                        setFetchedAdminNotifs(res.notifications)
+                    }
+                })
+                .catch(() => {})
+        }
+
+        window.addEventListener('focus', handleWindowFocus)
+        return () => {
+            active = false
+            window.removeEventListener('focus', handleWindowFocus)
+        }
+    }, [])
+
+    const systemAlerts = initialNotifications.filter((n) => n.source === 'system')
+    const adminBroadcasts = fetchedAdminNotifs ?? initialNotifications.filter((n) => n.source === 'admin')
+    const combinedNotifications = [...systemAlerts, ...adminBroadcasts]
+
+    const notifications = combinedNotifications.map((n) => ({
+        ...n,
+        is_read: n.is_read || localReadIds.includes(n.id),
+    }))
+    const unreadCount = notifications.filter((n) => !n.is_read).length
+
+    const handleNotificationClick = async (notif: DashboardNotificationItem) => {
+        if (!notif.is_read) {
+            setLocalReadIds((prev) => (prev.includes(notif.id) ? prev : [...prev, notif.id]))
+            await markNotificationAsRead(notif.id)
+        }
+        setNotifDropdownOpen(false)
+        if (notif.action_url) {
+            router.push(notif.action_url)
+        }
+    }
+
+    const handleMarkAllRead = async () => {
+        const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id)
+        if (unreadIds.length === 0) return
+
+        setLocalReadIds((prev) => Array.from(new Set([...prev, ...unreadIds])))
+        setMarkingAll(true)
+        await markAllNotificationsAsRead(unreadIds)
+        setMarkingAll(false)
+    }
 
     // Keyboard shortcut ⌘K or Ctrl+K to focus search
     useEffect(() => {
@@ -323,13 +462,13 @@ export default function DashboardNav({
 
                             if (hasChildren) {
                                 return (
-                                    <div key={item.label + idx} className="space-y-1">
+                                    <div key={item.label + idx} data-tour={item.tourId} className="space-y-1">
                                         <button
                                             type="button"
                                             onClick={() => toggleExpand(item.label)}
                                             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${isParentActive
-                                                    ? 'bg-[#0f4a33] text-white font-semibold'
-                                                    : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
+                                                ? 'bg-[#0f4a33] text-white font-semibold'
+                                                : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
@@ -358,8 +497,8 @@ export default function DashboardNav({
                                                             key={child.href}
                                                             href={child.href}
                                                             className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${childActive
-                                                                    ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
-                                                                    : 'text-[#84a595] hover:text-white hover:bg-white/5'
+                                                                ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
+                                                                : 'text-[#84a595] hover:text-white hover:bg-white/5'
                                                                 }`}
                                                         >
                                                             {child.label}
@@ -376,9 +515,10 @@ export default function DashboardNav({
                                 <Link
                                     key={item.href}
                                     href={item.href!}
+                                    data-tour={item.tourId}
                                     className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${isSelfActive
-                                            ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
-                                            : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
+                                        ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
+                                        : 'text-[#94b3a4] hover:text-white hover:bg-white/5'
                                         }`}
                                 >
                                     <span className={isSelfActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
@@ -475,7 +615,7 @@ export default function DashboardNav({
 
                         {/* Branch Selector Dropdown (Owner) or Static Badge (Pegawai) */}
                         {isOwner ? (
-                            <div className="relative min-w-0 max-w-full">
+                            <div data-tour="branch-selector" className="relative min-w-0 max-w-full">
                                 <button
                                     type="button"
                                     onClick={() => setBranchPickerOpen(!branchPickerOpen)}
@@ -521,23 +661,50 @@ export default function DashboardNav({
                                                     )}
                                                 </button>
 
-                                                {branchesList.map((b) => (
-                                                    <button
-                                                        key={b.id}
-                                                        type="button"
-                                                        onClick={() => handleBranchSelect(b.id)}
-                                                        className={`w-full text-left px-3 py-2 hover:bg-emerald-50/70 flex items-center justify-between text-xs transition cursor-pointer ${activeBranchId === b.id ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''
-                                                            }`}
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="font-semibold text-slate-800 truncate">{b.name}</p>
-                                                            {b.address && <p className="text-[10px] text-slate-400 truncate">{b.address}</p>}
-                                                        </div>
-                                                        {activeBranchId === b.id && (
-                                                            <span className="text-emerald-700 font-bold ml-2">✓</span>
-                                                        )}
-                                                    </button>
-                                                ))}
+                                                {branchesList.map((b, idx) => {
+                                                    const isPrimary = b.is_primary ?? (idx === 0 || b.code === 'PUSAT' || b.name.toLowerCase().includes('cabang utama') || b.name.toLowerCase().includes('pusat'))
+                                                    const isInactive = b.status && b.status !== 'active'
+                                                    return (
+                                                        <button
+                                                            key={b.id}
+                                                            type="button"
+                                                            disabled={Boolean(isInactive)}
+                                                            onClick={() => {
+                                                                if (isInactive) {
+                                                                    alert(`Cabang "${b.name}" sedang nonaktif. Aktifkan cabang terlebih dahulu di menu Cabang untuk menggunakannya.`)
+                                                                    return
+                                                                }
+                                                                handleBranchSelect(b.id)
+                                                            }}
+                                                            title={isInactive ? 'Cabang sedang nonaktif. Aktifkan di menu Cabang untuk menggunakannya.' : undefined}
+                                                            className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs transition ${
+                                                                isInactive
+                                                                    ? 'opacity-50 bg-slate-50/50 cursor-not-allowed'
+                                                                    : 'hover:bg-emerald-50/70 cursor-pointer'
+                                                            } ${activeBranchId === b.id ? 'bg-emerald-50/80 text-emerald-900 font-bold' : ''}`}
+                                                        >
+                                                            <div className="min-w-0 flex-1 pr-2">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <p className={`font-semibold truncate ${isInactive ? 'text-slate-400' : 'text-slate-800'}`}>{b.name}</p>
+                                                                    {isPrimary && (
+                                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200/80 px-1 py-0.2 rounded shrink-0">
+                                                                            Utama / Pusat
+                                                                        </span>
+                                                                    )}
+                                                                    {isInactive && (
+                                                                        <span className="text-[9px] font-medium text-rose-700 bg-rose-50 border border-rose-200/80 px-1 py-0.2 rounded shrink-0">
+                                                                            Nonaktif
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {b.address && <p className="text-[10px] text-slate-400 truncate">{b.address}</p>}
+                                                            </div>
+                                                            {activeBranchId === b.id && (
+                                                                <span className="text-emerald-700 font-bold ml-1 shrink-0">✓</span>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })}
 
                                                 {branchesList.length === 0 && (
                                                     <div className="px-3 py-2 text-xs text-slate-500">Cabang Utama</div>
@@ -599,18 +766,147 @@ export default function DashboardNav({
 
                     {/* Right: Notifications & User Profile */}
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-                        {/* Notification Bell */}
+                        {/* Notification Bell Dropdown */}
                         <div className="relative">
-                            <Link
-                                href={isOwner ? "/dashboard/keuangan" : "/dashboard/produk"}
-                                title="Notifikasi"
-                                className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition block relative cursor-pointer"
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const nextOpen = !notifDropdownOpen
+                                    setNotifDropdownOpen(nextOpen)
+                                    if (nextOpen) {
+                                        refreshNotifications()
+                                    }
+                                }}
+                                title="Notifikasi & Pengumuman"
+                                className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition block relative cursor-pointer focus:outline-none"
+                                aria-label="Notifikasi & Pengumuman"
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
-                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                            </Link>
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 ring-2 ring-white"></span>
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Dropdown Popover (Responsive Mobile 360px & Desktop) */}
+                            {notifDropdownOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setNotifDropdownOpen(false)}
+                                    />
+                                    <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 sm:max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[85vh]">
+                                        {/* Header */}
+                                        <div className="shrink-0 px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-xs sm:text-sm text-slate-900">
+                                                    Notifikasi & Pengumuman
+                                                </h3>
+                                                {unreadCount > 0 && (
+                                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                        {unreadCount} baru
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleMarkAllRead}
+                                                    disabled={markingAll}
+                                                    className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 transition cursor-pointer disabled:opacity-50"
+                                                >
+                                                    {markingAll ? 'Memproses...' : 'Tandai Semua Dibaca'}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Body Notification List */}
+                                        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 min-h-0">
+                                            {notifications.length === 0 ? (
+                                                <div className="p-8 text-center">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-slate-700">Tidak ada notifikasi baru</p>
+                                                    <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                                        Pengumuman resmi dari Admin Rekapi dan notifikasi sistem toko akan muncul di sini.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                notifications.map((item) => {
+                                                    const isAdmin = item.source === 'admin'
+                                                    return (
+                                                        <div
+                                                            key={item.id}
+                                                            onClick={() => handleNotificationClick(item)}
+                                                            className={`p-3.5 transition cursor-pointer flex items-start gap-3 ${
+                                                                item.is_read
+                                                                    ? 'bg-white hover:bg-slate-50/80 text-slate-600'
+                                                                    : 'bg-emerald-50/30 hover:bg-emerald-50/60 text-slate-900 font-medium'
+                                                            }`}
+                                                        >
+                                                            {/* Status Unread Dot */}
+                                                            <div className="pt-1 shrink-0">
+                                                                {!item.is_read ? (
+                                                                    <span className="block w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-emerald-200"></span>
+                                                                ) : (
+                                                                    <span className="block w-2 h-2 rounded-full bg-slate-300"></span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Content */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                                    <span
+                                                                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                                                            isAdmin
+                                                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                                                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                                                                        }`}
+                                                                    >
+                                                                        {isAdmin ? 'ADMIN REKAPI' : 'SISTEM TOKO'}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-normal shrink-0">
+                                                                        {formatRelativeTime(item.created_at)}
+                                                                    </span>
+                                                                </div>
+
+                                                                <h4
+                                                                    className={`text-xs leading-snug line-clamp-1 ${
+                                                                        item.is_read ? 'font-medium text-slate-800' : 'font-bold text-slate-900'
+                                                                    }`}
+                                                                >
+                                                                    {item.title}
+                                                                </h4>
+
+                                                                <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                                                                    {item.message}
+                                                                </p>
+
+                                                                {item.action_url && (
+                                                                    <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                                                                        <span>Buka Tautan</span>
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                                        </svg>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* User profile dropdown */}
@@ -655,6 +951,16 @@ export default function DashboardNav({
                                                 <PengaturanIcon />
                                                 <span>Pengaturan Profil</span>
                                             </Link>
+                                            <button
+                                                type="button"
+                                                onClick={handleStartTour}
+                                                className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700 transition cursor-pointer text-left"
+                                            >
+                                                <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                </svg>
+                                                <span>Panduan Aplikasi</span>
+                                            </button>
                                             {isOwner && (
                                                 <Link
                                                     href="/dashboard/subscription"
@@ -750,8 +1056,8 @@ export default function DashboardNav({
                         <Link
                             href="/dashboard/keuangan"
                             className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/keuangan')
-                                    ? 'text-emerald-700 font-bold'
-                                    : 'text-slate-400 hover:text-slate-700'
+                                ? 'text-emerald-700 font-bold'
+                                : 'text-slate-400 hover:text-slate-700'
                                 }`}
                         >
                             <KeuanganIcon />
@@ -761,8 +1067,8 @@ export default function DashboardNav({
                         <Link
                             href="/dashboard/produk"
                             className={`flex flex-col items-center gap-1 py-1 px-3 text-[10px] transition ${pathname.startsWith('/dashboard/produk')
-                                    ? 'text-emerald-700 font-bold'
-                                    : 'text-slate-400 hover:text-slate-700'
+                                ? 'text-emerald-700 font-bold'
+                                : 'text-slate-400 hover:text-slate-700'
                                 }`}
                         >
                             <StokIcon />
@@ -844,13 +1150,13 @@ export default function DashboardNav({
 
                                 if (hasChildren) {
                                     return (
-                                        <div key={idx} className="space-y-1">
+                                        <div key={idx} data-tour={item.tourId} className="space-y-1">
                                             <button
                                                 type="button"
                                                 onClick={() => toggleExpand(item.label)}
                                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${isParentActive
-                                                        ? 'bg-[#0f4a33] text-white font-semibold'
-                                                        : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
+                                                    ? 'bg-[#0f4a33] text-white font-semibold'
+                                                    : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-3">
@@ -880,8 +1186,8 @@ export default function DashboardNav({
                                                                 href={child.href}
                                                                 onClick={() => setMobileDrawerOpen(false)}
                                                                 className={`block px-3 py-1.5 rounded-lg text-xs font-medium transition ${isChildActive
-                                                                        ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
-                                                                        : 'text-[#84a595] hover:bg-white/5 hover:text-white'
+                                                                    ? 'bg-emerald-600/30 text-emerald-300 font-semibold'
+                                                                    : 'text-[#84a595] hover:bg-white/5 hover:text-white'
                                                                     }`}
                                                             >
                                                                 {child.label}
@@ -905,10 +1211,11 @@ export default function DashboardNav({
                                     <Link
                                         key={idx}
                                         href={item.href || '#'}
+                                        data-tour={item.tourId}
                                         onClick={() => setMobileDrawerOpen(false)}
                                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${isActive
-                                                ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
-                                                : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
+                                            ? 'bg-[#0f4a33] text-white font-semibold shadow-xs'
+                                            : 'text-[#94b3a4] hover:bg-white/5 hover:text-white'
                                             }`}
                                     >
                                         <span className={isActive ? 'text-emerald-400' : 'text-[#94b3a4]'}>
@@ -922,12 +1229,26 @@ export default function DashboardNav({
 
                         {/* Footer cards in mobile drawer */}
                         <div className="p-3 border-t border-[#0e442f] bg-[#041f15] space-y-2">
+                            <button
+                                type="button"
+                                onClick={handleStartTour}
+                                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/25 text-xs font-semibold transition cursor-pointer"
+                            >
+                                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                                <span>Panduan Aplikasi</span>
+                            </button>
+
                             <div className="p-2.5 rounded-xl bg-[#06281b] border border-[#0e442f]">
                                 <div className="flex items-center justify-between mb-1">
                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
                                         {planName}
                                     </span>
-                                    <span className="text-[10px] text-emerald-400 font-medium">🟢 Online</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        <span>Online</span>
+                                    </span>
                                 </div>
                                 <p className="text-[11px] text-white font-medium truncate">{activeBranchDisplay}</p>
                             </div>
@@ -953,6 +1274,19 @@ export default function DashboardNav({
                     </div>
                 </div>
             )}
+
+            {/* ── Interactive Spotlight Product Tour ── */}
+            <ProductTour
+                userId={userId}
+                isOwner={isOwner}
+                isOpen={tourOpen}
+                currentStep={tourStep}
+                onStepChange={setTourStep}
+                onClose={() => setTourOpen(false)}
+                onOpen={handleAutoOpenTour}
+                onToggleMobileDrawer={setMobileDrawerOpen}
+                isDashboardHome={pathname === '/dashboard'}
+            />
         </>
     )
 }

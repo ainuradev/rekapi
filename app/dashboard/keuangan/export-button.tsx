@@ -345,18 +345,18 @@ export default function ExportButton({
                 ? topExpenses.map((e) => `• ${e.categoryLabel}: ${fmt(e.amount)} ${e.description ? `(${e.description})` : ''}`).join('\n')
                 : '• Tidak ada pengeluaran operasional'
 
-        const text = `*📊 LAPORAN KEUANGAN REKAPI*
-🏪 Bisnis: *${businessName}*
-🏢 Cabang: *${branchLabel}*
-📅 Periode: *${periodLabel}* (${dateRangeStr})
+        const text = `*LAPORAN KEUANGAN REKAPI*
+Bisnis: *${businessName}*
+Cabang: *${branchLabel}*
+Periode: *${periodLabel}* (${dateRangeStr})
 ----------------------------------------
-💰 *Pendapatan Penjualan:* ${fmt(summary.totalRevenue)}
-📦 *HPP (Bahan Terjual):* ${fmt(summary.totalHPP)}
-📈 *Margin Kotor:* ${fmt(summary.grossProfit)}
-🛒 *Belanja Bahan Baku:* ${fmt(summary.totalPurchases)}
-💸 *Pengeluaran Operasional:* ${fmt(summary.totalExpenses)}
+• *Pendapatan Penjualan:* ${fmt(summary.totalRevenue)}
+• *HPP (Bahan Terjual):* ${fmt(summary.totalHPP)}
+• *Margin Kotor:* ${fmt(summary.grossProfit)}
+• *Belanja Bahan Baku:* ${fmt(summary.totalPurchases)}
+• *Pengeluaran Operasional:* ${fmt(summary.totalExpenses)}
 ----------------------------------------
-${summary.netProfit >= 0 ? '🟢' : '🔴'} *LABA BERSIH: ${fmt(summary.netProfit)}*
+*LABA BERSIH: ${fmt(summary.netProfit)}* ${summary.netProfit >= 0 ? '(Untung)' : '(Rugi)'}
 
 *Rincian Pengeluaran Teratas:*
 ${expenseLines}
@@ -381,28 +381,38 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
                 disabled={!canExport}
                 className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-2xs transition ${
                     canExport
-                        ? 'border-gray-300 bg-white text-gray-700 hover:border-black hover:text-gray-900 active:bg-gray-50 cursor-pointer'
-                        : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        ? 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:text-slate-900 active:bg-slate-50 cursor-pointer'
+                        : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}
                 title={canExport ? 'Export laporan keuangan ke Excel, PDF, atau salin ke WhatsApp' : upgradeMessage}
             >
-                <span className="text-sm">📥</span>
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
                 <span>Export Laporan</span>
-                {canExport && <span className="text-[10px] text-gray-400">▼</span>}
-                {!canExport && <span className="text-[10px]">🔒</span>}
+                {canExport && <span className="text-[10px] text-slate-400">▼</span>}
+                {!canExport && (
+                    <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                )}
             </button>
 
             {/* Upgrade Notice */}
             {!canExport && open && (
-                <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-                    <div className="flex items-start gap-2">
-                        <span className="text-xl">🔒</span>
+                <div className="absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="flex items-start gap-2.5">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 shrink-0">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </span>
                         <div>
                             <p className="text-xs font-bold text-amber-900 mb-1">Fitur Premium</p>
                             <p className="text-xs text-amber-800 mb-3">{upgradeMessage}</p>
                             <a
                                 href="/dashboard/subscription"
-                                className="block w-full rounded-lg bg-blue-600 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-blue-700 transition"
+                                className="block w-full rounded-lg bg-emerald-700 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-800 transition"
                             >
                                 Upgrade Sekarang
                             </a>
@@ -413,10 +423,10 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
 
             {/* Dropdown Menu */}
             {canExport && open && (
-                <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-                    <div className="px-3 py-2 border-b border-gray-100">
-                        <p className="text-xs font-bold text-gray-900">Format Export Laporan</p>
-                        <p className="text-[10px] text-gray-500">
+                <div className="absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-2 border-b border-slate-100">
+                        <p className="text-xs font-bold text-slate-900">Format Export Laporan</p>
+                        <p className="text-[10px] text-slate-500">
                             {branchLabel} — {periodLabel}
                         </p>
                     </div>
@@ -426,16 +436,16 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
                         <button
                             type="button"
                             onClick={handleExportXLS}
-                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer group"
+                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer group"
                         >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-sm font-bold group-hover:bg-emerald-200">
-                                📊
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-xs font-bold group-hover:bg-emerald-200">
+                                XLS
                             </span>
                             <div>
-                                <span className="block font-bold text-gray-900 group-hover:text-emerald-900">
+                                <span className="block font-bold text-slate-900 group-hover:text-emerald-900">
                                     Excel Spreadsheet (.xls)
                                 </span>
-                                <span className="block text-[10px] text-gray-500 group-hover:text-emerald-700">
+                                <span className="block text-[10px] text-slate-500 group-hover:text-emerald-700">
                                     Tabel warna rapi, kalkulasi laba rugi & rincian
                                 </span>
                             </div>
@@ -445,16 +455,16 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
                         <button
                             type="button"
                             onClick={handleExportCSV}
-                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-blue-50 hover:text-blue-900 cursor-pointer group"
+                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-blue-50 hover:text-blue-900 cursor-pointer group"
                         >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 text-sm font-bold group-hover:bg-blue-200">
-                                📑
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 text-xs font-bold group-hover:bg-blue-200">
+                                CSV
                             </span>
                             <div>
-                                <span className="block font-bold text-gray-900 group-hover:text-blue-900">
+                                <span className="block font-bold text-slate-900 group-hover:text-blue-900">
                                     File CSV Universal (.csv)
                                 </span>
-                                <span className="block text-[10px] text-gray-500 group-hover:text-blue-700">
+                                <span className="block text-[10px] text-slate-500 group-hover:text-blue-700">
                                     Format data standar Google Sheets & Excel
                                 </span>
                             </div>
@@ -464,16 +474,16 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
                         <button
                             type="button"
                             onClick={handlePrintPDF}
-                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-purple-50 hover:text-purple-900 cursor-pointer group"
+                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-purple-50 hover:text-purple-900 cursor-pointer group"
                         >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700 text-sm font-bold group-hover:bg-purple-200">
-                                🖨️
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700 text-xs font-bold group-hover:bg-purple-200">
+                                PDF
                             </span>
                             <div>
-                                <span className="block font-bold text-gray-900 group-hover:text-purple-900">
+                                <span className="block font-bold text-slate-900 group-hover:text-purple-900">
                                     Cetak / Simpan PDF
                                 </span>
-                                <span className="block text-[10px] text-gray-500 group-hover:text-purple-700">
+                                <span className="block text-[10px] text-slate-500 group-hover:text-purple-700">
                                     Cetak dokumen atau simpan file PDF
                                 </span>
                             </div>
@@ -483,16 +493,16 @@ _Laporan digenerate otomatis via Rekapi pada ${new Date().toLocaleDateString('id
                         <button
                             type="button"
                             onClick={handleCopyWhatsApp}
-                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer group"
+                            className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-emerald-50 hover:text-emerald-900 cursor-pointer group"
                         >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-sm font-bold group-hover:bg-emerald-200">
-                                📋
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-xs font-bold group-hover:bg-emerald-200">
+                                WA
                             </span>
                             <div>
-                                <span className="block font-bold text-gray-900 group-hover:text-emerald-900">
+                                <span className="block font-bold text-slate-900 group-hover:text-emerald-900">
                                     Salin Rekap WhatsApp
                                 </span>
-                                <span className="block text-[10px] text-gray-500 group-hover:text-emerald-700">
+                                <span className="block text-[10px] text-slate-500 group-hover:text-emerald-700">
                                     Format teks siap bagikan ke chat WA / rekan bisnis
                                 </span>
                             </div>

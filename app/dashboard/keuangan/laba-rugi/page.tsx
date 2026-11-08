@@ -10,17 +10,17 @@ function fmt(n: number) {
     return 'Rp' + Math.round(n).toLocaleString('id-ID')
 }
 
-const CATEGORY_LABEL: Record<string, { label: string; icon: string }> = {
-    gaji: { label: 'Penggajian Karyawan', icon: '👤' },
-    listrik: { label: 'Listrik & Utilitas', icon: '⚡' },
-    air: { label: 'Air / PDAM', icon: '💧' },
-    sewa: { label: 'Sewa Tempat & Bangunan', icon: '🏠' },
-    gas: { label: 'Gas Operasional', icon: '🔥' },
-    transportasi: { label: 'BBM & Transportasi', icon: '🚗' },
-    marketing: { label: 'Promosi & Pemasaran', icon: '📢' },
-    packaging: { label: 'Kemasan & Plastik', icon: '📦' },
-    peralatan: { label: 'Peralatan & Perlengkapan', icon: '🔧' },
-    lainnya: { label: 'Biaya Lain-Lain', icon: '🗂️' },
+const CATEGORY_LABEL: Record<string, { label: string }> = {
+    gaji: { label: 'Penggajian Karyawan' },
+    listrik: { label: 'Listrik & Utilitas' },
+    air: { label: 'Air / PDAM' },
+    sewa: { label: 'Sewa Tempat & Bangunan' },
+    gas: { label: 'Gas Operasional' },
+    transportasi: { label: 'BBM & Transportasi' },
+    marketing: { label: 'Promosi & Pemasaran' },
+    packaging: { label: 'Kemasan & Plastik' },
+    peralatan: { label: 'Peralatan & Perlengkapan' },
+    lainnya: { label: 'Biaya Lain-Lain' },
 }
 
 export default async function LabaRugiPage({
@@ -124,13 +124,26 @@ export default async function LabaRugiPage({
     const expenseBreakdown: Record<string, number> = {}
     let totalExpenses = 0
     let equipmentCapex = 0
+    let wasteLossExpenses = 0
+
     for (const exp of expensesRaw ?? []) {
         const cat = exp.category || 'lainnya'
         const amt = Number(exp.amount || 0)
         if (cat === 'peralatan') {
             equipmentCapex += amt
         } else {
-            expenseBreakdown[cat] = (expenseBreakdown[cat] || 0) + amt
+            const isWaste = (exp as unknown as { is_non_cash?: boolean }).is_non_cash ||
+                Boolean(exp.description && (
+                    exp.description.includes('[WASTE') ||
+                    exp.description.includes('[RUSAK') ||
+                    exp.description.includes('[HILANG')
+                ))
+
+            if (isWaste) {
+                wasteLossExpenses += amt
+            } else {
+                expenseBreakdown[cat] = (expenseBreakdown[cat] || 0) + amt
+            }
             totalExpenses += amt
         }
     }
@@ -146,8 +159,8 @@ export default async function LabaRugiPage({
     const dateRangeStr = isCustom
         ? (dateFrom === dateTo ? formatIndonesianDate(dateFrom) : `${formatIndonesianDate(dateFrom)} – ${formatIndonesianDate(dateTo)}`)
         : period === 'today'
-        ? formatIndonesianDate(dateFrom)
-        : `${formatIndonesianDate(dateFrom)} – ${formatIndonesianDate(dateTo)}`
+            ? formatIndonesianDate(dateFrom)
+            : `${formatIndonesianDate(dateFrom)} – ${formatIndonesianDate(dateTo)}`
 
     return (
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
@@ -189,11 +202,10 @@ export default async function LabaRugiPage({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border tabular-nums ${
-                            netProfit >= 0
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border tabular-nums ${netProfit >= 0
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
+                            }`}>
                             {netProfit >= 0 ? `Laba Bersih: ${fmt(netProfit)}` : `Rugi Bersih: ${fmt(Math.abs(netProfit))}`}
                         </span>
                     </div>
@@ -251,13 +263,27 @@ export default async function LabaRugiPage({
                         </div>
 
                         <div className="pt-3 pl-4 space-y-2.5 text-xs sm:text-sm text-slate-600">
+                            {/* Rincian Khusus: Kerugian Persediaan & Waste (Beban Non-Kas) */}
+                            {wasteLossExpenses > 0 && (
+                                <div className="flex items-center justify-between text-amber-900 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80">
+                                    <div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-xs sm:text-sm text-amber-950">Kerugian Persediaan & Waste</span>
+                                            <span className="text-[10px] bg-amber-200/70 text-amber-900 px-1.5 py-0.5 rounded font-semibold">Beban Non-Kas</span>
+                                        </div>
+                                        <p className="text-[10px] sm:text-xs text-amber-700">Bahan baku & produk rusak, kadaluarsa, atau hilang selisih opname</p>
+                                    </div>
+                                    <span className="font-bold text-xs sm:text-sm text-amber-950 tabular-nums">{fmt(wasteLossExpenses)}</span>
+                                </div>
+                            )}
+
                             {Object.entries(CATEGORY_LABEL).map(([catKey, catInfo]) => {
                                 const amt = expenseBreakdown[catKey] || 0
                                 if (amt === 0) return null
                                 return (
                                     <div key={catKey} className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <span>{catInfo.icon}</span>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
                                             <span>{catInfo.label}</span>
                                         </div>
                                         <span className="font-semibold text-slate-800 tabular-nums">{fmt(amt)}</span>
@@ -280,7 +306,10 @@ export default async function LabaRugiPage({
                             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
                                 <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-slate-900">
                                     <div className="flex items-center gap-1.5">
-                                        <span>🔧</span>
+                                        <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
                                         <span>Belanja Modal Peralatan (Aset Tetap / CapEx)</span>
                                     </div>
                                     <span className="font-mono tabular-nums">{fmt(equipmentCapex)}</span>

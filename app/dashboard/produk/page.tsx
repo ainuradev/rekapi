@@ -235,7 +235,10 @@ export default async function ProdukPage({
             {!hasStockColumn && isOwner && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs">
                     <div className="flex items-center gap-2 font-bold text-amber-900">
-                        <span className="text-base">⚠️</span> Migrasi Stok Database Belum Dijalankan
+                        <svg className="w-4 h-4 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Migrasi Stok Database Belum Dijalankan</span>
                     </div>
                     <p className="mt-1 text-xs text-amber-800 leading-relaxed">
                         Kolom <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold">stock</code> belum ada di database Supabase Anda. Semua produk tetap tampil dan bisa ditambahkan, namun fitur stok otomatis baru akan aktif setelah Anda mengeksekusi file <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-bold">supabase/migrations/0008_product_stock.sql</code> di Supabase SQL Editor.

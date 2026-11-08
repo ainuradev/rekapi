@@ -69,12 +69,13 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
     const [openPayRecModal, setOpenPayRecModal] = useState<ReceivableRecord | null>(null)
 
     // Form states - Add Debt
+    const defaultBranchId = activeBranchId !== 'all' ? activeBranchId : (branches[0]?.id || '')
     const [debtTitle, setDebtTitle] = useState('')
     const [debtCreditor, setDebtCreditor] = useState('')
     const [debtTotal, setDebtTotal] = useState('')
     const [debtDueDate, setDebtDueDate] = useState('')
     const [debtNotes, setDebtNotes] = useState('')
-    const [debtBranchId, setDebtBranchId] = useState(activeBranchId !== 'all' ? activeBranchId : '')
+    const [debtBranchId, setDebtBranchId] = useState(defaultBranchId)
 
     // Form states - Pay Debt
     const [payDebtAmt, setPayDebtAmt] = useState('')
@@ -87,7 +88,7 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
     const [recTotal, setRecTotal] = useState('')
     const [recDueDate, setRecDueDate] = useState('')
     const [recNotes, setRecNotes] = useState('')
-    const [recBranchId, setRecBranchId] = useState(activeBranchId !== 'all' ? activeBranchId : '')
+    const [recBranchId, setRecBranchId] = useState(defaultBranchId)
 
     // Form states - Pay Receivable
     const [payRecAmt, setPayRecAmt] = useState('')
@@ -129,7 +130,7 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
                 setDebtTotal('')
                 setDebtDueDate('')
                 setDebtNotes('')
-                setDebtBranchId(activeBranchId !== 'all' ? activeBranchId : '')
+                setDebtBranchId(defaultBranchId)
             }
         })
     }
@@ -194,7 +195,7 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
                 setRecTotal('')
                 setRecDueDate('')
                 setRecNotes('')
-                setRecBranchId(activeBranchId !== 'all' ? activeBranchId : '')
+                setRecBranchId(defaultBranchId)
             }
         })
     }
@@ -495,14 +496,26 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
 
             {/* Modal Tambah Utang */}
             {openAddDebtModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Catat Utang Usaha Baru</h3>
-                            <button onClick={() => setOpenAddDebtModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Catat Utang Usaha Baru</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenAddDebtModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleAddDebt} className="space-y-4">
+                        <form onSubmit={handleAddDebt} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
                             {branches.length > 0 && (
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi / Cabang Terkait</label>
@@ -580,18 +593,21 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
                                 />
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            </div>
+
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenAddDebtModal(false)}
-                                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition disabled:opacity-50"
+                                    className="rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-rose-700 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Menyimpan...' : 'Simpan Utang'}
                                 </button>
@@ -603,14 +619,26 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
 
             {/* Modal Bayar Utang */}
             {openPayDebtModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Bayar / Cicil Utang</h3>
-                            <button onClick={() => setOpenPayDebtModal(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Bayar / Cicil Utang</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenPayDebtModal(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handlePayDebt} className="space-y-4">
+                        <form onSubmit={handlePayDebt} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
                             <div className="rounded-xl bg-slate-50 p-3 text-xs">
                                 <p className="font-bold text-slate-900">{openPayDebtModal.title}</p>
                                 <p className="text-slate-500">Kreditur: {openPayDebtModal.creditor_name}</p>
@@ -658,18 +686,21 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
                                 />
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            </div>
+
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenPayDebtModal(null)}
-                                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Memproses...' : 'Konfirmasi Bayar'}
                                 </button>
@@ -681,14 +712,26 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
 
             {/* Modal Tambah Piutang */}
             {openAddRecModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Catat Piutang Usaha Baru</h3>
-                            <button onClick={() => setOpenAddRecModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Catat Piutang Usaha Baru</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenAddRecModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleAddReceivable} className="space-y-4">
+                        <form onSubmit={handleAddReceivable} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
                             {branches.length > 0 && (
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi / Cabang Terkait</label>
@@ -766,18 +809,21 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
                                 />
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            </div>
+
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenAddRecModal(false)}
-                                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 transition disabled:opacity-50"
+                                    className="rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-amber-700 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Menyimpan...' : 'Simpan Piutang'}
                                 </button>
@@ -789,73 +835,87 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
 
             {/* Modal Terima Bayar Piutang */}
             {openPayRecModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Terima Pembayaran Piutang</h3>
-                            <button onClick={() => setOpenPayRecModal(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Terima Pembayaran Piutang</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenPayRecModal(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handlePayReceivable} className="space-y-4">
-                            <div className="rounded-xl bg-slate-50 p-3 text-xs">
-                                <p className="font-bold text-slate-900">{openPayRecModal.title}</p>
-                                <p className="text-slate-500">Pelanggan: {openPayRecModal.debtor_name}</p>
-                                <p className="mt-1 font-bold text-amber-600">
-                                    Sisa Tagihan: {fmt(Number(openPayRecModal.total_amount || 0) - Number(openPayRecModal.paid_amount || 0))}
-                                </p>
+                        <form onSubmit={handlePayReceivable} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                                <div className="rounded-lg bg-slate-50 p-3 text-xs border border-slate-200">
+                                    <p className="font-bold text-slate-900">{openPayRecModal.title}</p>
+                                    <p className="text-slate-500">Pelanggan: {openPayRecModal.debtor_name}</p>
+                                    <p className="mt-1 font-bold text-amber-600 font-mono">
+                                        Sisa Tagihan: {fmt(Number(openPayRecModal.total_amount || 0) - Number(openPayRecModal.paid_amount || 0))}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal Diterima (Rp)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        required
+                                        value={payRecAmt}
+                                        onChange={(e) => setPayRecAmt(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Masuk ke Akun (Kas / Rekening Bank)</label>
+                                    <select
+                                        value={payRecAccId}
+                                        onChange={(e) => setPayRecAccId(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none bg-white cursor-pointer"
+                                    >
+                                        {accounts.map((a) => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.name} (Saldo: {fmt(a.current_balance)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="mt-1 text-[11px] text-slate-400">Saldo akun ini akan otomatis bertambah saat pelunasan diterima.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Keterangan (Opsional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Diterima tunai di kasir / transfer bank"
+                                        value={payRecNotes}
+                                        onChange={(e) => setPayRecNotes(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal Diterima (Rp)</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    required
-                                    value={payRecAmt}
-                                    onChange={(e) => setPayRecAmt(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Masuk ke Akun (Kas / Rekening Bank)</label>
-                                <select
-                                    value={payRecAccId}
-                                    onChange={(e) => setPayRecAccId(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none bg-white cursor-pointer"
-                                >
-                                    {accounts.map((a) => (
-                                        <option key={a.id} value={a.id}>
-                                            {a.name} (Saldo: {fmt(a.current_balance)})
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1 text-[11px] text-slate-400">Saldo akun ini akan otomatis bertambah saat pelunasan diterima.</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Keterangan (Opsional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Diterima tunai di kasir / transfer bank"
-                                    value={payRecNotes}
-                                    onChange={(e) => setPayRecNotes(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenPayRecModal(null)}
-                                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Memproses...' : 'Konfirmasi Penerimaan'}
                                 </button>

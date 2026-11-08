@@ -298,179 +298,200 @@ export default function EditSaleModal({
         : error || (!liveStockCheck.ok ? liveStockCheck.error : null)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl">
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-gray-900">Edit Transaksi</h2>
-                    <button onClick={onClose} className="text-2xl leading-none text-gray-400 hover:text-gray-600">
-                        &times;
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px] animate-in fade-in duration-150">
+            <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                {/* Header Pinned */}
+                <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900">Edit Transaksi</h2>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-base font-bold cursor-pointer">
+                        ✕
                     </button>
                 </div>
 
-                {isMultiInstallmentLocked && (
-                    <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
-                        <p className="font-bold flex items-center gap-1.5">
-                            <span>🔒</span> Transaksi Terkunci dari Pengeditan
-                        </p>
-                        <p className="mt-1 text-slate-600">
-                            Transaksi ini memiliki beberapa catatan pembayaran cicilan. Sesuai kebijakan backend 0036, silakan batalkan transaksi dengan tombol <strong>Void</strong> lalu buat transaksi baru.
-                        </p>
+                {/* Body Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 text-xs">
+                    {isMultiInstallmentLocked && (
+                        <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
+                            <p className="font-bold flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                <span>Transaksi Terkunci dari Pengeditan</span>
+                            </p>
+                            <p className="mt-1 text-slate-600 leading-relaxed">
+                                Transaksi ini memiliki beberapa catatan pembayaran cicilan. Sesuai kebijakan backend 0036, silakan batalkan transaksi dengan tombol <strong>Void</strong> lalu buat transaksi baru.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-2.5">
+                        {items.map((item) => {
+                            const currentStock = stockByProductId.get(item.product_id)?.currentStock ?? 0
+                            const maxAvailable = getMaxAvailableForProduct(item.product_id)
+                            const isOverStock = item.quantity > maxAvailable || item.quantity <= 0
+
+                            return (
+                                <div
+                                    key={item.product_id}
+                                    className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition ${
+                                        isOverStock
+                                            ? 'border-red-300 bg-red-50/60'
+                                            : 'border-slate-200 bg-slate-50/60'
+                                    }`}
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <span className="block truncate text-xs font-semibold text-slate-900">{item.name}</span>
+                                        <div className="text-[11px] text-slate-500">
+                                            @Rp {item.price.toLocaleString('id-ID')} / {item.unit || 'pcs'}
+                                        </div>
+                                        <div
+                                            className={`mt-0.5 text-[10px] font-medium ${
+                                                isOverStock ? 'text-red-600 font-semibold' : 'text-emerald-700'
+                                            }`}
+                                        >
+                                            Maks. tersedia: {formatStockQuantity(maxAvailable)} {item.unit || 'pcs'} (sisa cabang: {formatStockQuantity(currentStock)})
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => changeQty(item.product_id, -1)}
+                                            className="h-7 w-7 rounded-lg border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                        >
+                                            -
+                                        </button>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={maxAvailable}
+                                            step="any"
+                                            value={item.quantity === 0 ? '' : item.quantity}
+                                            onChange={(e) => setDirectQty(item.product_id, e.target.value)}
+                                            aria-label={`Kuantitas ${item.name}`}
+                                            className={`h-7 w-14 rounded-lg border bg-white px-1 text-center text-xs font-bold text-slate-900 focus:outline-none ${
+                                                isOverStock
+                                                    ? 'border-red-400 text-red-700 focus:border-red-600'
+                                                    : 'border-slate-300 focus:border-emerald-600'
+                                            }`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => changeQty(item.product_id, 1)}
+                                            className={`h-7 w-7 rounded-lg border bg-white text-sm font-bold transition cursor-pointer ${
+                                                item.quantity >= maxAvailable
+                                                    ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                                                    : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                                            }`}
+                                            title={
+                                                item.quantity >= maxAvailable
+                                                    ? `Stok tersedia maksimal: ${formatStockQuantity(maxAvailable)}`
+                                                    : 'Tambah kuantitas'
+                                            }
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
-                )}
 
-                <div className="space-y-3">
-                    {items.map((item) => {
-                        const currentStock = stockByProductId.get(item.product_id)?.currentStock ?? 0
-                        const maxAvailable = getMaxAvailableForProduct(item.product_id)
-                        const isOverStock = item.quantity > maxAvailable || item.quantity <= 0
-
-                        return (
-                            <div
-                                key={item.product_id}
-                                className={`flex items-center justify-between gap-2 rounded-lg border p-3 transition ${
-                                    isOverStock
-                                        ? 'border-red-300 bg-red-50/60'
-                                        : 'border-gray-100 bg-gray-50'
-                                }`}
-                            >
-                                <div className="min-w-0 flex-1">
-                                    <span className="block truncate text-sm font-medium text-gray-800">{item.name}</span>
-                                    <div className="text-[11px] text-gray-500">
-                                        @Rp{item.price.toLocaleString('id-ID')} / {item.unit || 'pcs'}
-                                    </div>
-                                    <div
-                                        className={`mt-0.5 text-[10px] font-medium ${
-                                            isOverStock ? 'text-red-600 font-semibold' : 'text-emerald-700'
-                                        }`}
-                                    >
-                                        Maks. tersedia: {formatStockQuantity(maxAvailable)} {item.unit || 'pcs'} (sisa cabang: {formatStockQuantity(currentStock)})
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => changeQty(item.product_id, -1)}
-                                        className="h-8 w-8 rounded-lg border border-gray-300 bg-white text-base font-bold text-gray-700 hover:bg-gray-100"
-                                    >
-                                        -
-                                    </button>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={maxAvailable}
-                                        step="any"
-                                        value={item.quantity === 0 ? '' : item.quantity}
-                                        onChange={(e) => setDirectQty(item.product_id, e.target.value)}
-                                        aria-label={`Kuantitas ${item.name}`}
-                                        className={`h-8 w-16 rounded-lg border bg-white px-1.5 text-center text-xs font-bold text-gray-900 focus:outline-none ${
-                                            isOverStock
-                                                ? 'border-red-400 text-red-700 focus:border-red-600'
-                                                : 'border-gray-300 focus:border-black'
-                                        }`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => changeQty(item.product_id, 1)}
-                                        className={`h-8 w-8 rounded-lg border bg-white text-base font-bold transition ${
-                                            item.quantity >= maxAvailable
-                                                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                                                : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                                        }`}
-                                        title={
-                                            item.quantity >= maxAvailable
-                                                ? `Stok tersedia maksimal: ${formatStockQuantity(maxAvailable)}`
-                                                : 'Tambah kuantitas'
-                                        }
-                                    >
-                                        +
-                                    </button>
-                                </div>
+                    {addableProducts.length > 0 && (
+                        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-2.5">
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                                Tambah Item Produk ke Transaksi
+                            </label>
+                            <div className="flex gap-2">
+                                <select
+                                    value={selectedNewProductId}
+                                    onChange={(e) => setSelectedNewProductId(e.target.value)}
+                                    className="flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                >
+                                    <option value="">+ Tambah produk lain ke struk...</option>
+                                    {addableProducts.map((p) => {
+                                        const avail = getMaxAvailableForProduct(p.id)
+                                        return (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} (Stok: {formatStockQuantity(avail)} {p.unit || 'pcs'})
+                                            </option>
+                                        )
+                                    })}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={handleAddProduct}
+                                    disabled={!selectedNewProductId}
+                                    className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-40 transition cursor-pointer"
+                                >
+                                    Tambah
+                                </button>
                             </div>
-                        )
-                    })}
-                </div>
+                        </div>
+                    )}
 
-                {addableProducts.length > 0 && (
-                    <div className="mt-3 flex gap-2">
-                        <select
-                            value={selectedNewProductId}
-                            onChange={(e) => setSelectedNewProductId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-800 focus:border-black focus:outline-none"
-                        >
-                            <option value="">+ Tambah produk lain ke struk...</option>
-                            {addableProducts.map((p) => {
-                                const avail = getMaxAvailableForProduct(p.id)
-                                return (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name} (Stok: {formatStockQuantity(avail)} {p.unit || 'pcs'})
-                                    </option>
-                                )
-                            })}
-                        </select>
-                        <button
-                            type="button"
-                            onClick={handleAddProduct}
-                            disabled={!selectedNewProductId}
-                            className="rounded-lg border border-gray-300 bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-40"
-                        >
-                            Tambah
-                        </button>
+                    <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5 flex items-baseline justify-between">
+                        <span className="text-[11px] font-semibold uppercase text-slate-500">Total Baru</span>
+                        <span className="text-base font-extrabold text-slate-900 tabular-nums">Rp {total.toLocaleString('id-ID')}</span>
                     </div>
-                )}
 
-                <div className="my-4 border-t border-gray-100 pt-3 flex items-baseline justify-between">
-                    <span className="text-xs font-semibold uppercase text-gray-500">Total Baru</span>
-                    <span className="text-lg font-extrabold text-gray-900">Rp{total.toLocaleString('id-ID')}</span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Channel</label>
+                            <select
+                                value={channel}
+                                onChange={(e) => setChannel(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none capitalize"
+                            >
+                                {CHANNELS.map((c) => (
+                                    <option key={c} value={c}>
+                                        {c}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Metode Bayar</label>
+                            <select
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none uppercase font-semibold"
+                            >
+                                {PAYMENT_METHODS.map((m) => (
+                                    <option key={m} value={m}>
+                                        {m}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Alasan / Catatan Perubahan (Opsional)
+                        </label>
+                        <input
+                            type="text"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Contoh: Salah hitung porsi, pelanggan ganti pembayaran, dll."
+                            className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none"
+                        />
+                    </div>
+
+                    {activeError && (
+                        <p className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs font-medium text-red-700">
+                            {activeError}
+                        </p>
+                    )}
                 </div>
 
-                <label className="mb-1 block text-xs font-medium text-gray-700">Channel</label>
-                <select
-                    value={channel}
-                    onChange={(e) => setChannel(e.target.value)}
-                    className="mb-3 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                >
-                    {CHANNELS.map((c) => (
-                        <option key={c} value={c}>
-                            {c}
-                        </option>
-                    ))}
-                </select>
-
-                <label className="mb-1 block text-xs font-medium text-gray-700">Metode Bayar</label>
-                <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
-                >
-                    {PAYMENT_METHODS.map((m) => (
-                        <option key={m} value={m}>
-                            {m}
-                        </option>
-                    ))}
-                </select>
-
-                <label className="mb-1 block text-xs font-medium text-gray-700">
-                    Alasan / Catatan Perubahan (Opsional)
-                </label>
-                <input
-                    type="text"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Contoh: Salah hitung porsi, pelanggan ganti pembayaran, dll."
-                    className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-black focus:outline-none"
-                />
-
-                {activeError && (
-                    <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
-                        {activeError}
-                    </p>
-                )}
-
-                <div className="flex gap-2 pt-2">
+                {/* Footer Pinned */}
+                <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 rounded-lg border border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                        className="px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                     >
                         Batal
                     </button>
@@ -478,9 +499,9 @@ export default function EditSaleModal({
                         type="button"
                         onClick={handleSave}
                         disabled={saving || items.length === 0 || !liveStockCheck.ok || isMultiInstallmentLocked}
-                        className="flex-1 rounded-lg bg-black py-2.5 text-sm font-semibold text-white shadow hover:bg-gray-800 transition disabled:opacity-50"
+                        className="px-4 py-1.5 rounded-lg bg-slate-900 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition disabled:opacity-50 cursor-pointer"
                     >
-                        {saving ? 'Menyimpan...' : 'Simpan'}
+                        {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
                 </div>
             </div>

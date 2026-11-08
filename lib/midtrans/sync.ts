@@ -5,6 +5,7 @@ import {
     calculateSubscriptionRenewalExpiry,
     type CalculateRenewalExpiryParams,
 } from '@/lib/subscription-limits'
+import { executeAutoDeactivateOnDowngrade } from '@/lib/subscription-downgrade'
 
 export { calculateSubscriptionRenewalExpiry, type CalculateRenewalExpiryParams }
 
@@ -173,22 +174,29 @@ export async function syncPaymentStatus(
             subscriptionId
                 ? admin
                       .from('subscriptions')
-                      .select('*, subscription_plans(duration_days)')
+                      .select('*, subscription_plans(duration_days, max_branches)')
                       .eq('id', subscriptionId)
                       .single()
                 : Promise.resolve({ data: null }),
             businessId
                 ? admin
                       .from('businesses')
-                      .select('id, subscription_status, subscription_expires_at, subscription_plan_id')
+                      .select('id, subscription_status, subscription_expires_at, subscription_plan_id, subscription_plans(max_branches)')
                       .eq('id', businessId)
                       .single()
                 : Promise.resolve({ data: null }),
         ])
 
         if (subscription) {
-            const subData = subscription as unknown as SubscriptionWithPlan
+            const subData = subscription as unknown as SubscriptionWithPlan & { subscription_plans: { duration_days: number; max_branches?: number } | null }
             const durationDays = subData.subscription_plans?.duration_days ?? DEFAULT_PLAN_DURATION_DAYS
+
+            // Deteksi apakah pembayaran ini adalah downgrade paket
+            const oldMaxBranches = currentBusiness?.subscription_status === 'active'
+                ? ((currentBusiness as unknown as { subscription_plans?: { max_branches?: number } | null })?.subscription_plans?.max_branches ?? 1)
+                : 1
+            const newMaxBranches = subData.subscription_plans?.max_branches ?? 1
+            const isDowngrade = newMaxBranches < oldMaxBranches
 
             // Akumulasikan sisa masa aktif dari tabel `businesses` (bukan dari record `pending` baru!)
             const newExpiresAt = calculateSubscriptionRenewalExpiry({
@@ -231,6 +239,11 @@ export async function syncPaymentStatus(
                         updated_at: nowIso,
                     })
                     .eq('id', businessId)
+
+                // Jika terdeteksi downgrade kuota, auto-deaktivasi cabang tambahan dan pegawai kasir non-pusat
+                if (isDowngrade) {
+                    await executeAutoDeactivateOnDowngrade(businessId, admin)
+                }
             }
         }
 

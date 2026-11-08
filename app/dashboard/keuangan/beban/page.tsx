@@ -12,17 +12,17 @@ function fmt(n: number) {
     return 'Rp' + Math.round(n).toLocaleString('id-ID')
 }
 
-const CATEGORY_LABEL: Record<string, { label: string; icon: string }> = {
-    gaji: { label: 'Penggajian / Upah', icon: '👤' },
-    listrik: { label: 'Listrik', icon: '⚡' },
-    air: { label: 'Air / PDAM', icon: '💧' },
-    sewa: { label: 'Sewa Tempat', icon: '🏠' },
-    gas: { label: 'Gas', icon: '🔥' },
-    transportasi: { label: 'Transportasi', icon: '🚗' },
-    marketing: { label: 'Marketing', icon: '📢' },
-    packaging: { label: 'Packaging', icon: '📦' },
-    peralatan: { label: 'Peralatan', icon: '🔧' },
-    lainnya: { label: 'Lainnya', icon: '🗂️' },
+const CATEGORY_LABEL: Record<string, { label: string }> = {
+    gaji: { label: 'Penggajian / Upah' },
+    listrik: { label: 'Listrik' },
+    air: { label: 'Air / PDAM' },
+    sewa: { label: 'Sewa Tempat' },
+    gas: { label: 'Gas' },
+    transportasi: { label: 'Transportasi' },
+    marketing: { label: 'Marketing' },
+    packaging: { label: 'Packaging' },
+    peralatan: { label: 'Peralatan' },
+    lainnya: { label: 'Lainnya' },
 }
 
 export default async function BebanPage({
@@ -130,6 +130,15 @@ export default async function BebanPage({
     }
 
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
+    const nonCashWasteTotal = expenses.reduce((s, e) => {
+        const isNonCash = (e as unknown as { is_non_cash?: boolean }).is_non_cash ||
+            Boolean(e.description && (
+                e.description.includes('[WASTE') ||
+                e.description.includes('[RUSAK') ||
+                e.description.includes('[HILANG')
+            ))
+        return isNonCash ? s + Number(e.amount || 0) : s
+    }, 0)
 
     // Grouping by category
     const categoryTotals: Record<string, number> = {}
@@ -190,7 +199,12 @@ export default async function BebanPage({
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {nonCashWasteTotal > 0 && (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 tabular-nums">
+                                Beban Non-Kas: {fmt(nonCashWasteTotal)}
+                            </span>
+                        )}
                         <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 tabular-nums">
                             Total Beban: {fmt(totalExpenses)}
                         </span>
@@ -216,7 +230,7 @@ export default async function BebanPage({
                         return (
                             <div key={catKey} className="p-3 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
-                                    <span className="text-xl">{catInfo.icon}</span>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
                                     <div>
                                         <p className="text-xs font-bold text-slate-800">{catInfo.label}</p>
                                         <p className="text-[10px] text-slate-400">{pct}% dari total beban</p>
@@ -252,23 +266,28 @@ export default async function BebanPage({
                         </div>
                     ) : (
                         expenses.map((e) => {
-                            const cat = CATEGORY_LABEL[e.category] || { label: e.category, icon: '🗂️' }
+                            const cat = CATEGORY_LABEL[e.category] || { label: e.category }
                             const branchName = (e.branches as unknown as { name: string } | null)?.name || 'Semua Cabang'
                             const paymentAcc = expenseAccountMap.get(e.id)
                             return (
                                 <div key={e.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-2xl">{cat.icon}</span>
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="text-xs font-bold text-slate-900">{cat.label}</span>
                                                 <span className="text-[10px] text-slate-400">• {formatIndonesianDate(e.expense_date)}</span>
                                                 <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">{branchName}</span>
-                                                {paymentAcc && (
+                                                {paymentAcc ? (
                                                     <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200/70 px-1.5 py-0.5 rounded font-medium inline-flex items-center gap-1">
-                                                        <span>{paymentAcc.type === 'cash' ? '💵' : paymentAcc.type === 'e_wallet' ? '📱' : '🏦'}</span>
+                                                        <span>{paymentAcc.type === 'cash' ? 'Kas' : paymentAcc.type === 'e_wallet' ? 'E-Wallet' : 'Bank'}:</span>
                                                         <span>{paymentAcc.name}</span>
                                                     </span>
+                                                ) : (
+                                                    (e.description?.includes('[WASTE') || e.description?.includes('[RUSAK') || e.description?.includes('[HILANG')) && (
+                                                        <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded font-semibold inline-flex items-center">
+                                                            Beban Non-Kas (Waste Stok)
+                                                        </span>
+                                                    )
                                                 )}
                                             </div>
                                             {e.description && (
@@ -285,10 +304,12 @@ export default async function BebanPage({
                                         }}>
                                             <button
                                                 type="submit"
-                                                className="text-slate-300 hover:text-rose-600 transition p-1 rounded cursor-pointer"
+                                                className="text-slate-400 hover:text-rose-600 transition p-1 rounded cursor-pointer text-xs font-semibold"
                                                 title="Hapus Pengeluaran"
                                             >
-                                                🗑️
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
                                             </button>
                                         </form>
                                     </div>

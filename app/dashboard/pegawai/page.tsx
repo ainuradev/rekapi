@@ -49,7 +49,7 @@ export default async function PegawaiPage() {
     // Ambil data cabang milik bisnis
     const { data: branchesRaw } = await supabase
         .from('branches')
-        .select('id, name')
+        .select('id, name, status')
         .eq('business_id', businessId)
         .order('name')
 
@@ -58,7 +58,7 @@ export default async function PegawaiPage() {
     // Ambil data profil pegawai
     const { data: employeesRaw } = await supabase
         .from('profiles')
-        .select('id, full_name, role, branch_id, created_at, branches(id, name)')
+        .select('id, full_name, role, branch_id, is_active, created_at, branches(id, name, status)')
         .eq('business_id', businessId)
         .eq('role', 'pegawai')
         .order('full_name')
@@ -82,7 +82,8 @@ export default async function PegawaiPage() {
                 email,
                 role: emp.role,
                 branch_id: emp.branch_id,
-                branches: (Array.isArray(emp.branches) ? emp.branches[0] : emp.branches) as unknown as { id?: string; name: string } | null,
+                is_active: emp.is_active ?? true,
+                branches: (Array.isArray(emp.branches) ? emp.branches[0] : emp.branches) as unknown as { id?: string; name: string; status?: string | null } | null,
                 created_at: emp.created_at,
             }
         })
@@ -94,7 +95,8 @@ export default async function PegawaiPage() {
     const effectiveLimits = getEffectiveLimits(planLimits, subscriptionStatus)
 
     const planName = businessData?.subscription_plans?.name || (subscriptionStatus === 'trial' ? 'Trial 7 Hari' : 'Standard')
-    const { allowed, reason: limitReason } = canAddEmployee(employees.length, planLimits, subscriptionStatus)
+    const activeEmployeeCount = employees.filter((e) => e.is_active !== false).length
+    const { allowed, reason: limitReason } = canAddEmployee(activeEmployeeCount, planLimits, subscriptionStatus)
 
     const activeBranchId = await getActiveBranchId()
     const { selectedBranchId, selectedBranch } = resolveEffectiveBranchFilter(activeBranchId, branches)

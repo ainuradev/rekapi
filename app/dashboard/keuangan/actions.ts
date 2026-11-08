@@ -70,9 +70,22 @@ export async function addExpense(payload: {
         }
     }
 
+    // Jika branch_id tidak disediakan (atau 'all'), targetkan ke Cabang Utama (cabang tertua)
+    let targetBranchId = payload.branch_id
+    if (!targetBranchId || targetBranchId === 'all') {
+        const { data: primaryB } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        targetBranchId = primaryB?.id || undefined
+    }
+
     const { data: exp, error } = await supabase.from('expenses').insert({
         business_id: profile.business_id,
-        branch_id: payload.branch_id || null,
+        branch_id: targetBranchId || null,
         category: payload.category,
         amount,
         expense_date: payload.expense_date,
@@ -505,10 +518,23 @@ export async function createDebtPayable(payload: {
     const total = Number(payload.total_amount)
     if (!total || total <= 0) return { error: 'Total nominal utang harus lebih dari 0.' }
 
+    // Jika branch_id tidak disediakan (atau 'all'), targetkan ke Cabang Utama
+    let targetBranchId = payload.branch_id
+    if (!targetBranchId || targetBranchId === 'all') {
+        const { data: primaryB } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        targetBranchId = primaryB?.id || undefined
+    }
+
     const insertPayload: Record<string, unknown> = {
         business_id: profile.business_id,
         supplier_id: payload.supplier_id || null,
-        branch_id: payload.branch_id || null,
+        branch_id: targetBranchId || null,
         title: payload.title.trim(),
         creditor_name: payload.creditor_name.trim(),
         total_amount: total,
@@ -679,11 +705,24 @@ export async function createReceivable(payload: {
     const total = Number(payload.total_amount)
     if (!total || total <= 0) return { error: 'Nominal piutang harus lebih dari 0.' }
 
+    // Jika branch_id tidak disediakan (atau 'all'), targetkan ke Cabang Utama
+    let targetBranchId = payload.branch_id
+    if (!targetBranchId || targetBranchId === 'all') {
+        const { data: primaryB } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        targetBranchId = primaryB?.id || undefined
+    }
+
     const insertPayload: Record<string, unknown> = {
         business_id: profile.business_id,
         customer_id: payload.customer_id || null,
         sale_id: payload.sale_id || null,
-        branch_id: payload.branch_id || null,
+        branch_id: targetBranchId || null,
         title: payload.title.trim(),
         debtor_name: payload.debtor_name.trim(),
         total_amount: total,

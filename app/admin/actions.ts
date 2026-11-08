@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isSuperAdmin } from '@/lib/auth-admin'
 import { revalidatePath } from 'next/cache'
 import { ensureSubscriptionPlans } from '@/lib/subscription-plans'
+import { executeAutoDeactivateOnDowngrade } from '@/lib/subscription-downgrade'
 
 // Helper verifikasi sesi super admin
 async function requireSuperAdmin() {
@@ -86,14 +87,18 @@ export async function adminUpdateSubscriptionStatus(
         updated_at: new Date().toISOString(),
     }
 
+    // Ambil data bisnis & kuota saat ini untuk deteksi downgrade
+    const { data: b } = await admin
+        .from('businesses')
+        .select('trial_ends_at, subscription_status, subscription_plan_id, subscription_plans(max_branches)')
+        .eq('id', businessId)
+        .single()
+
+    const oldStatus = b?.subscription_status
+    const oldMax = (b?.subscription_plans as { max_branches?: number } | null)?.max_branches ?? 1
+
     // Jika diubah ke trial tapi waktu trial sudah lewat, set trial 7 hari dari sekarang
     if (status === 'trial') {
-        const { data: b } = await admin
-            .from('businesses')
-            .select('trial_ends_at')
-            .eq('id', businessId)
-            .single()
-
         if (!b?.trial_ends_at || new Date(b.trial_ends_at) <= new Date()) {
             updatePayload.trial_ends_at = new Date(
                 Date.now() + 7 * 24 * 60 * 60 * 1000
@@ -108,6 +113,11 @@ export async function adminUpdateSubscriptionStatus(
 
     if (error) {
         return { error: 'Gagal mengubah status: ' + error.message }
+    }
+
+    // Jika downgrade dari status aktif dengan multi-cabang ke non-aktif/trial/expired
+    if (oldStatus === 'active' && status !== 'active' && oldMax > 1) {
+        await executeAutoDeactivateOnDowngrade(businessId, admin)
     }
 
     revalidatePath('/admin')
@@ -171,7 +181,7 @@ export interface OverrideSubscriptionParams {
 }
 
 export async function adminOverrideSubscription(params: OverrideSubscriptionParams) {
-    await requireSuperAdmin()
+    const user = await requireSuperAdmin()
 
     const { businessId, planCode, status, expiresAtDate, daysToAdd, notes } = params
     if (!businessId) {
@@ -201,8 +211,8 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
         const currentExp = business.subscription_expires_at
             ? new Date(business.subscription_expires_at)
             : business.trial_ends_at
-            ? new Date(business.trial_ends_at)
-            : now
+                ? new Date(business.trial_ends_at)
+                : now
         const baseDate = currentExp > now ? currentExp : now
         targetExpiry = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000)
     } else {
@@ -211,17 +221,30 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
 
     const targetIso = targetExpiry.toISOString()
 
+    const plans = await ensureSubscriptionPlans(admin)
     let planId: string | null = null
+    let newMaxBranches = 1
+
     if (planCode !== 'trial') {
-        // Self-healing: pastikan tabel subscription_plans terisi jika kosong
-        const plans = await ensureSubscriptionPlans(admin)
         const planRow = plans.find((p) => p.code === planCode)
 
         if (!planRow) {
             return { error: `Paket ${planCode} tidak ditemukan di database.` }
         }
         planId = planRow.id
+        if (status === 'active') {
+            newMaxBranches = planRow.max_branches ?? 1
+        }
     }
+
+    // Deteksi kuota lama untuk proteksi downgrade cabang/pegawai
+    let oldMaxBranches = 1
+    if (business.subscription_status === 'active' && business.subscription_plan_id) {
+        const oldPlan = plans.find((p) => p.id === business.subscription_plan_id)
+        oldMaxBranches = oldPlan?.max_branches ?? 1
+    }
+
+    const isDowngrade = newMaxBranches < oldMaxBranches
 
     const updatePayload: {
         subscription_status: string
@@ -253,6 +276,11 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
         return { error: 'Gagal memperbarui langganan: ' + updateErr.message }
     }
 
+    // Auto-deactivate cabang & pegawai tambahan jika terjadi downgrade
+    if (isDowngrade) {
+        await executeAutoDeactivateOnDowngrade(businessId, admin)
+    }
+
     // Catat histori override ke subscriptions tabel jika plan berbayar
     if (planId) {
         try {
@@ -269,7 +297,91 @@ export async function adminOverrideSubscription(params: OverrideSubscriptionPara
         }
     }
 
+    // Notifikasi Otomatis ke Bisnis saat Override Langganan oleh Super Admin
+    try {
+        const planDisplay =
+            planCode === 'trial'
+                ? 'Trial 7 Hari'
+                : `Paket ${planCode.charAt(0).toUpperCase() + planCode.slice(1)}`
+        const statusDisplay = status === 'active' ? 'Aktif' : status === 'trial' ? 'Trial' : 'Expired'
+        const dateFormatted = targetExpiry.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })
+
+        await admin.from('system_notifications').insert({
+            business_id: businessId,
+            title: 'Pembaruan Paket Langganan',
+            message: `Status langganan bisnis Anda telah diperbarui ke ${planDisplay} (${statusDisplay}) oleh Admin Rekapi. Masa aktif berlaku hingga ${dateFormatted}.`,
+            category: 'subscription',
+            action_url: '/dashboard/subscription',
+            created_by: user.id,
+        })
+    } catch (notifErr) {
+        console.warn('Gagal membuat notifikasi otomatis saat override subscription:', notifErr)
+    }
+
     revalidatePath('/admin')
     revalidatePath('/dashboard')
     return { success: true, newExpiresAt: targetIso }
+}
+
+// ─── 6. Notifikasi Sistem & Broadcast Super Admin ─────────────────────────────
+export interface AdminCreateNotificationParams {
+    businessId?: string | null // null = broadcast global
+    title: string
+    message: string
+    category: 'announcement' | 'subscription' | 'maintenance' | 'promo' | 'feature' | 'system'
+    actionUrl?: string | null
+}
+
+export async function adminCreateSystemNotification(params: AdminCreateNotificationParams) {
+    const user = await requireSuperAdmin()
+
+    const { businessId, title, message, category, actionUrl } = params
+    if (!title?.trim() || !message?.trim()) {
+        return { error: 'Judul dan isi notifikasi wajib diisi.' }
+    }
+
+    const admin = createAdminClient()
+    const { data, error } = await admin
+        .from('system_notifications')
+        .insert({
+            business_id: businessId || null,
+            title: title.trim(),
+            message: message.trim(),
+            category: category || 'announcement',
+            action_url: actionUrl?.trim() || null,
+            created_by: user.id,
+        })
+        .select()
+        .single()
+
+    if (error) {
+        return { error: 'Gagal membuat notifikasi: ' + error.message }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/dashboard')
+    return { success: true, notification: data }
+}
+
+export async function adminDeleteSystemNotification(notificationId: string) {
+    await requireSuperAdmin()
+    if (!notificationId) return { error: 'ID notifikasi tidak valid.' }
+
+    const admin = createAdminClient()
+    const { error } = await admin
+        .from('system_notifications')
+        .delete()
+        .eq('id', notificationId)
+
+    if (error) {
+        return { error: 'Gagal menghapus notifikasi: ' + error.message }
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/dashboard')
+    return { success: true }
 }

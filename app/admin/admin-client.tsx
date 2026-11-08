@@ -5,7 +5,20 @@ import {
     adminUpdateBusinessName,
     adminResetUserPassword,
     adminOverrideSubscription,
+    adminCreateSystemNotification,
+    adminDeleteSystemNotification,
 } from './actions'
+
+export interface AdminNotificationItem {
+    id: string
+    businessId: string | null
+    businessName: string | null
+    title: string
+    message: string
+    category: 'announcement' | 'subscription' | 'maintenance' | 'promo' | 'feature' | 'system'
+    actionUrl: string | null
+    createdAt: string
+}
 
 export interface AdminUserItem {
     id: string
@@ -93,6 +106,7 @@ interface Props {
     recentSales: AdminSaleItem[]
     metrics: PlatformMetrics
     plans: SubscriptionPlanItem[]
+    notifications?: AdminNotificationItem[]
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -111,8 +125,10 @@ export default function AdminClient({
     businesses,
     recentSales,
     metrics,
+    notifications = [],
 }: Props) {
-    const [tab, setTab] = useState<'tenants' | 'users' | 'sales'>('tenants')
+    const [tab, setTab] = useState<'tenants' | 'users' | 'sales' | 'notifications'>('tenants')
+    const [notificationsList, setNotificationsList] = useState<AdminNotificationItem[]>(notifications)
     const [search, setSearch] = useState('')
     const [planFilter, setPlanFilter] = useState<'all' | 'active' | 'standard' | 'business' | 'pro' | 'trial' | 'expired'>('all')
     const [roleFilter, setRoleFilter] = useState<'all' | 'owner' | 'pegawai'>('all')
@@ -120,7 +136,7 @@ export default function AdminClient({
     // State Modal Aksi
     const [selectedBusiness, setSelectedBusiness] = useState<AdminBusinessItem | null>(null)
     const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null)
-    const [modalMode, setModalMode] = useState<'override_sub' | 'rename_biz' | 'reset_password' | null>(null)
+    const [modalMode, setModalMode] = useState<'override_sub' | 'rename_biz' | 'reset_password' | 'create_notif' | null>(null)
 
     const [loading, setLoading] = useState(false)
     const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -137,6 +153,14 @@ export default function AdminClient({
 
     // Form Reset Password State
     const [newPassword, setNewPassword] = useState('')
+
+    // Form Notifikasi Sistem State
+    const [notifTargetBizId, setNotifTargetBizId] = useState<string>('')
+    const [notifTitle, setNotifTitle] = useState('')
+    const [notifMessage, setNotifMessage] = useState('')
+    const [notifCategory, setNotifCategory] = useState<'announcement' | 'subscription' | 'maintenance' | 'promo' | 'feature' | 'system'>('announcement')
+    const [notifActionUrl, setNotifActionUrl] = useState('')
+    const [deletingNotifId, setDeletingNotifId] = useState<string | null>(null)
 
     // Filter Businesses
     const filteredBusinesses = businesses.filter((b) => {
@@ -175,6 +199,17 @@ export default function AdminClient({
         const matchRole = roleFilter === 'all' || u.role === roleFilter
 
         return matchSearch && matchRole
+    })
+
+    // Filter Notifications
+    const filteredNotifications = notificationsList.filter((n) => {
+        const q = search.toLowerCase()
+        return (
+            n.title.toLowerCase().includes(q) ||
+            n.message.toLowerCase().includes(q) ||
+            (n.businessName && n.businessName.toLowerCase().includes(q)) ||
+            n.category.toLowerCase().includes(q)
+        )
     })
 
     // Open Override Modal
@@ -219,11 +254,82 @@ export default function AdminClient({
         setFeedback(null)
     }
 
+    // Open Kirim Notifikasi Modal
+    const openCreateNotifModal = (targetBusinessId?: string) => {
+        setNotifTargetBizId(targetBusinessId || '')
+        setNotifTitle('')
+        setNotifMessage('')
+        setNotifCategory('announcement')
+        setNotifActionUrl('')
+        setModalMode('create_notif')
+        setFeedback(null)
+    }
+
     const closeModal = () => {
         setModalMode(null)
         setSelectedBusiness(null)
         setSelectedUser(null)
         setFeedback(null)
+    }
+
+    // Submit Kirim Notifikasi Sistem
+    async function handleCreateNotifSubmit(e: React.FormEvent) {
+        e.preventDefault()
+        if (!notifTitle.trim() || !notifMessage.trim()) return
+        setLoading(true)
+        setFeedback(null)
+
+        try {
+            const res = await adminCreateSystemNotification({
+                businessId: notifTargetBizId || null,
+                title: notifTitle.trim(),
+                message: notifMessage.trim(),
+                category: notifCategory,
+                actionUrl: notifActionUrl.trim() || null,
+            })
+
+            if (res.error) {
+                setFeedback({ type: 'err', text: res.error })
+            } else if (res.notification) {
+                const targetBiz = businesses.find((b) => b.id === notifTargetBizId)
+                const newNotif: AdminNotificationItem = {
+                    id: res.notification.id,
+                    businessId: res.notification.business_id,
+                    businessName: targetBiz?.name || null,
+                    title: res.notification.title,
+                    message: res.notification.message,
+                    category: res.notification.category,
+                    actionUrl: res.notification.action_url,
+                    createdAt: res.notification.created_at,
+                }
+                setNotificationsList((prev) => [newNotif, ...prev])
+                setFeedback({ type: 'ok', text: 'Notifikasi berhasil dikirim!' })
+                setTimeout(() => closeModal(), 1000)
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Terjadi kesalahan sistem.'
+            setFeedback({ type: 'err', text: msg })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Hapus Notifikasi
+    async function handleDeleteNotif(id: string) {
+        if (!confirm('Apakah Anda yakin ingin menghapus / menarik pengumuman notifikasi ini?')) return
+        setDeletingNotifId(id)
+        try {
+            const res = await adminDeleteSystemNotification(id)
+            if (res.success) {
+                setNotificationsList((prev) => prev.filter((n) => n.id !== id))
+            } else if (res.error) {
+                alert(res.error)
+            }
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Gagal menghapus notifikasi.')
+        } finally {
+            setDeletingNotifId(null)
+        }
     }
 
     // Submit Override Subscription
@@ -379,49 +485,78 @@ export default function AdminClient({
             </div>
 
             {/* ── 2. Navigation Tabs (Clean Underline) ── */}
-            <div className="flex items-center gap-4 border-b border-slate-200">
-                <button
-                    type="button"
-                    onClick={() => {
-                        setTab('tenants')
-                        setSearch('')
-                    }}
-                    className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer ${
-                        tab === 'tenants'
-                            ? 'border-emerald-700 text-emerald-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                    Tenant & Klien Bisnis ({businesses.length})
-                </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setTab('users')
-                        setSearch('')
-                    }}
-                    className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer ${
-                        tab === 'users'
-                            ? 'border-emerald-700 text-emerald-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                    Akun Pengguna ({users.length})
-                </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setTab('sales')
-                        setSearch('')
-                    }}
-                    className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer ${
-                        tab === 'sales'
-                            ? 'border-emerald-700 text-emerald-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                    Aktivitas Transaksi Live ({recentSales.length})
-                </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200">
+                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTab('tenants')
+                            setSearch('')
+                        }}
+                        className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer whitespace-nowrap ${
+                            tab === 'tenants'
+                                ? 'border-emerald-700 text-emerald-900'
+                                : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        Tenant & Klien Bisnis ({businesses.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTab('users')
+                            setSearch('')
+                        }}
+                        className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer whitespace-nowrap ${
+                            tab === 'users'
+                                ? 'border-emerald-700 text-emerald-900'
+                                : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        Akun Pengguna ({users.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTab('sales')
+                            setSearch('')
+                        }}
+                        className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer whitespace-nowrap ${
+                            tab === 'sales'
+                                ? 'border-emerald-700 text-emerald-900'
+                                : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        Aktivitas Transaksi Live ({recentSales.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTab('notifications')
+                            setSearch('')
+                        }}
+                        className={`pb-3 text-xs sm:text-sm font-semibold transition border-b-2 cursor-pointer whitespace-nowrap ${
+                            tab === 'notifications'
+                                ? 'border-emerald-700 text-emerald-900'
+                                : 'border-transparent text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        Notifikasi & Broadcast ({notificationsList.length})
+                    </button>
+                </div>
+
+                <div className="pb-2">
+                    <button
+                        type="button"
+                        onClick={() => openCreateNotifModal()}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Kirim Notifikasi Sistem</span>
+                    </button>
+                </div>
             </div>
 
             {/* ── 3. Filters & Search Strip ── */}
@@ -436,7 +571,9 @@ export default function AdminClient({
                                 ? 'Cari nama bisnis, nama owner, atau email...'
                                 : tab === 'users'
                                 ? 'Cari nama, email, atau bisnis...'
-                                : 'Cari transaksi...'
+                                : tab === 'sales'
+                                ? 'Cari transaksi...'
+                                : 'Cari judul notifikasi, pesan, atau bisnis...'
                         }
                         className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs"
                     />
@@ -618,6 +755,14 @@ export default function AdminClient({
                                                     </button>
                                                     <button
                                                         type="button"
+                                                        onClick={() => openCreateNotifModal(b.id)}
+                                                        className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2 py-1 text-xs font-semibold transition cursor-pointer"
+                                                        title="Kirim Notifikasi Khusus ke Bisnis Ini"
+                                                    >
+                                                        Kirim Notif
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         onClick={() => openRenameModal(b)}
                                                         className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2 py-1 text-xs font-semibold transition cursor-pointer"
                                                         title="Edit Nama Bisnis"
@@ -765,6 +910,114 @@ export default function AdminClient({
                                             </td>
                                         </tr>
                                     ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ── 7. TAB 4: RIWAYAT NOTIFIKASI & BROADCAST ── */}
+            {tab === 'notifications' && (
+                <div className="border border-slate-200 rounded-xl bg-white shadow-2xs overflow-hidden">
+                    <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+                        <div>
+                            <h3 className="font-bold text-sm text-slate-900">Riwayat Pengumuman & Notifikasi Sistem</h3>
+                            <p className="text-xs text-slate-500">Pesan broadcast global dan notifikasi tenant yang dikirim oleh Super Admin / Sistem</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => openCreateNotifModal()}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-auto"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Buat Notifikasi Baru</span>
+                        </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="px-4 sm:px-5 py-3.5">Waktu Kirim</th>
+                                    <th className="px-4 py-3.5">Target Penerima</th>
+                                    <th className="px-4 py-3.5">Kategori</th>
+                                    <th className="px-4 py-3.5">Judul & Isi Notifikasi</th>
+                                    <th className="px-4 py-3.5">Link Aksi</th>
+                                    <th className="px-4 sm:px-5 py-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredNotifications.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-sm text-slate-400">
+                                            Belum ada pengumuman notifikasi yang dikirim.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredNotifications.map((n) => {
+                                        const categoryLabels: Record<string, { label: string; cls: string }> = {
+                                            announcement: { label: 'Pengumuman', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+                                            subscription: { label: 'Langganan', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                                            maintenance: { label: 'Maintenance', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+                                            promo: { label: 'Promo', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                            feature: { label: 'Fitur Baru', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+                                            system: { label: 'Sistem Toko', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+                                        }
+                                        const cat = categoryLabels[n.category] || { label: n.category, cls: 'bg-slate-100 text-slate-700 border-slate-200' }
+
+                                        return (
+                                            <tr key={n.id} className="hover:bg-slate-50/70 transition">
+                                                <td className="px-4 sm:px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                                                    <div>{formatDate(n.createdAt)}</div>
+                                                    <div className="text-[10px] text-slate-400">
+                                                        {new Date(n.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    {n.businessId ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                                            Bisnis: {n.businessName || 'Tenant'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                            Broadcast Global (Semua)
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${cat.cls}`}>
+                                                        {cat.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3.5 max-w-xs sm:max-w-md">
+                                                    <div className="font-bold text-slate-900 text-xs">{n.title}</div>
+                                                    <p className="text-slate-600 text-xs mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">
+                                                    {n.actionUrl ? (
+                                                        <span className="font-mono text-[11px] text-emerald-700 underline truncate max-w-[120px] block" title={n.actionUrl}>
+                                                            {n.actionUrl}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-300">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 sm:px-5 py-3.5 text-right whitespace-nowrap">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteNotif(n.id)}
+                                                        disabled={deletingNotifId === n.id}
+                                                        className="rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 px-2.5 py-1 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        {deletingNotifId === n.id ? 'Menghapus...' : 'Hapus'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -1137,6 +1390,175 @@ export default function AdminClient({
                                     className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {loading ? 'Menyimpan...' : 'Ganti Password'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                MODAL 4: KIRIM NOTIFIKASI SISTEM / BROADCAST (Clean Sheet)
+            ══════════════════════════════════════════════════════════════ */}
+            {modalMode === 'create_notif' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px] animate-in fade-in duration-150">
+                    <div className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Kirim Notifikasi Sistem & Broadcast
+                                </h3>
+                                <p className="text-[11px] text-slate-500">
+                                    Pesan akan langsung muncul pada ikon lonceng di dashboard pengguna
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeModal}
+                                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Body Scrollable */}
+                        <form onSubmit={handleCreateNotifSubmit} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                                {/* Target Penerima */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                        Target Penerima Notifikasi
+                                    </label>
+                                    <select
+                                        value={notifTargetBizId}
+                                        onChange={(e) => setNotifTargetBizId(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600"
+                                    >
+                                        <option value="">Semua Pengguna Rekapi (Broadcast Global)</option>
+                                        <optgroup label="Kirim Khusus ke Bisnis Tertentu:">
+                                            {businesses.map((b) => (
+                                                <option key={b.id} value={b.id}>
+                                                    {b.name} ({b.ownerName} - {b.ownerEmail})
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                        {notifTargetBizId
+                                            ? 'Pesan hanya akan diterima oleh owner dan staf dari bisnis terpilih.'
+                                            : 'Pesan akan diterima oleh seluruh pemilik toko dan staf aktif di Rekapi.'}
+                                    </p>
+                                </div>
+
+                                {/* Kategori Notifikasi */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                        Kategori Pengumuman
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        {[
+                                            { value: 'announcement', label: 'Pengumuman' },
+                                            { value: 'subscription', label: 'Langganan' },
+                                            { value: 'feature', label: 'Pembaruan Fitur' },
+                                            { value: 'promo', label: 'Promo Paket' },
+                                            { value: 'maintenance', label: 'Maintenance' },
+                                            { value: 'system', label: 'Sistem Toko' },
+                                        ].map((cat) => (
+                                            <button
+                                                key={cat.value}
+                                                type="button"
+                                                onClick={() => setNotifCategory(cat.value as AdminNotificationItem['category'])}
+                                                className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                                                    notifCategory === cat.value
+                                                        ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Judul Notifikasi */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                        Judul Notifikasi <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={notifTitle}
+                                        onChange={(e) => setNotifTitle(e.target.value)}
+                                        placeholder="Contoh: Pembaruan Sistem Rekapi v2.1 Siap Digunakan"
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-700"
+                                    />
+                                </div>
+
+                                {/* Pesan Notifikasi */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                        Isi Pesan <span className="text-rose-500">*</span>
+                                    </label>
+                                    <textarea
+                                        required
+                                        rows={3}
+                                        value={notifMessage}
+                                        onChange={(e) => setNotifMessage(e.target.value)}
+                                        placeholder="Tuliskan rincian pengumuman atau instruksi untuk pengguna..."
+                                        className="w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-700 leading-relaxed"
+                                    />
+                                </div>
+
+                                {/* Link Tujuan Opsional */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                        Link Aksi Opsional (Action URL)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={notifActionUrl}
+                                        onChange={(e) => setNotifActionUrl(e.target.value)}
+                                        placeholder="/dashboard/subscription atau /dashboard/produk"
+                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-700"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                        Jika diisi, pengguna yang mengklik notifikasi akan otomatis diarahkan ke halaman ini.
+                                    </p>
+                                </div>
+
+                                {feedback && (
+                                    <div
+                                        className={`p-2.5 rounded-lg text-xs font-semibold border ${
+                                            feedback.type === 'ok'
+                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                                        }`}
+                                    >
+                                        {feedback.text}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-1.5 text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-2xs"
+                                >
+                                    {loading ? 'Mengirim...' : 'Kirim Notifikasi'}
                                 </button>
                             </div>
                         </form>

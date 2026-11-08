@@ -55,6 +55,7 @@ export async function addBranch(formData: FormData) {
         .from('branches')
         .select('*', { count: 'exact', head: true })
         .eq('business_id', profile.business_id)
+        .eq('status', 'active')
 
     const branchCount = count ?? 0
     const { allowed, reason } = canAddBranch(branchCount, planLimits, subscriptionStatus)
@@ -266,6 +267,29 @@ export async function deleteBranch(branchId: string) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
 
+    // 1. Cek jumlah cabang bisnis: tidak boleh hapus jika hanya 1 cabang tersisa (Cabang Utama)
+    const { count } = await supabase
+        .from('branches')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', profile.business_id)
+
+    if ((count ?? 0) <= 1) {
+        return { error: 'Cabang Utama tidak dapat dihapus karena setiap bisnis wajib memiliki minimal satu cabang aktif.' }
+    }
+
+    // 2. Cek apakah ini cabang utama / tertua
+    const { data: oldestBranch } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('business_id', profile.business_id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single()
+
+    if (oldestBranch && oldestBranch.id === branchId) {
+        return { error: 'Cabang Utama (Induk) tidak dapat dihapus. Anda hanya dapat mengubah informasi nama atau alamat cabang ini.' }
+    }
+
     const { error } = await supabase
         .from('branches')
         .delete()
@@ -282,6 +306,117 @@ export async function deleteBranch(branchId: string) {
     }
 
     revalidatePath('/dashboard/cabang')
+    revalidatePath('/dashboard/data')
+    return { success: true }
+}
+
+export async function toggleBranchStatus(branchId: string, targetStatus: 'active' | 'inactive') {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized: Sesi pengguna tidak ditemukan.' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select(
+            `role, business_id,
+             businesses(
+               subscription_status,
+               subscription_plan_id,
+               subscription_plans(max_branches, max_employees)
+             )`
+        )
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya owner yang bisa mengubah status cabang.' }
+    }
+
+    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    const { data: branch } = await supabase
+        .from('branches')
+        .select('id, name, code, status, created_at')
+        .eq('id', branchId)
+        .eq('business_id', profile.business_id)
+        .single()
+
+    if (!branch) {
+        return { error: 'Cabang tidak ditemukan.' }
+    }
+
+    if (targetStatus === 'inactive') {
+        // Cek apakah ini cabang utama / tertua
+        const { data: oldestBranch } = await supabase
+            .from('branches')
+            .select('id, name')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .single()
+
+        if ((oldestBranch && oldestBranch.id === branchId) || branch.code === 'PUSAT') {
+            return { error: 'Cabang Utama (Pusat) tidak dapat dinonaktifkan karena bisnis wajib memiliki minimal satu cabang aktif.' }
+        }
+
+        const { error: updateErr } = await supabase
+            .from('branches')
+            .update({ status: 'inactive' })
+            .eq('id', branchId)
+            .eq('business_id', profile.business_id)
+
+        if (updateErr) {
+            return { error: updateErr.message }
+        }
+
+        // Nonaktifkan kasir yang bertugas di cabang ini
+        await supabase
+            .from('profiles')
+            .update({ is_active: false })
+            .eq('business_id', profile.business_id)
+            .eq('branch_id', branchId)
+            .eq('role', 'pegawai')
+    } else {
+        // Target: active. Validasi kuota cabang aktif
+        interface BusinessSubData {
+            subscription_status?: string | null
+            subscription_plans?: { max_branches?: number | null } | null
+        }
+        const bData = profile.businesses as unknown as BusinessSubData | null
+        const isSubActive = bData?.subscription_status === 'active'
+        const maxBranches = isSubActive && bData?.subscription_plans?.max_branches ? bData.subscription_plans.max_branches : 1
+
+        const { count: activeCount } = await supabase
+            .from('branches')
+            .select('*', { count: 'exact', head: true })
+            .eq('business_id', profile.business_id)
+            .eq('status', 'active')
+
+        if ((activeCount ?? 0) >= maxBranches) {
+            return {
+                error: `Batas kuota cabang aktif paket Anda (${maxBranches} cabang) sudah penuh. Upgrade paket langganan atau nonaktifkan cabang lain terlebih dahulu.`,
+            }
+        }
+
+        const { error: updateErr } = await supabase
+            .from('branches')
+            .update({ status: 'active' })
+            .eq('id', branchId)
+            .eq('business_id', profile.business_id)
+
+        if (updateErr) {
+            return { error: updateErr.message }
+        }
+    }
+
+    revalidatePath('/dashboard/cabang')
+    revalidatePath('/dashboard/penjualan')
     revalidatePath('/dashboard/data')
     return { success: true }
 }

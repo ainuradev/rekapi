@@ -261,12 +261,16 @@ export async function deleteRawMaterial(id: string) {
     return { success: true }
 }
 
+export type StockReductionReason = 'waste_expired' | 'lost_shrinkage' | 'production_usage' | 'input_correction'
+export type InventoryAdjustmentMutationType = 'adjustment' | 'waste' | 'opening_balance' | StockReductionReason
+
 export interface RecordStockAdjustmentPayload {
     raw_material_id: string
     branch_id: string
-    mutation_type: 'adjustment' | 'waste' | 'opening_balance'
+    mutation_type: InventoryAdjustmentMutationType
     quantity_change: number // bertanda positif (tambah) atau negatif (kurang)
     notes?: string
+    record_as_expense?: boolean // toggle opsional apakah dicatat sebagai beban operasional (misal pemakaian produksi)
 }
 
 export async function updateRawMaterialGlobalStock(id: string, newStock: number) {
@@ -332,81 +336,161 @@ export async function recordStockAdjustment(payload: RecordStockAdjustmentPayloa
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
 
-    // Pegawai hanya boleh di cabangnya sendiri
-    if (profile.role !== 'owner' && profile.branch_id !== payload.branch_id) {
-        return { error: 'Anda hanya memiliki akses untuk mencatat mutasi stok di cabang Anda sendiri.' }
+    if (!payload.raw_material_id) return { error: 'Pilih bahan baku terlebih dahulu.' }
+
+    // Jika branch_id tidak disediakan (atau 'all'), targetkan ke Cabang Utama
+    let targetBranchId = payload.branch_id
+    if (!targetBranchId || targetBranchId === 'all') {
+        const { data: primaryB } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        targetBranchId = primaryB?.id || ''
     }
 
-    if (!payload.raw_material_id) return { error: 'Pilih bahan baku terlebih dahulu.' }
-    if (!payload.branch_id) return { error: 'Pilih cabang terlebih dahulu.' }
+    if (!targetBranchId) return { error: 'Pilih cabang terlebih dahulu.' }
+
+    // Pegawai hanya boleh di cabangnya sendiri
+    if (profile.role !== 'owner' && profile.branch_id !== targetBranchId) {
+        return { error: 'Anda hanya memiliki akses untuk mencatat mutasi stok di cabang Anda sendiri.' }
+    }
 
     const qtyChange = Number(payload.quantity_change)
     if (isNaN(qtyChange) || qtyChange === 0) {
         return { error: 'Jumlah perubahan stok tidak boleh 0.' }
     }
 
-    // Untuk waste, jika user memasukkan angka positif, ubah menjadi negatif
-    const finalChange = payload.mutation_type === 'waste' && qtyChange > 0 ? -qtyChange : qtyChange
-
-    // 1. Ambil data master bahan baku untuk cek ketersediaan stok global (induk)
+    // Ambil data master bahan baku untuk perhitungan HPP & pelaporan kerugian
     const { data: material } = await supabase
         .from('raw_materials')
-        .select('name, unit, stock')
+        .select('id, name, unit, cost_per_unit')
         .eq('id', payload.raw_material_id)
         .eq('business_id', profile.business_id)
         .maybeSingle()
 
-    const currentGlobalStock = Number(material?.stock ?? 0)
+    // Untuk kategori pengurangan stok (waste, waste_expired, lost_shrinkage, production_usage),
+    // pastikan perubahan bertanda negatif
+    const isReductionType = [
+        'waste',
+        'waste_expired',
+        'lost_shrinkage',
+        'production_usage',
+    ].includes(payload.mutation_type)
 
-    // 2. Jika menambah stok cabang (adjustment positif), potong dari stok global (induk)
-    if (payload.mutation_type === 'adjustment' && finalChange > 0 && material && material.stock !== undefined) {
-        if (currentGlobalStock < finalChange) {
-            return {
-                error: `Stok global (induk) untuk '${material.name}' tidak mencukupi. Tersedia di induk: ${currentGlobalStock} ${material.unit}, penambahan cabang: ${finalChange} ${material.unit}. Tambahkan stok global terlebih dahulu.`,
-            }
-        }
+    const finalChange = isReductionType ? -Math.abs(qtyChange) : qtyChange
 
-        const newGlobal = currentGlobalStock - finalChange
-        await supabase
-            .from('raw_materials')
-            .update({ stock: newGlobal, updated_at: new Date().toISOString() })
-            .eq('id', payload.raw_material_id)
-    } else if (payload.mutation_type === 'adjustment' && finalChange < 0 && material && material.stock !== undefined) {
-        // Jika mengurangi stok cabang (dikembalikan ke induk)
-        const returned = Math.abs(finalChange)
-        const newGlobal = currentGlobalStock + returned
-        await supabase
-            .from('raw_materials')
-            .update({ stock: newGlobal, updated_at: new Date().toISOString() })
-            .eq('id', payload.raw_material_id)
-    }
-
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('record_inventory_mutation_atomic', {
+    // Eksekusi mutasi stok secara atomik
+    let mutationTypeToRecord = payload.mutation_type
+    let { data: rpcResult, error: rpcError } = await supabase.rpc('record_inventory_mutation_atomic', {
         p_business_id: profile.business_id,
-        p_branch_id: payload.branch_id,
+        p_branch_id: targetBranchId,
         p_raw_material_id: payload.raw_material_id,
-        p_mutation_type: payload.mutation_type,
+        p_mutation_type: mutationTypeToRecord,
         p_quantity_change: finalChange,
         p_notes: payload.notes?.trim() || null,
         p_reference_id: `manual_${Date.now()}`,
     })
 
-    if (rpcError) {
-        // Rollback stok global jika eksekusi mutasi gagal
-        if (payload.mutation_type === 'adjustment' && material && material.stock !== undefined) {
-            await supabase
-                .from('raw_materials')
-                .update({ stock: currentGlobalStock, updated_at: new Date().toISOString() })
-                .eq('id', payload.raw_material_id)
-        }
+    // Fallback jika constraint check mutation_type di database belum diperbarui: gunakan 'waste' atau 'adjustment'
+    if (rpcError && rpcError.code === '23514') {
+        mutationTypeToRecord = isReductionType ? 'waste' : 'adjustment'
+        const retry = await supabase.rpc('record_inventory_mutation_atomic', {
+            p_business_id: profile.business_id,
+            p_branch_id: targetBranchId,
+            p_raw_material_id: payload.raw_material_id,
+            p_mutation_type: mutationTypeToRecord,
+            p_quantity_change: finalChange,
+            p_notes: payload.notes?.trim() || null,
+            p_reference_id: `manual_${Date.now()}`,
+        })
+        rpcResult = retry.data
+        rpcError = retry.error
+    }
 
+    if (rpcError) {
         if (rpcError.code === 'P0003') {
             return { error: 'Stok tidak mencukupi untuk melakukan pengurangan ini.' }
         }
         return { error: rpcError.message }
     }
 
+    // PENCATATAN AKUNTANSI NON-KAS (Non-Cash Inventory Loss):
+    // Ketika bahan baku berkurang karena rusak/kadaluarsa (waste_expired) atau hilang/selisih minus (lost_shrinkage),
+    // atau pemakaian produksi dengan opsi beban aktif, catat otomatis ke tabel expenses sebagai Beban Non-Kas.
+    // Uang fisik TIDAK keluar lagi (karena sudah dibayar saat pembelian bahan di awal).
+    const isLossAccountingType =
+        payload.mutation_type === 'waste' ||
+        payload.mutation_type === 'waste_expired' ||
+        payload.mutation_type === 'lost_shrinkage' ||
+        (payload.mutation_type === 'production_usage' && payload.record_as_expense)
+
+    if (isLossAccountingType && material) {
+        const qty = Math.abs(finalChange)
+        const costPerUnit = Number(material.cost_per_unit) || 0
+        const lossAmount = Math.round(qty * costPerUnit * 100) / 100
+
+        if (lossAmount > 0) {
+            let reasonTag = '[WASTE/RUSAK]'
+            if (payload.mutation_type === 'lost_shrinkage') {
+                reasonTag = '[HILANG/SELISIH]'
+            } else if (payload.mutation_type === 'production_usage') {
+                reasonTag = '[PEMAKAIAN OPERASIONAL]'
+            }
+
+            const desc = `${reasonTag} ${material.name} (${qty} ${material.unit || 'pcs'} x Rp ${costPerUnit.toLocaleString('id-ID')})${payload.notes ? ` - ${payload.notes.trim()}` : ''}`
+
+            const expensePayload: {
+                business_id: string
+                branch_id: string | null
+                category: 'lainnya'
+                amount: number
+                expense_date: string
+                description: string
+                is_non_cash?: boolean
+            } = {
+                business_id: profile.business_id,
+                branch_id: targetBranchId || null,
+                category: 'lainnya',
+                amount: lossAmount,
+                expense_date: new Date().toISOString().split('T')[0],
+                description: desc,
+                is_non_cash: true,
+            }
+
+            const { error: expErr } = await supabase.from('expenses').insert(expensePayload)
+            if (expErr && expErr.code === '42703') {
+                // Fallback jika kolom is_non_cash belum tersedia di database target
+                delete expensePayload.is_non_cash
+                await supabase.from('expenses').insert(expensePayload)
+            }
+        }
+    }
+
+    // Sinkronkan total stok di raw_materials sebagai penjumlahan seluruh cabang
+    const { data: allStocks } = await supabase
+        .from('raw_material_branch_stocks')
+        .select('quantity')
+        .eq('raw_material_id', payload.raw_material_id)
+        .eq('business_id', profile.business_id)
+
+    if (allStocks) {
+        const total = allStocks.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+        await supabase
+            .from('raw_materials')
+            .update({ stock: total, updated_at: new Date().toISOString() })
+            .eq('id', payload.raw_material_id)
+            .eq('business_id', profile.business_id)
+    }
+
     revalidatePath('/dashboard/bahan-baku')
+    revalidatePath('/dashboard/keuangan')
+    revalidatePath('/dashboard/keuangan/beban')
+    revalidatePath('/dashboard/keuangan/laba-rugi')
+    revalidatePath('/dashboard/keuangan/neraca')
+    revalidatePath('/dashboard/keuangan/arus-kas')
     return { success: true, data: rpcResult }
 }
 

@@ -228,67 +228,72 @@ export default function LoginPage() {
 
             {/* ── Modal Lupa Kata Sandi ── */}
             {showForgotModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs px-4">
-                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between mb-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-sm max-h-[85vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 text-base">
-                                    🔑
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+                                    <svg className="w-4 h-4 text-emerald-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                    </svg>
                                 </span>
-                                <h3 className="text-base font-bold text-slate-900">Lupa Kata Sandi?</h3>
+                                <h3 className="text-sm font-bold text-slate-900">Lupa Kata Sandi?</h3>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setShowForgotModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer"
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
                             >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                            Masukkan email yang terdaftar pada akun Rekapi Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi.
-                        </p>
+                        <form onSubmit={handleForgotPassword} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Masukkan email yang terdaftar pada akun Rekapi Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi.
+                                </p>
 
-                        <form onSubmit={handleForgotPassword} className="space-y-4">
-                            <div>
-                                <label className="mb-1 block text-xs font-semibold text-slate-700">Email Akun</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={forgotEmail}
-                                    onChange={(e) => setForgotEmail(e.target.value)}
-                                    placeholder="nama@bisnis.com"
-                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-600/20 transition"
-                                />
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-slate-700">Email Akun</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={forgotEmail}
+                                        onChange={(e) => setForgotEmail(e.target.value)}
+                                        placeholder="nama@bisnis.com"
+                                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-700 transition"
+                                    />
+                                </div>
+
+                                {forgotError && (
+                                    <p className="text-xs font-medium text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+                                        {forgotError}
+                                    </p>
+                                )}
+
+                                {forgotSuccess && (
+                                    <div className="text-xs font-medium text-emerald-700 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 leading-relaxed">
+                                        {forgotSuccess}
+                                    </div>
+                                )}
                             </div>
 
-                            {forgotError && (
-                                <p className="text-xs font-medium text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
-                                    {forgotError}
-                                </p>
-                            )}
-
-                            {forgotSuccess && (
-                                <div className="text-xs font-medium text-emerald-700 bg-emerald-50 p-3 rounded-lg border border-emerald-200 leading-relaxed">
-                                    {forgotSuccess}
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-end gap-2 pt-1">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setShowForgotModal(false)}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 bg-white transition cursor-pointer"
                                 >
                                     Tutup
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={forgotLoading}
-                                    className="px-4 py-2 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg shadow-sm shadow-emerald-900/20 transition disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-emerald-800 hover:bg-emerald-900 rounded-lg shadow-2xs transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {forgotLoading ? 'Mengirim...' : 'Kirim Tautan'}
                                 </button>

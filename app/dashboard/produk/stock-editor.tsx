@@ -42,7 +42,7 @@ export default function StockEditor({
             ? 'text-amber-700 bg-amber-50 border-amber-200'
             : 'text-green-700 bg-green-50 border-green-200'
 
-    const stockLabel = stock === 0 ? '🔴 Habis' : stock <= 5 ? '🟡 Hampir habis' : '🟢 Tersedia'
+    const stockLabel = stock === 0 ? 'Habis' : stock <= 5 ? 'Hampir habis' : 'Tersedia'
 
     if (editing) {
         return (

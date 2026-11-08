@@ -169,7 +169,7 @@ export default async function KasRekeningPage({
                 .lte('transaction_date', timestampTo),
             supabase
                 .from('expenses')
-                .select('amount, payment_method')
+                .select('amount, payment_method, description')
                 .eq('business_id', businessId)
                 .eq('branch_id', selectedBranchId)
                 .gte('expense_date', dateFrom)
@@ -208,7 +208,15 @@ export default async function KasRekeningPage({
 
         let todayExpenses = 0
         for (const exp of expensesToday ?? []) {
-            todayExpenses += Number(exp.amount || 0)
+            const isNonCash = (exp as unknown as { is_non_cash?: boolean }).is_non_cash ||
+                Boolean(exp.description && (
+                    exp.description.includes('[WASTE') ||
+                    exp.description.includes('[RUSAK') ||
+                    exp.description.includes('[HILANG')
+                ))
+            if (!isNonCash) {
+                todayExpenses += Number(exp.amount || 0)
+            }
         }
 
         const todayNetContribution = (todayCashIn + todayNonCashIn) - todayExpenses

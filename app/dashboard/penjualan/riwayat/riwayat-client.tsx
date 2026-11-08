@@ -522,25 +522,25 @@ export default function RiwayatClient({
             .map(([name, qty], idx) => `${idx + 1}. ${name} (${qty} porsi)`)
             .join('\n')
 
-        const text = `*📊 REKAP PENJUALAN REKAPI*
-🏪 Cabang: ${branchTitle}
-📅 Periode: ${periodLabel} (${dateStr})
+        const text = `*REKAP PENJUALAN REKAPI*
+Cabang: ${branchTitle}
+Periode: ${periodLabel} (${dateStr})
 ----------------------------------------
-💰 *Total Omzet: Rp${totalOmzet.toLocaleString('id-ID')}*
-🧾 *Total Transaksi: ${totalTransaksi}*
-📦 *Total Item Terjual: ${totalItems} pcs*${
+• *Total Omzet:* Rp${totalOmzet.toLocaleString('id-ID')}
+• *Total Transaksi:* ${totalTransaksi}
+• *Total Item Terjual:* ${totalItems} pcs${
             isOwner
-                ? `\n💼 *Total HPP:* Rp${totalHpp.toLocaleString('id-ID')}\n📈 *Estimasi Laba Kotor:* Rp${labaKotor.toLocaleString('id-ID')}`
+                ? `\n• *Total HPP:* Rp${totalHpp.toLocaleString('id-ID')}\n• *Estimasi Laba Kotor:* Rp${labaKotor.toLocaleString('id-ID')}`
                 : ''
         }
 
-💳 *Metode Pembayaran:*
+*Metode Pembayaran:*
 ${paymentList || 'Belum ada transaksi'}
 
-🛵 *Channel Penjualan:*
+*Channel Penjualan:*
 ${channelList || 'Belum ada transaksi'}
 
-🍱 *Menu Terlaris:*
+*Menu Terlaris:*
 ${topList || 'Belum ada data'}
 ----------------------------------------
 _Dicatat otomatis via Rekapi POS_`
@@ -610,7 +610,9 @@ _Dicatat otomatis via Rekapi POS_`
             {copiedToast && (
                 <div className="mb-4 flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs font-medium text-emerald-800">
                     <div className="flex items-center gap-2">
-                        <span>✅</span>
+                        <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
                         <span>Format Rekap WhatsApp berhasil disalin ke clipboard! Siap dipaste ke grup.</span>
                     </div>
                 </div>
@@ -1052,7 +1054,9 @@ _Dicatat otomatis via Rekapi POS_`
                                                             className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition shadow-2xs cursor-pointer"
                                                             title="Lihat / Cetak Struk Transaksi"
                                                         >
-                                                            🧾
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
                                                         </button>
 
                                                         {/* Bayar Piutang */}
@@ -1364,46 +1368,53 @@ _Dicatat otomatis via Rekapi POS_`
 
             {/* Modal Catat Pembayaran Cicilan / Pelunasan Piutang */}
             {payingSale && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center">
-                    <div className="w-full max-w-md rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl">
-                        <div className="mb-2 flex items-center justify-between">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px] animate-in fade-in duration-150">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                        {/* Header Pinned */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl">💳</span>
-                                <h2 className="text-base font-bold text-gray-900">Pembayaran Piutang / Cicilan</h2>
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                </span>
+                                <h2 className="text-xs sm:text-sm font-bold text-slate-900">Pembayaran Piutang / Cicilan</h2>
                             </div>
                             <button
                                 onClick={() => setPayingSale(null)}
-                                className="text-gray-400 hover:text-gray-600 text-lg font-bold"
+                                className="text-slate-400 hover:text-slate-600 text-base font-bold cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
-                        <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-700">
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Pelanggan:</span>
-                                <span className="font-bold text-slate-800">{payingSale.customers?.name || 'Pelanggan Umum'}</span>
-                            </div>
-                            <div className="flex justify-between mt-1">
-                                <span className="text-slate-500">Total Tagihan:</span>
-                                <span className="font-bold text-slate-800">Rp {payingSale.total.toLocaleString('id-ID')}</span>
-                            </div>
-                            <div className="flex justify-between mt-1">
-                                <span className="text-slate-500">Sudah Dibayar:</span>
-                                <span className="font-bold text-emerald-600">Rp {(payingSale.paid_amount || 0).toLocaleString('id-ID')}</span>
-                            </div>
-                            <div className="flex justify-between mt-1 pt-1 border-t border-slate-200">
-                                <span className="text-slate-500 font-semibold">Sisa Tagihan:</span>
-                                <span className="font-extrabold text-rose-600">
-                                    Rp {Math.max(0, payingSale.total - (payingSale.paid_amount || 0)).toLocaleString('id-ID')}
-                                </span>
-                            </div>
-                        </div>
 
-                        {payError && (
-                            <p className="mb-3 rounded-lg bg-red-50 p-2.5 text-xs font-medium text-red-700">{payError}</p>
-                        )}
+                        {/* Body Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 space-y-1">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Pelanggan:</span>
+                                    <span className="font-bold text-slate-800">{payingSale.customers?.name || 'Pelanggan Umum'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Total Tagihan:</span>
+                                    <span className="font-bold text-slate-800">Rp {payingSale.total.toLocaleString('id-ID')}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Sudah Dibayar:</span>
+                                    <span className="font-bold text-emerald-600">Rp {(payingSale.paid_amount || 0).toLocaleString('id-ID')}</span>
+                                </div>
+                                <div className="flex justify-between pt-1 border-t border-slate-200">
+                                    <span className="text-slate-500 font-semibold">Sisa Tagihan:</span>
+                                    <span className="font-extrabold text-rose-600">
+                                        Rp {Math.max(0, payingSale.total - (payingSale.paid_amount || 0)).toLocaleString('id-ID')}
+                                    </span>
+                                </div>
+                            </div>
 
-                        <div className="space-y-3">
+                            {payError && (
+                                <p className="rounded-lg bg-red-50 p-2.5 text-xs font-medium text-red-700">{payError}</p>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                                     Nominal Pembayaran (Rp)
@@ -1414,7 +1425,7 @@ _Dicatat otomatis via Rekapi POS_`
                                     max={Math.max(0, payingSale.total - (payingSale.paid_amount || 0))}
                                     value={payAmount || ''}
                                     onChange={(e) => setPayAmount(Number(e.target.value))}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-900 focus:border-emerald-500 focus:outline-none"
                                 />
                             </div>
 
@@ -1425,7 +1436,7 @@ _Dicatat otomatis via Rekapi POS_`
                                 <select
                                     value={payMethod}
                                     onChange={(e) => setPayMethod(e.target.value)}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
                                 >
                                     <option value="cash">Tunai (Cash)</option>
                                     <option value="transfer">Transfer Bank</option>
@@ -1441,7 +1452,7 @@ _Dicatat otomatis via Rekapi POS_`
                                     <select
                                         value={payAccountId}
                                         onChange={(e) => setPayAccountId(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
                                     >
                                         {accounts.map((acc) => (
                                             <option key={acc.id} value={acc.id}>
@@ -1461,16 +1472,17 @@ _Dicatat otomatis via Rekapi POS_`
                                     value={payNotes}
                                     placeholder="Contoh: Cicilan ke-2 transfer via BCA"
                                     onChange={(e) => setPayNotes(e.target.value)}
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="mt-5 flex gap-2">
+                        {/* Footer Pinned */}
+                        <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                             <button
                                 onClick={() => setPayingSale(null)}
                                 disabled={payLoading}
-                                className="flex-1 rounded-lg border border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                                className="px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
                             >
                                 Batal
                             </button>
@@ -1496,7 +1508,7 @@ _Dicatat otomatis via Rekapi POS_`
                                     }
                                 }}
                                 disabled={payLoading}
-                                className="flex-1 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 transition disabled:opacity-50"
+                                className="px-4 py-1.5 rounded-lg bg-emerald-700 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition disabled:opacity-50 cursor-pointer"
                             >
                                 {payLoading ? 'Memproses...' : 'Simpan Pembayaran'}
                             </button>
@@ -1507,48 +1519,69 @@ _Dicatat otomatis via Rekapi POS_`
 
             {/* Modal Konfirmasi Pembatalan Transaksi (Void) */}
             {deletingSale && (
-                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center">
-                    <div className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl">
-                        <div className="mb-1 flex items-center gap-2">
-                            <span className="text-2xl">🚫</span>
-                            <h2 className="text-base font-bold text-gray-900">Batalkan Transaksi (Void)?</h2>
-                        </div>
-                        <p className="mb-2 text-xs text-gray-600">
-                            Transaksi tidak dihapus demi integritas audit. Transaksi akan ditandai <strong className="text-rose-600">Dibatalkan (Void)</strong>, seluruh stok item dikembalikan ke stok cabang, dan saldo kas dibalik secara otomatis.
-                        </p>
-                        <div className="mb-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs text-gray-700">
-                            <div className="font-semibold text-gray-900">{new Date(deletingSale.transaction_date).toLocaleString('id-ID')}</div>
-                            <div className="mt-0.5">
-                                {deletingSale.sale_items.map((i) => `${i.products?.name ?? 'Item'} (${i.quantity} ${i.products?.unit || 'x'})`).join(', ')}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px] animate-in fade-in duration-150">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                        {/* Header Pinned */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </span>
+                                <h2 className="text-xs sm:text-sm font-bold text-slate-900">Batalkan Transaksi (Void)?</h2>
                             </div>
-                            <div className="mt-1 font-bold text-gray-900">Rp {deletingSale.total.toLocaleString('id-ID')}</div>
+                            <button
+                                onClick={() => {
+                                    setDeletingSale(null)
+                                    setDeleteError(null)
+                                }}
+                                className="text-slate-400 hover:text-slate-600 text-base font-bold cursor-pointer"
+                            >
+                                ✕
+                            </button>
                         </div>
 
-                        <div className="mb-3">
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                Alasan Pembatalan (Wajib untuk Audit)
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="Contoh: Salah input pesanan / Pelanggan membatalkan"
-                                value={voidReason}
-                                onChange={(e) => setVoidReason(e.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-rose-500 focus:outline-none"
-                            />
+                        {/* Body Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 text-xs">
+                            <p className="text-slate-600 leading-relaxed">
+                                Transaksi tidak dihapus demi integritas audit. Transaksi akan ditandai <strong className="text-rose-600">Dibatalkan (Void)</strong>, seluruh stok item dikembalikan ke stok cabang, dan saldo kas dibalik secara otomatis.
+                            </p>
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-1">
+                                <div className="font-semibold text-slate-900">{new Date(deletingSale.transaction_date).toLocaleString('id-ID')}</div>
+                                <div className="text-slate-600">
+                                    {deletingSale.sale_items.map((i) => `${i.products?.name ?? 'Item'} (${i.quantity} ${i.products?.unit || 'x'})`).join(', ')}
+                                </div>
+                                <div className="font-bold text-slate-900">Rp {deletingSale.total.toLocaleString('id-ID')}</div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Alasan Pembatalan (Wajib untuk Audit)
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Contoh: Salah input pesanan / Pelanggan membatalkan"
+                                    value={voidReason}
+                                    onChange={(e) => setVoidReason(e.target.value)}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 focus:border-rose-500 focus:outline-none"
+                                />
+                            </div>
+
+                            {deleteError && (
+                                <p className="rounded-lg bg-red-50 p-2.5 text-xs font-medium text-red-700">{deleteError}</p>
+                            )}
                         </div>
 
-                        {deleteError && (
-                            <p className="mb-3 rounded-lg bg-red-50 p-2.5 text-xs font-medium text-red-700">{deleteError}</p>
-                        )}
-
-                        <div className="flex gap-2">
+                        {/* Footer Pinned */}
+                        <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                             <button
                                 onClick={() => {
                                     setDeletingSale(null)
                                     setDeleteError(null)
                                 }}
                                 disabled={deleteLoading}
-                                className="flex-1 rounded-lg border border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                                className="px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
                             >
                                 Batal
                             </button>
@@ -1569,7 +1602,7 @@ _Dicatat otomatis via Rekapi POS_`
                                     }
                                 }}
                                 disabled={deleteLoading}
-                                className="flex-1 rounded-lg bg-rose-600 py-2.5 text-sm font-semibold text-white shadow hover:bg-rose-700 transition disabled:opacity-50"
+                                className="px-4 py-1.5 rounded-lg bg-rose-600 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 transition disabled:opacity-50 cursor-pointer"
                             >
                                 {deleteLoading ? 'Membatalkan...' : 'Ya, Batalkan'}
                             </button>
@@ -1580,13 +1613,14 @@ _Dicatat otomatis via Rekapi POS_`
 
             {/* Modal Pemilihan Tanggal / Rentang Tanggal */}
             {isCustomModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-                    <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
-                        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px] animate-in fade-in duration-150">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                        {/* Header Pinned */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
                             <div>
-                                <h3 className="text-sm font-bold text-slate-900">Pilih Tanggal Transaksi</h3>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Pilih satu tanggal tertentu atau rentang tanggal riwayat penjualan
+                                <h3 className="text-xs sm:text-sm font-bold text-slate-900">Pilih Tanggal Transaksi</h3>
+                                <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">
+                                    Pilih tanggal tertentu atau rentang riwayat penjualan
                                 </p>
                             </div>
                             <button
@@ -1598,94 +1632,98 @@ _Dicatat otomatis via Rekapi POS_`
                             </button>
                         </div>
 
-                        <form onSubmit={handleApplyCustomDate} className="p-5 space-y-4">
-                            {/* Preset Cepat */}
-                            <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                    Pilihan Cepat
-                                </label>
-                                <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSetModalPreset('today')}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                                    >
-                                        Hari Ini
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSetModalPreset('yesterday')}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                                    >
-                                        Kemarin
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSetModalPreset('7days')}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                                    >
-                                        7 Hari Terakhir
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSetModalPreset('this_month')}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                                    >
-                                        Bulan Ini
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSetModalPreset('last_month')}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                                    >
-                                        Bulan Lalu
-                                    </button>
+                        {/* Body Scrollable */}
+                        <form onSubmit={handleApplyCustomDate} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 min-h-0 text-xs">
+                                {/* Preset Cepat */}
+                                <div>
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Pilihan Cepat
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSetModalPreset('today')}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                        >
+                                            Hari Ini
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSetModalPreset('yesterday')}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                        >
+                                            Kemarin
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSetModalPreset('7days')}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                        >
+                                            7 Hari Terakhir
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSetModalPreset('this_month')}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                        >
+                                            Bulan Ini
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSetModalPreset('last_month')}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                        >
+                                            Bulan Lalu
+                                        </button>
+                                    </div>
                                 </div>
+
+                                {/* Input Tanggal Mulai & Tanggal Selesai */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Tanggal Mulai
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={inputStart}
+                                            onChange={(e) => setInputStart(e.target.value)}
+                                            required
+                                            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                            Tanggal Selesai
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={inputEnd}
+                                            onChange={(e) => setInputEnd(e.target.value)}
+                                            required
+                                            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                <p className="text-[11px] text-slate-500 italic">
+                                    *Tips: Untuk melihat transaksi pada 1 hari tertentu saja, samakan tanggal mulai dan tanggal selesai.
+                                </p>
                             </div>
 
-                            {/* Input Tanggal Mulai & Tanggal Selesai */}
-                            <div className="grid grid-cols-2 gap-3 pt-1">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                        Tanggal Mulai
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={inputStart}
-                                        onChange={(e) => setInputStart(e.target.value)}
-                                        required
-                                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                        Tanggal Selesai
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={inputEnd}
-                                        onChange={(e) => setInputEnd(e.target.value)}
-                                        required
-                                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                                    />
-                                </div>
-                            </div>
-
-                            <p className="text-[11px] text-slate-500 italic">
-                                *Tips: Untuk melihat transaksi pada 1 hari tertentu saja, samakan tanggal mulai dan tanggal selesai.
-                            </p>
-
-                            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                            {/* Footer Pinned */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsCustomModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                                    className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition cursor-pointer"
+                                    className="px-4 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 shadow-xs transition cursor-pointer"
                                 >
                                     Terapkan Filter Tanggal
                                 </button>

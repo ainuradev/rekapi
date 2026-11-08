@@ -469,7 +469,7 @@ export default function KasirClient({
     const itemCount = Object.values(cart).reduce((sum, i) => sum + i.quantity, 0)
 
     return (
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:py-8 pb-32 sm:pb-16">
+        <div className="mx-auto max-w-5xl px-4 py-4 sm:py-8 pb-32 lg:pb-16">
             {/* Banner Offline Indicator */}
             {!isOnline && (
                 <div className="mb-4 rounded-2xl bg-amber-50 border border-amber-300 p-3.5 flex items-center justify-between text-amber-900 animate-in fade-in duration-200 shadow-xs">
@@ -479,8 +479,11 @@ export default function KasirClient({
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
                         </span>
                         <div>
-                            <p className="text-xs font-bold text-amber-950">
-                                ⚠️ Koneksi Internet Terputus (Mode Offline)
+                            <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                <svg className="w-4 h-4 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>Koneksi Internet Terputus (Mode Offline)</span>
                             </p>
                             <p className="text-[11px] text-amber-800">
                                 Kasir tidak dapat memproses transaksi baru saat offline. Silakan periksa koneksi WiFi atau paket data Anda.
@@ -518,7 +521,7 @@ export default function KasirClient({
                         >
                             {branches.map((b) => (
                                 <option key={b.id} value={b.id}>
-                                    📍 {b.name}
+                                    {b.name}
                                 </option>
                             ))}
                         </select>
@@ -993,8 +996,11 @@ export default function KasirClient({
                                             </div>
                                         )}
                                         {paymentMethod === 'qris' && !businessQrisUrl && (
-                                            <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
-                                                ⚠️ QRIS toko belum diunggah owner di Profil Bisnis
+                                            <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[10px] text-amber-800 flex items-center gap-1.5">
+                                                <svg className="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <span>QRIS toko belum diunggah owner di Profil Bisnis</span>
                                             </div>
                                         )}
                                     </div>
@@ -1148,9 +1154,9 @@ export default function KasirClient({
                 </div>
             </div>
 
-            {/* ── Mobile Cart Bottom Bar (Single Unified Bottom Bar on Mobile POS) ── */}
+            {/* ── Mobile Cart Bottom Bar (Single Unified Bottom Bar on Mobile & Tablet POS) ── */}
             {itemCount > 0 ? (
-                <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl animate-in slide-in-from-bottom duration-200">
+                <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl animate-in slide-in-from-bottom duration-200">
                     <div className="flex items-center justify-between max-w-md mx-auto">
                         <div
                             onClick={() => setMobileCheckoutOpen(true)}
@@ -1177,7 +1183,7 @@ export default function KasirClient({
                     </div>
                 </div>
             ) : (
-                <div className="fixed bottom-0 inset-x-0 z-30 sm:hidden bg-white/90 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
+                <div className="fixed bottom-0 inset-x-0 z-30 lg:hidden bg-white/90 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
                     <span className="text-[11px] text-slate-400">Keranjang kasir kosong</span>
                     <a href="/dashboard/penjualan/riwayat" className="font-semibold text-emerald-800 hover:underline text-[11px]">
                         Riwayat Penjualan &rarr;
@@ -1188,51 +1194,52 @@ export default function KasirClient({
             {/* Mobile Checkout Modal Drawer */}
             {mobileCheckoutOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-end bg-black/60 backdrop-blur-xs sm:hidden"
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs lg:hidden"
                     onClick={() => setMobileCheckoutOpen(false)}
                 >
                     <div
-                        className="w-full rounded-t-xl bg-white p-5 shadow-2xl max-h-[85vh] overflow-y-auto"
+                        className="w-full max-w-lg rounded-t-2xl bg-white shadow-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <h3 className="font-bold text-base text-slate-900">Rincian Pembayaran</h3>
+                        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                            <h3 className="font-bold text-sm text-slate-900">Rincian Pembayaran</h3>
                             <button
                                 type="button"
                                 onClick={() => setMobileCheckoutOpen(false)}
-                                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center cursor-pointer"
+                                className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center cursor-pointer hover:bg-slate-200 transition"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className="py-3 space-y-2 max-h-[40vh] overflow-y-auto">
-                            {Object.values(cart).map((item) => (
-                                <div key={item.product_id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
-                                    <div>
-                                        <div className="font-bold text-slate-800">{item.name}</div>
-                                        <div className="text-[11px] text-slate-500 tabular-nums">Rp {item.price.toLocaleString('id-ID')}</div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                            <div className="py-1 space-y-2">
+                                {Object.values(cart).map((item) => (
+                                    <div key={item.product_id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
+                                        <div>
+                                            <div className="font-bold text-slate-800">{item.name}</div>
+                                            <div className="text-[11px] text-slate-500 tabular-nums">Rp {item.price.toLocaleString('id-ID')}</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => changeQty(item.product_id, -1)}
+                                                className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
+                                            >
+                                                -
+                                            </button>
+                                            <span className="w-5 text-center font-bold tabular-nums">{item.quantity}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => changeQty(item.product_id, 1)}
+                                                className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => changeQty(item.product_id, -1)}
-                                            className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
-                                        >
-                                            -
-                                        </button>
-                                        <span className="w-5 text-center font-bold tabular-nums">{item.quantity}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => changeQty(item.product_id, 1)}
-                                            className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
 
                         <div className="space-y-3 pt-3 border-t border-slate-100">
                             {/* Toggle Tipe Transaksi Mobile */}
@@ -1465,8 +1472,12 @@ export default function KasirClient({
                                     className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs font-medium focus:bg-white focus:border-emerald-600 focus:outline-none"
                                 />
                             </div>
+                        </div>
+                    </div>
 
-                            <div className="flex items-baseline justify-between pt-2">
+                    {/* Footer Checkout Pinned */}
+                    <div className="shrink-0 p-4 border-t border-slate-200 bg-slate-50 space-y-2.5">
+                            <div className="flex items-baseline justify-between">
                                 <span className="text-xs text-slate-500 font-semibold">Total Tagihan</span>
                                 <span className="text-xl font-bold tabular-nums text-emerald-900">
                                     Rp {total.toLocaleString('id-ID')}
@@ -1479,7 +1490,7 @@ export default function KasirClient({
                                     await handleSubmit()
                                 }}
                                 disabled={saving || !isOnline || !isCashSufficient}
-                                className="w-full rounded-lg bg-emerald-800 py-3 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 active:scale-[0.99] transition disabled:opacity-40 cursor-pointer"
+                                className="w-full rounded-xl bg-emerald-800 py-3 text-xs font-bold text-white shadow-xs hover:bg-emerald-900 active:scale-[0.99] transition disabled:opacity-40 cursor-pointer"
                             >
                                 {saving ? (
                                     'Menyimpan...'
@@ -1503,27 +1514,27 @@ export default function KasirClient({
             {/* Modal Pemilihan Satuan untuk Produk Multi-Varian */}
             {selectingGroup && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150"
                     onClick={() => setSelectingGroup(null)}
                 >
                     <div
-                        className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl transition-all sm:p-6"
+                        className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                        <div className="shrink-0 flex items-start justify-between border-b border-slate-100 p-4 bg-slate-50/50">
                             <div>
-                                <h3 className="text-lg font-bold text-slate-900">{selectingGroup.name}</h3>
-                                <p className="text-xs text-slate-500">Pilih varian satuan yang diinginkan</p>
+                                <h3 className="text-sm sm:text-base font-bold text-slate-900">{selectingGroup.name}</h3>
+                                <p className="text-[11px] text-slate-500">Pilih varian satuan yang diinginkan</p>
                             </div>
                             <button
                                 onClick={() => setSelectingGroup(null)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className="mt-4 max-h-[60vh] space-y-2.5 overflow-y-auto pr-1">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0">
                             {selectingGroup.variants.map((v) => {
                                 const itemInCart = cart[v.id]
                                 const qtyInCart = itemInCart?.quantity ?? 0
@@ -1613,11 +1624,11 @@ export default function KasirClient({
                             })}
                         </div>
 
-                        <div className="mt-4 border-t border-slate-100 pt-3">
+                        <div className="shrink-0 p-3.5 border-t border-slate-200 bg-slate-50">
                             <button
                                 type="button"
                                 onClick={() => setSelectingGroup(null)}
-                                className="w-full rounded-2xl bg-slate-900 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-slate-800"
+                                className="w-full rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-slate-800 cursor-pointer"
                             >
                                 Selesai
                             </button>
@@ -1628,85 +1639,93 @@ export default function KasirClient({
 
             {/* QRIS Pop-up Modal untuk Scan Pelanggan */}
             {showQrisModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl transition-all">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="relative w-full max-w-sm max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                        {/* Header Pinned */}
+                        <div className="shrink-0 flex items-center justify-between border-b border-slate-100 p-4 bg-slate-50/50">
                             <div className="flex items-center gap-2">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold text-sm">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">
                                     QR
                                 </span>
                                 <div>
-                                    <h3 className="text-base font-bold text-slate-900">Pembayaran QRIS</h3>
-                                    <p className="text-[11px] text-slate-500">Scan QRIS untuk pembayaran di toko</p>
+                                    <h3 className="text-sm font-bold text-slate-900">Pembayaran QRIS</h3>
+                                    <p className="text-[10px] text-slate-500">Scan QRIS untuk pembayaran di toko</p>
                                 </div>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => !saving && setShowQrisModal(false)}
                                 disabled={saving}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40"
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 cursor-pointer"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        {/* Total Tagihan */}
-                        <div className="my-4 rounded-2xl bg-slate-50 p-4 text-center border border-slate-100">
-                            <p className="text-xs text-slate-500 font-medium">Total Tagihan Pelanggan</p>
-                            <p className="text-2xl font-black text-emerald-700 mt-0.5">
-                                Rp {total.toLocaleString('id-ID')}
-                            </p>
-                            <p className="text-[11px] text-slate-500 mt-1">
-                                {businessName || 'Toko'} {branches.find(b => b.id === selectedBranch) ? `• ${branches.find(b => b.id === selectedBranch)?.name}` : ''}
-                            </p>
+                        {/* Body Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                            {/* Total Tagihan */}
+                            <div className="rounded-xl bg-slate-50 p-3.5 text-center border border-slate-100">
+                                <p className="text-[11px] text-slate-500 font-medium">Total Tagihan Pelanggan</p>
+                                <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-0.5 tabular-nums">
+                                    Rp {total.toLocaleString('id-ID')}
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    {businessName || 'Toko'} {branches.find(b => b.id === selectedBranch) ? `• ${branches.find(b => b.id === selectedBranch)?.name}` : ''}
+                                </p>
+                            </div>
+
+                            {/* Gambar QRIS Toko */}
+                            {businessQrisUrl ? (
+                                <div className="flex flex-col items-center">
+                                    <div className="relative rounded-2xl border-2 border-dashed border-emerald-300 bg-white p-3 shadow-inner">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={businessQrisUrl}
+                                            alt="QRIS Toko"
+                                            className="max-h-56 sm:max-h-64 w-auto max-w-full rounded-xl object-contain shadow-xs"
+                                        />
+                                    </div>
+                                    <p className="mt-2.5 text-center text-xs font-medium text-slate-600 flex items-center justify-center gap-1.5">
+                                        <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>Arahkan kamera / e-wallet pelanggan ke QRIS di atas</span>
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-center">
+                                    <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-xs font-bold text-amber-900">QRIS Toko Belum Diunggah</p>
+                                    <p className="mt-0.5 text-[11px] text-amber-800 leading-relaxed">
+                                        Owner belum mengunggah gambar QRIS di menu <span className="font-semibold">Profil Bisnis</span>.
+                                    </p>
+                                    <p className="mt-1.5 text-[10px] text-slate-600">
+                                        Silakan minta pelanggan memindai kode QRIS fisik di meja kasir.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Gambar QRIS Toko */}
-                        {businessQrisUrl ? (
-                            <div className="flex flex-col items-center">
-                                <div className="relative rounded-2xl border-2 border-dashed border-emerald-300 bg-white p-3 shadow-inner">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={businessQrisUrl}
-                                        alt="QRIS Toko"
-                                        className="max-h-64 w-auto max-w-full rounded-xl object-contain shadow-xs"
-                                    />
-                                </div>
-                                <p className="mt-3 text-center text-xs font-medium text-slate-600">
-                                    📱 Arahkan kamera atau aplikasi e-wallet pelanggan ke kode QRIS di atas.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
-                                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 text-lg">
-                                    ⚠️
-                                </div>
-                                <p className="text-xs font-bold text-amber-900">QRIS Toko Belum Diunggah</p>
-                                <p className="mt-1 text-[11px] text-amber-800 leading-relaxed">
-                                    Owner belum mengunggah gambar QRIS di menu <span className="font-semibold">Profil Bisnis</span>.
-                                </p>
-                                <p className="mt-2 text-[11px] text-slate-600">
-                                    Silakan minta pelanggan memindai kode QRIS fisik di meja kasir.
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="mt-5 space-y-2">
+                        {/* Actions Pinned */}
+                        <div className="shrink-0 p-3.5 border-t border-slate-100 bg-slate-50 space-y-2">
                             <button
                                 type="button"
                                 onClick={executeCheckout}
                                 disabled={saving}
-                                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-50 transition cursor-pointer"
                             >
                                 {saving ? (
                                     <>
-                                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                                         Memproses Pembayaran...
                                     </>
                                 ) : (
-                                    '✓ Konfirmasi Pembayaran Selesai'
+                                    'Konfirmasi Pembayaran Selesai'
                                 )}
                             </button>
 
@@ -1714,7 +1733,7 @@ export default function KasirClient({
                                 type="button"
                                 onClick={() => setShowQrisModal(false)}
                                 disabled={saving}
-                                className="w-full rounded-2xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                                className="w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
                             >
                                 Kembali / Ganti Metode Bayar
                             </button>

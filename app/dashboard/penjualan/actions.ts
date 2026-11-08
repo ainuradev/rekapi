@@ -100,11 +100,15 @@ export async function createSale(input: {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id, branch_id, role')
+        .select('business_id, branch_id, role, is_active')
         .eq('id', user.id)
         .single()
 
     if (!profile) return { error: 'Profile tidak ditemukan.' }
+
+    if (profile.role === 'pegawai' && profile.is_active === false) {
+        return { error: 'Akun kasir Anda sedang dinonaktifkan oleh Pemilik Bisnis.' }
+    }
 
     const subCheck = await checkActiveSubscription(profile.business_id, supabase)
     if (!subCheck.allowed) {
@@ -113,23 +117,40 @@ export async function createSale(input: {
 
     // Kunci branch_id di server:
     // - Pegawai WAJIB pakai branch_id dari profilnya sendiri (fixed 1 cabang).
-    // - Owner boleh pilih cabang manapun, tapi tetap divalidasi harus milik business yang sama.
+    // - Owner boleh pilih cabang manapun (atau default ke Cabang Utama jika konsolidasi 'all'), tapi tetap divalidasi harus milik business yang sama.
     let branchId = input.branch_id
+
+    if (!branchId || branchId === 'all') {
+        const { data: primaryB } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('business_id', profile.business_id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        if (primaryB) {
+            branchId = primaryB.id
+        }
+    }
 
     if (profile.role === 'pegawai') {
         if (!profile.branch_id) {
             return { error: 'Akun pegawai ini belum di-assign ke cabang manapun.' }
         }
         branchId = profile.branch_id
-    } else {
-        const { data: branchCheck } = await supabase
-            .from('branches')
-            .select('id')
-            .eq('id', branchId)
-            .eq('business_id', profile.business_id)
-            .single()
+    }
 
-        if (!branchCheck) return { error: 'Cabang tidak valid.' }
+    // Validasi cabang aktif untuk seluruh role (Owner maupun Pegawai)
+    const { data: branchCheck } = await supabase
+        .from('branches')
+        .select('id, name, status')
+        .eq('id', branchId)
+        .eq('business_id', profile.business_id)
+        .single()
+
+    if (!branchCheck) return { error: 'Cabang tidak valid.' }
+    if (branchCheck.status !== 'active') {
+        return { error: `Cabang "${branchCheck.name}" sedang nonaktif. Transaksi kasir tidak dapat dilakukan di cabang nonaktif.` }
     }
 
     if (!input.items || input.items.length === 0) {

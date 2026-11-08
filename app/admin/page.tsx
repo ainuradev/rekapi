@@ -7,6 +7,7 @@ import AdminClient, {
     AdminUserItem,
     AdminBusinessItem,
     AdminSaleItem,
+    AdminNotificationItem,
     PlatformMetrics,
     SubscriptionPlanItem,
 } from './admin-client'
@@ -295,6 +296,24 @@ export default async function AdminPage() {
         totalPlatformRevenue: totalRevenue,
     }
 
+    // 5. Ambil riwayat notifikasi sistem yang pernah dikirim
+    const { data: notificationsData } = await admin
+        .from('system_notifications')
+        .select('id, business_id, title, message, category, action_url, created_at, businesses(name)')
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+    const formattedNotifications: AdminNotificationItem[] = (notificationsData ?? []).map((n) => ({
+        id: n.id,
+        businessId: n.business_id,
+        businessName: (n.businesses as { name?: string } | null)?.name ?? null,
+        title: n.title,
+        message: n.message,
+        category: n.category as AdminNotificationItem['category'],
+        actionUrl: n.action_url,
+        createdAt: n.created_at,
+    }))
+
     return (
         <AdminClient
             users={enrichedUsers}
@@ -302,6 +321,7 @@ export default async function AdminPage() {
             recentSales={recentSalesFormatted}
             metrics={metrics}
             plans={planList}
+            notifications={formattedNotifications}
         />
     )
 }

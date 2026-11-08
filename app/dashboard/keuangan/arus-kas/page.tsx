@@ -121,7 +121,7 @@ export default async function ArusKasPage({
 
     let expensesQuery = supabase
         .from('expenses')
-        .select('amount, expense_date')
+        .select('id, amount, expense_date, description')
         .eq('business_id', businessId)
         .gte('expense_date', dateFrom)
         .lte('expense_date', dateTo)
@@ -255,7 +255,24 @@ export default async function ArusKasPage({
         }
         return acc + Number(p.paid_amount ?? p.total ?? 0)
     }, 0)
-    const totalExpenses = (expensesRaw ?? []).reduce((acc, e) => acc + Number(e.amount || 0), 0)
+    // ATURAN AKUNTANSI NON-KAS: Kerugian persediaan / waste stok adalah Beban Non-Kas (uang sudah keluar saat pembelian di awal).
+    // Jangan kurangi kas keluar di Laporan Arus Kas agar saldo fisik kas/bank tetap presisi.
+    let totalNonCashWaste = 0
+    let totalExpenses = 0
+    for (const e of expensesRaw ?? []) {
+        const isNonCash = (e as unknown as { is_non_cash?: boolean }).is_non_cash ||
+            Boolean(e.description && (
+                e.description.includes('[WASTE') ||
+                e.description.includes('[RUSAK') ||
+                e.description.includes('[HILANG')
+            ))
+        const amt = Number(e.amount || 0)
+        if (isNonCash) {
+            totalNonCashWaste += amt
+        } else {
+            totalExpenses += amt
+        }
+    }
     const totalCashOut = totalPurchases + totalExpenses + debtPayments + equityWithdraws
     const netCashFlow = totalCashIn - totalCashOut
 
@@ -377,9 +394,15 @@ export default async function ArusKasPage({
                                 <span className="font-semibold text-slate-800">{fmt(totalPurchases)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span>Pembayaran Beban Operasional (Gaji, Listrik, Sewa, dsb.)</span>
+                                <span>Pembayaran Beban Operasional Kas (Gaji, Listrik, Sewa, dsb.)</span>
                                 <span className="font-semibold text-slate-800">{fmt(totalExpenses)}</span>
                             </div>
+                            {totalNonCashWaste > 0 && (
+                                <div className="flex items-center justify-between text-amber-800 bg-amber-50/70 px-2.5 py-1.5 rounded-lg text-[11px]">
+                                    <span>Beban Non-Kas Waste Stok (Dikecualikan dari Kas Keluar)</span>
+                                    <span className="font-semibold font-mono text-amber-900">{fmt(totalNonCashWaste)}</span>
+                                </div>
+                            )}
                             {debtPayments > 0 && (
                                 <div className="flex items-center justify-between text-amber-800 bg-amber-50/60 px-2 py-1 rounded-md">
                                     <span>Pembayaran Cicilan / Pelunasan Utang Usaha</span>

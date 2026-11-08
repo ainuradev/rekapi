@@ -91,13 +91,13 @@ export default function AddProductForm({
 
             {errorMsg && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
-                    ❌ {errorMsg}
+                    {errorMsg}
                 </div>
             )}
 
             {successMsg && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
-                    ✅ {successMsg}
+                    {successMsg}
                 </div>
             )}
 
@@ -184,9 +184,9 @@ export default function AddProductForm({
                         onChange={(e) => setCategory(e.target.value as 'makanan' | 'minuman' | 'lainnya')}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition cursor-pointer"
                     >
-                        <option value="makanan">🍽️ Makanan</option>
-                        <option value="minuman">☕ Minuman</option>
-                        <option value="lainnya">📦 Lainnya</option>
+                        <option value="makanan">Makanan</option>
+                        <option value="minuman">Minuman</option>
+                        <option value="lainnya">Lainnya</option>
                     </select>
                 </div>
             </div>
@@ -220,7 +220,7 @@ export default function AddProductForm({
 
             {!isOwner && (
                 <p className="text-xs text-slate-500 text-center">
-                    ℹ️ HPP produk ini akan diverifikasi dan diisi oleh Owner belakangan.
+                    HPP produk ini akan diverifikasi dan diisi oleh Owner belakangan.
                 </p>
             )}
         </form>

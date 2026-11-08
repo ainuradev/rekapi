@@ -7,6 +7,7 @@ import {
     updateBranchStock,
     updateCostPrice,
     toggleProductStatus,
+    ProductStockReductionReason,
 } from './actions'
 import AddProductForm from './add-product-form'
 
@@ -142,6 +143,13 @@ function StockEditModal({
     const [targetBranchId, setTargetBranchId] = useState(branchId || (branches[0]?.id ?? ''))
     const [inputValue, setInputValue] = useState(String(product.stock ?? 0))
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
+    const [reductionReason, setReductionReason] = useState<ProductStockReductionReason>('waste_expired')
+    const [reductionNotes, setReductionNotes] = useState('')
+
+    const currentStock = Number(product.stock ?? 0)
+    const newStock = Number(inputValue)
+    const isReduction = !isNaN(newStock) && newStock < currentStock
+    const qtyReduced = isReduction ? currentStock - newStock : 0
 
     const quickAdjust = (delta: number) => {
         const current = Number(inputValue) || 0
@@ -158,9 +166,10 @@ function StockEditModal({
 
         setErrorMsg(null)
         startTransition(async () => {
+            const options = isReduction ? { reason: reductionReason, notes: reductionNotes } : undefined
             const res = targetBranchId
-                ? await updateBranchStock(product.id, targetBranchId, val)
-                : await updateStock(product.id, val)
+                ? await updateBranchStock(product.id, targetBranchId, val, options)
+                : await updateStock(product.id, val, options)
 
             if (res?.error) {
                 setErrorMsg(res.error)
@@ -176,9 +185,10 @@ function StockEditModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-            <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl border border-slate-200">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+            <div className="w-full max-w-sm sm:max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                {/* Header Tetap */}
+                <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                     <div>
                         <h3 className="text-sm font-bold text-slate-900">Ubah Stok Fisik</h3>
                         <p className="text-xs text-slate-500 font-medium truncate max-w-[240px]">
@@ -188,13 +198,17 @@ function StockEditModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
+                        className="rounded-lg p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                        aria-label="Tutup"
                     >
-                        ✕
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
 
-                <div className="space-y-4">
+                {/* Body Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {/* Pemilihan Cabang Target jika belum spesifik */}
                     {branches.length > 1 && (
                         <div>
@@ -216,8 +230,8 @@ function StockEditModal({
                     )}
 
                     {branches.length <= 1 && (
-                        <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
-                            Lokasi: <strong>{branchName || branches[0]?.name || 'Cabang Utama'}</strong>
+                        <div className="text-[11px] text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                            Lokasi: <strong className="text-slate-700">{branchName || branches[0]?.name || 'Cabang Utama'}</strong>
                         </div>
                     )}
 
@@ -269,30 +283,77 @@ function StockEditModal({
                         </div>
                     </div>
 
+                    {/* Pilihan Kategori Alasan Pengurangan Stok jika stok berkurang */}
+                    {isReduction && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-2.5">
+                            <div>
+                                <label className="block text-[11px] font-bold text-amber-900 mb-1">
+                                    Alasan Pengurangan Stok ({qtyReduced} {product.unit || 'pcs'} berkurang)
+                                </label>
+                                <select
+                                    value={reductionReason}
+                                    onChange={(e) => setReductionReason(e.target.value as ProductStockReductionReason)}
+                                    className="w-full rounded border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-amber-600 focus:outline-none"
+                                >
+                                    <option value="waste_expired">Rusak / Kadaluarsa (Masuk Beban Laba Rugi)</option>
+                                    <option value="lost_shrinkage">Hilang / Selisih Opname (Masuk Beban Laba Rugi)</option>
+                                    <option value="production_usage">Pemakaian Operasional / Tester</option>
+                                    <option value="input_correction">Koreksi Salah Input (Tanpa Beban)</option>
+                                </select>
+                            </div>
+
+                            {/* Edukasi & Estimasi Nominal Beban Non-Kas */}
+                            {['waste_expired', 'lost_shrinkage'].includes(reductionReason) && (
+                                <div className="text-[11px] text-amber-900 leading-snug pt-1 border-t border-amber-200/60">
+                                    <div className="flex items-center justify-between font-bold">
+                                        <span>Estimasi Beban Kerugian:</span>
+                                        <span className="font-mono text-rose-700 font-bold">
+                                            Rp {Math.round(qtyReduced * Number(product.cost_price || 0)).toLocaleString('id-ID')}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-[10px] text-amber-800">
+                                        <span className="font-semibold text-amber-900">Beban Non-Kas:</span> Mengurangi laba di Laporan Laba Rugi, <strong>tidak memotong saldo kas/bank</strong>.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div>
+                                <input
+                                    type="text"
+                                    placeholder="Catatan tambahan (opsional)..."
+                                    value={reductionNotes}
+                                    onChange={(e) => setReductionNotes(e.target.value)}
+                                    className="w-full rounded border border-amber-200 bg-white px-2 py-1 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {errorMsg && (
                         <div className="text-xs text-rose-600 font-semibold bg-rose-50 p-2 rounded border border-rose-100">
                             {errorMsg}
                         </div>
                     )}
+                </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isPending}
-                            className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={isPending}
-                            className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
-                        >
-                            {isPending ? 'Menyimpan...' : 'Simpan Stok'}
-                        </button>
-                    </div>
+                {/* Footer Tetap */}
+                <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isPending}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isPending}
+                        className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
+                    >
+                        {isPending ? 'Menyimpan...' : 'Simpan Stok'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -442,7 +503,9 @@ export default function ProductCatalogClient({
                             placeholder="Cari nama menu / satuan produk..."
                             className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition shadow-2xs"
                         />
-                        <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔍</span>
+                        <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                         {searchQuery && (
                             <button
                                 type="button"

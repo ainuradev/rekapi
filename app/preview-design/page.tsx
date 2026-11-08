@@ -128,40 +128,40 @@ export default function DesignPreviewPage() {
                                     Operasional
                                 </div>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>📊</span> Ringkasan
+                                    <span>Ringkasan</span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>🛒</span> Kasir POS
+                                    <span>Kasir POS</span>
                                 </button>
                                 <button className="w-full flex items-center justify-between rounded-lg bg-emerald-950/5 px-2.5 py-2 font-bold text-emerald-900 border-l-2 border-emerald-800 text-left">
                                     <span className="flex items-center gap-2.5">
-                                        <span>🧾</span> Riwayat Transaksi
+                                        <span>Riwayat Transaksi</span>
                                     </span>
                                     <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] text-emerald-800">
                                         48
                                     </span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>📦</span> Katalog &amp; Stok
+                                    <span>Katalog &amp; Stok</span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>🥩</span> Bahan Baku
+                                    <span>Bahan Baku</span>
                                 </button>
 
                                 <div className="px-2 pb-1 pt-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                     Buku Besar
                                 </div>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>📈</span> Laba Rugi
+                                    <span>Laba Rugi</span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>⚖️</span> Neraca Keuangan
+                                    <span>Neraca Keuangan</span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>💸</span> Arus Kas
+                                    <span>Arus Kas</span>
                                 </button>
                                 <button className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                                    <span>🤝</span> Utang &amp; Piutang
+                                    <span>Utang &amp; Piutang</span>
                                 </button>
                             </nav>
                         </div>
@@ -287,7 +287,7 @@ export default function DesignPreviewPage() {
                                                 <td className="px-4 py-3 text-slate-800 font-semibold">Walk-in (Umum)</td>
                                                 <td className="px-4 py-3">
                                                     <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700">
-                                                        💵 Tunai
+                                                        Tunai
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">
@@ -326,7 +326,7 @@ export default function DesignPreviewPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-0.5 text-[11px] text-amber-900 font-medium">
-                                                        ⏳ Kredit (2x Bayar)
+                                                        Kredit (2x Bayar)
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">
@@ -347,7 +347,7 @@ export default function DesignPreviewPage() {
                                                         className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 border border-slate-200 cursor-not-allowed"
                                                         title="Transaksi ini telah memiliki cicilan lanjutan dan tidak dapat diedit langsung. Silakan gunakan fitur Batalkan (Void) bila ingin merevisi."
                                                     >
-                                                        🔒 Terkunci (Cicilan)
+                                                        Terkunci (Cicilan)
                                                     </span>
                                                     <button className="rounded px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 transition">
                                                         Void
@@ -364,7 +364,7 @@ export default function DesignPreviewPage() {
                                                 <td className="px-4 py-3 text-slate-800 font-semibold">Ibu Ratna</td>
                                                 <td className="px-4 py-3">
                                                     <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-0.5 text-[11px] text-teal-800 font-medium">
-                                                        📱 QRIS (BCA)
+                                                        QRIS (BCA)
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">
@@ -399,7 +399,7 @@ export default function DesignPreviewPage() {
                                                 </td>
                                                 <td className="px-4 py-3">12:05</td>
                                                 <td className="px-4 py-3">Walk-in</td>
-                                                <td className="px-4 py-3">💵 Tunai</td>
+                                                <td className="px-4 py-3">Tunai</td>
                                                 <td className="px-4 py-3 text-right tabular-nums line-through">
                                                     Rp 85.000
                                                 </td>
@@ -786,7 +786,7 @@ export default function DesignPreviewPage() {
                                             <div className="text-[10px] text-emerald-700 font-medium">Stok cabang sinkron</div>
                                         </div>
                                         <button className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-700">
-                                            🔍 Cari
+                                            Cari
                                         </button>
                                     </div>
 
@@ -798,8 +798,8 @@ export default function DesignPreviewPage() {
                                                 <span className="absolute top-2 right-2 text-[9px] font-bold bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200">
                                                     18 pcs
                                                 </span>
-                                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-sm font-bold text-emerald-900">
-                                                    ☕
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-900">
+                                                    CF
                                                 </div>
                                                 <div className="font-bold text-slate-900 text-[11px] leading-tight pt-1">
                                                     Americano Cold
@@ -817,8 +817,8 @@ export default function DesignPreviewPage() {
                                                 <span className="absolute top-2 right-2 text-[9px] font-bold bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200">
                                                     12 pcs
                                                 </span>
-                                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-sm font-bold text-amber-900">
-                                                    🥐
+                                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-900">
+                                                    CR
                                                 </div>
                                                 <div className="font-bold text-slate-900 text-[11px] leading-tight pt-1">
                                                     Croissant Butter
@@ -836,8 +836,8 @@ export default function DesignPreviewPage() {
                                                 <span className="absolute top-2 right-2 text-[9px] font-bold bg-rose-50 text-rose-800 px-1.5 py-0.2 rounded border border-rose-200">
                                                     Habis
                                                 </span>
-                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
-                                                    🍵
+                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                    ML
                                                 </div>
                                                 <div className="font-bold text-slate-400 text-[11px] leading-tight pt-1">
                                                     Matcha Latte
@@ -855,8 +855,8 @@ export default function DesignPreviewPage() {
                                                 <span className="absolute top-2 right-2 text-[9px] font-bold bg-emerald-50 text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-200">
                                                     24 pcs
                                                 </span>
-                                                <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-sm font-bold text-sky-900">
-                                                    🥪
+                                                <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-xs font-bold text-sky-900">
+                                                    TS
                                                 </div>
                                                 <div className="font-bold text-slate-900 text-[11px] leading-tight pt-1">
                                                     Toast Srikaya
@@ -899,9 +899,9 @@ export default function DesignPreviewPage() {
                                                     <button onClick={() => setMobilePaymentOpen(false)} className="font-bold text-slate-400">✕</button>
                                                 </div>
                                                 <div className="flex rounded-lg bg-slate-100 p-1 text-[11px] font-bold">
-                                                    <button className="flex-1 py-1 bg-white rounded shadow-2xs text-slate-900">💵 Tunai</button>
-                                                    <button className="flex-1 py-1 text-slate-600">📱 QRIS</button>
-                                                    <button className="flex-1 py-1 text-slate-600">⏳ Kasbon</button>
+                                                    <button className="flex-1 py-1 bg-white rounded shadow-2xs text-slate-900">Tunai</button>
+                                                    <button className="flex-1 py-1 text-slate-600">QRIS</button>
+                                                    <button className="flex-1 py-1 text-slate-600">Kasbon</button>
                                                 </div>
                                                 <div>
                                                     <span className="text-[10px] text-slate-500 font-medium">Akun Penerima (0036 Sync)</span>
@@ -956,7 +956,7 @@ export default function DesignPreviewPage() {
                                         <div className="flex items-center justify-between">
                                             <span className="font-mono font-bold text-slate-900 text-xs">INV-1028-0031</span>
                                             <span className="inline-flex items-center gap-1 text-amber-800 font-bold text-[10px] bg-amber-100 px-1.5 py-0.2 rounded">
-                                                🔒 Terkunci (Cicilan)
+                                                Terkunci (Cicilan)
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-slate-600 text-[11px]">

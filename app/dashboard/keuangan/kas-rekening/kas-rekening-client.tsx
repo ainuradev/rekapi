@@ -523,113 +523,124 @@ export default function KasRekeningClient({
 
             {/* Modal Tambah Akun Baru */}
             {openAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Tambah Akun Kas / Rekening</h3>
-                            <button onClick={() => setOpenAddModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Tambah Akun Kas / Rekening</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenAddModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleAddAccount} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Tipe Akun</label>
-                                <select
-                                    value={newType}
-                                    onChange={(e) => setNewType(e.target.value as 'cash' | 'bank' | 'e_wallet')}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="cash">Kas Tunai (Fisik / Brankas / Kasir)</option>
-                                    <option value="bank">Rekening Bank (BCA, Mandiri, BRI, dll)</option>
-                                    <option value="e_wallet">E-Wallet / QRIS (GoPay, OVO, ShopeePay)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Akun / Buku Kas</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Contoh: BCA Operasional Toko"
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            {newType !== 'cash' && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Bank / Penyedia</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Contoh: BCA"
-                                            value={newBankName}
-                                            onChange={(e) => setNewBankName(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">Nomor Rekening</label>
-                                        <input
-                                            type="text"
-                                            placeholder="1234567890"
-                                            value={newAccNumber}
-                                            onChange={(e) => setNewAccNumber(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
+                        <form onSubmit={handleAddAccount} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tipe Akun</label>
+                                    <select
+                                        value={newType}
+                                        onChange={(e) => setNewType(e.target.value as 'cash' | 'bank' | 'e_wallet')}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+                                    >
+                                        <option value="cash">Kas Tunai (Fisik / Brankas / Kasir)</option>
+                                        <option value="bank">Rekening Bank (BCA, Mandiri, BRI, dll)</option>
+                                        <option value="e_wallet">E-Wallet / QRIS (GoPay, OVO, ShopeePay)</option>
+                                    </select>
                                 </div>
-                            )}
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Saldo Awal (Rp)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    value={newInitialBal}
-                                    onChange={(e) => setNewInitialBal(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                />
-                                <p className="mt-1 text-[11px] text-slate-400">Saldo kas yang sudah Anda miliki saat mulai pembukuan.</p>
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Akun / Buku Kas</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Contoh: BCA Operasional Toko"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                </div>
 
-                            <div className="space-y-2 pt-2 border-t border-slate-100">
-                                {newType === 'cash' ? (
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={newIsDefaultCash}
-                                            onChange={(e) => setNewIsDefaultCash(e.target.checked)}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Jadikan akun penampung utama penjualan tunai kasir</span>
-                                    </label>
-                                ) : (
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={newIsDefaultBank}
-                                            onChange={(e) => setNewIsDefaultBank(e.target.checked)}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Jadikan akun penampung utama penjualan transfer/QRIS kasir</span>
-                                    </label>
+                                {newType !== 'cash' && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Bank / Penyedia</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Contoh: BCA"
+                                                value={newBankName}
+                                                onChange={(e) => setNewBankName(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">Nomor Rekening</label>
+                                            <input
+                                                type="text"
+                                                placeholder="1234567890"
+                                                value={newAccNumber}
+                                                onChange={(e) => setNewAccNumber(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 )}
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Saldo Awal (Rp)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="0"
+                                        value={newInitialBal}
+                                        onChange={(e) => setNewInitialBal(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                    <p className="mt-1 text-[11px] text-slate-400">Saldo kas yang sudah Anda miliki saat mulai pembukuan.</p>
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-slate-100">
+                                    {newType === 'cash' ? (
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={newIsDefaultCash}
+                                                onChange={(e) => setNewIsDefaultCash(e.target.checked)}
+                                                className="rounded text-emerald-800 focus:ring-emerald-700"
+                                            />
+                                            <span>Jadikan akun penampung utama penjualan tunai kasir</span>
+                                        </label>
+                                    ) : (
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={newIsDefaultBank}
+                                                onChange={(e) => setNewIsDefaultBank(e.target.checked)}
+                                                className="rounded text-emerald-800 focus:ring-emerald-700"
+                                            />
+                                            <span>Jadikan akun penampung utama penjualan transfer/QRIS kasir</span>
+                                        </label>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenAddModal(false)}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Menyimpan...' : 'Simpan Akun'}
                                 </button>
@@ -641,39 +652,55 @@ export default function KasRekeningClient({
 
             {/* Modal Atur Saldo Awal */}
             {openInitialModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <h3 className="text-base font-bold text-slate-900 mb-1">Atur Saldo Awal</h3>
-                        <p className="text-xs text-slate-500 mb-4">{openInitialModal.name}</p>
-
-                        <form onSubmit={handleSetInitial} className="space-y-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-sm max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Saldo Awal Baru (Rp)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    required
-                                    value={targetInitialBal}
-                                    onChange={(e) => setTargetInitialBal(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                />
-                                <p className="mt-2 text-[11px] text-slate-500 italic">
-                                    *Saldo awal hanya diatur 1x saat pembukaan akun. Untuk menyetor uang laci kasir saat tutup toko atau menambah uang kembalian harian, gunakan tombol Transfer / Setor Kas.
-                                </p>
+                                <h3 className="text-sm font-bold text-slate-900">Atur Saldo Awal</h3>
+                                <p className="text-xs text-slate-500 truncate max-w-[240px]">{openInitialModal.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setOpenInitialModal(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSetInitial} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Saldo Awal Baru (Rp)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        required
+                                        value={targetInitialBal}
+                                        onChange={(e) => setTargetInitialBal(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                    <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                                        *Saldo awal hanya diatur 1x saat pembukaan akun. Untuk menyetor uang laci kasir saat tutup toko atau menambah uang kembalian harian, gunakan tombol Transfer / Setor Kas.
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenInitialModal(null)}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Menyimpan...' : 'Simpan Saldo Awal'}
                                 </button>
@@ -685,80 +712,91 @@ export default function KasRekeningClient({
 
             {/* Modal Transfer / Setor Kas */}
             {openTransferModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Transfer / Setor Kas</h3>
-                            <button onClick={() => setOpenTransferModal(false)} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Transfer / Setor Kas</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenTransferModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleTransfer} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Dari Akun (Sumber)</label>
-                                <select
-                                    value={fromAccId}
-                                    onChange={(e) => setFromAccId(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                >
-                                    {accounts.map((a) => (
-                                        <option key={a.id} value={a.id}>
-                                            {a.name} (Saldo: {fmt(a.current_balance)})
-                                        </option>
-                                    ))}
-                                </select>
+                        <form onSubmit={handleTransfer} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Dari Akun (Sumber)</label>
+                                    <select
+                                        value={fromAccId}
+                                        onChange={(e) => setFromAccId(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+                                    >
+                                        {accounts.map((a) => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.name} (Saldo: {fmt(a.current_balance)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Ke Akun (Tujuan)</label>
+                                    <select
+                                        value={toAccId}
+                                        onChange={(e) => setToAccId(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+                                    >
+                                        {accounts.map((a) => (
+                                            <option key={a.id} value={a.id} disabled={a.id === fromAccId}>
+                                                {a.name} (Saldo: {fmt(a.current_balance)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal Transfer (Rp)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        required
+                                        placeholder="Contoh: 500000"
+                                        value={transferAmount}
+                                        onChange={(e) => setTransferAmount(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan / Keperluan (Opsional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Setor hasil kasir harian ke rekening BCA"
+                                        value={transferNotes}
+                                        onChange={(e) => setTransferNotes(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Ke Akun (Tujuan)</label>
-                                <select
-                                    value={toAccId}
-                                    onChange={(e) => setToAccId(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                >
-                                    {accounts.map((a) => (
-                                        <option key={a.id} value={a.id} disabled={a.id === fromAccId}>
-                                            {a.name} (Saldo: {fmt(a.current_balance)})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal Transfer (Rp)</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    required
-                                    placeholder="Contoh: 500000"
-                                    value={transferAmount}
-                                    onChange={(e) => setTransferAmount(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan / Keperluan (Opsional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Setor hasil kasir harian ke rekening BCA"
-                                    value={transferNotes}
-                                    onChange={(e) => setTransferNotes(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenTransferModal(false)}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Memproses...' : 'Proses Transfer'}
                                 </button>
@@ -768,76 +806,86 @@ export default function KasRekeningClient({
                 </div>
             )}
 
-
             {/* Modal Edit Akun */}
             {openEditModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Edit Akun Kas / Rekening</h3>
-                            <button onClick={() => setOpenEditModal(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Edit Akun Kas / Rekening</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenEditModal(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleEditAccount} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Akun</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={openEditModal.name}
-                                    onChange={(e) => setOpenEditModal({ ...openEditModal, name: e.target.value })}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            {openEditModal.type !== 'cash' && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">Bank / Provider</label>
-                                        <input
-                                            type="text"
-                                            value={openEditModal.bank_name || ''}
-                                            onChange={(e) => setOpenEditModal({ ...openEditModal, bank_name: e.target.value })}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-1">No. Rekening</label>
-                                        <input
-                                            type="text"
-                                            value={openEditModal.account_number || ''}
-                                            onChange={(e) => setOpenEditModal({ ...openEditModal, account_number: e.target.value })}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
+                        <form onSubmit={handleEditAccount} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Akun</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={openEditModal.name}
+                                        onChange={(e) => setOpenEditModal({ ...openEditModal, name: e.target.value })}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                    />
                                 </div>
-                            )}
 
-                            <div className="space-y-2 pt-2 border-t border-slate-100">
-                                {openEditModal.type === 'cash' ? (
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={openEditModal.is_default_cash}
-                                            onChange={(e) => setOpenEditModal({ ...openEditModal, is_default_cash: e.target.checked })}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Jadikan akun penampung utama penjualan tunai kasir</span>
-                                    </label>
-                                ) : (
-                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={openEditModal.is_default_bank}
-                                            onChange={(e) => setOpenEditModal({ ...openEditModal, is_default_bank: e.target.checked })}
-                                            className="rounded text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Jadikan akun penampung utama penjualan non-tunai kasir</span>
-                                    </label>
+                                {openEditModal.type !== 'cash' && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">Bank / Provider</label>
+                                            <input
+                                                type="text"
+                                                value={openEditModal.bank_name || ''}
+                                                onChange={(e) => setOpenEditModal({ ...openEditModal, bank_name: e.target.value })}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">No. Rekening</label>
+                                            <input
+                                                type="text"
+                                                value={openEditModal.account_number || ''}
+                                                onChange={(e) => setOpenEditModal({ ...openEditModal, account_number: e.target.value })}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 )}
+
+                                <div className="space-y-2 pt-2 border-t border-slate-100">
+                                    {openEditModal.type === 'cash' ? (
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={openEditModal.is_default_cash}
+                                                onChange={(e) => setOpenEditModal({ ...openEditModal, is_default_cash: e.target.checked })}
+                                                className="rounded text-emerald-800 focus:ring-emerald-700"
+                                            />
+                                            <span>Jadikan akun penampung utama penjualan tunai kasir</span>
+                                        </label>
+                                    ) : (
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={openEditModal.is_default_bank}
+                                                onChange={(e) => setOpenEditModal({ ...openEditModal, is_default_bank: e.target.checked })}
+                                                className="rounded text-emerald-800 focus:ring-emerald-700"
+                                            />
+                                            <span>Jadikan akun penampung utama penjualan non-tunai kasir</span>
+                                        </label>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
                                 <button
                                     type="button"
                                     disabled={isPending || accounts.length <= 1}
@@ -847,7 +895,7 @@ export default function KasRekeningClient({
                                             setDeleteConfirmAcc(accToDelete)
                                         }
                                     }}
-                                    className="text-xs font-bold text-rose-600 hover:text-rose-700 disabled:opacity-30"
+                                    className="text-xs font-bold text-rose-600 hover:text-rose-700 disabled:opacity-30 cursor-pointer"
                                 >
                                     Hapus Akun
                                 </button>
@@ -855,14 +903,14 @@ export default function KasRekeningClient({
                                     <button
                                         type="button"
                                         onClick={() => setOpenEditModal(null)}
-                                        className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                     >
                                         Batal
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isPending}
-                                        className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
+                                        className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
                                     >
                                         {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
                                     </button>
@@ -875,19 +923,21 @@ export default function KasRekeningClient({
 
             {/* Modal Konfirmasi Hapus Akun */}
             {deleteConfirmAcc && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center gap-3 text-rose-600 mb-3">
-                            <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-lg font-bold">
-                                ⚠️
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-sm max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center gap-2.5 text-rose-600">
+                            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                             </div>
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900">Hapus Akun Keuangan?</h3>
-                                <p className="text-xs text-slate-500 font-medium">{deleteConfirmAcc.name}</p>
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm font-bold text-slate-900">Hapus Akun Keuangan?</h3>
+                                <p className="text-xs text-slate-500 font-medium truncate">{deleteConfirmAcc.name}</p>
                             </div>
                         </div>
 
-                        <div className="text-xs text-slate-600 leading-relaxed mb-4 space-y-2">
+                        <div className="flex-1 overflow-y-auto p-4 text-xs text-slate-600 leading-relaxed space-y-2">
                             <p>Apakah Anda yakin ingin menghapus akun ini dari pembukuan?</p>
                             {deleteConfirmAcc.current_balance !== 0 && (
                                 <p className="font-semibold text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100">
@@ -906,12 +956,12 @@ export default function KasRekeningClient({
                             )}
                         </div>
 
-                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                        <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                             <button
                                 type="button"
                                 disabled={isPending}
                                 onClick={() => setDeleteConfirmAcc(null)}
-                                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                             >
                                 Batal
                             </button>
@@ -919,7 +969,7 @@ export default function KasRekeningClient({
                                 type="button"
                                 disabled={isPending}
                                 onClick={() => handleDeleteAccount(deleteConfirmAcc.id)}
-                                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition disabled:opacity-50"
+                                className="rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition disabled:opacity-50 cursor-pointer"
                             >
                                 {isPending ? 'Menghapus...' : 'Ya, Hapus Akun'}
                             </button>

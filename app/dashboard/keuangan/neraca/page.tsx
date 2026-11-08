@@ -180,7 +180,7 @@ export default async function NeracaPage({
     // ── 4. Fetch Expenses (Beban Operasional & Aset Peralatan hingga tanggal posisi) ──
     let expensesQuery = supabase
         .from('expenses')
-        .select('amount, category, branch_id, expense_date')
+        .select('amount, category, branch_id, expense_date, description')
         .eq('business_id', businessId)
         .lte('expense_date', asOfDate)
 
@@ -189,12 +189,22 @@ export default async function NeracaPage({
 
     let equipmentAssets = 0
     let operatingExpenses = 0
+    let nonCashWasteExpenses = 0
     for (const exp of expensesRaw ?? []) {
         const amt = Number(exp.amount || 0)
         if (exp.category === 'peralatan') {
             equipmentAssets += amt
         } else {
             operatingExpenses += amt
+            const isNonCash = (exp as unknown as { is_non_cash?: boolean }).is_non_cash ||
+                Boolean(exp.description && (
+                    exp.description.includes('[WASTE') ||
+                    exp.description.includes('[RUSAK') ||
+                    exp.description.includes('[HILANG')
+                ))
+            if (isNonCash) {
+                nonCashWasteExpenses += amt
+            }
         }
     }
 
@@ -338,7 +348,9 @@ export default async function NeracaPage({
     let cashAndBank = 0
     if (selectedBranchId !== 'all') {
         // Mode Cabang Spesifik: Hitung Kas Operasional Bersih Cabang secara kumulatif
-        const branchNetCash = totalPaidSales - totalPurchasesCash - (operatingExpenses + equipmentAssets) - branchDebtPayments
+        // Catatan akuntansi: Beban Non-Kas (waste/kerugian persediaan) tidak memotong kas fisik cabang
+        const cashOperatingExpenses = operatingExpenses - nonCashWasteExpenses
+        const branchNetCash = totalPaidSales - totalPurchasesCash - (cashOperatingExpenses + equipmentAssets) - branchDebtPayments
         cashAndBank = Math.max(0, branchNetCash)
     } else {
         // Mode Semua Cabang (Konsolidasi): Gunakan saldo akun keuangan bisnis
@@ -351,7 +363,8 @@ export default async function NeracaPage({
             if (accounts && accounts.length > 0) {
                 cashAndBank = accounts.reduce((acc, a) => acc + Number(a.current_balance || 0), 0)
             } else {
-                const rawCash = totalSales - totalPurchases - operatingExpenses - equipmentAssets
+                const cashOperatingExpenses = operatingExpenses - nonCashWasteExpenses
+                const rawCash = totalSales - totalPurchases - cashOperatingExpenses - equipmentAssets
                 cashAndBank = Math.max(0, rawCash)
             }
         } catch {
@@ -407,7 +420,7 @@ export default async function NeracaPage({
     const totalLiabilitiesAndEquity = totalLiabilities + totalEquity
 
     const balanceDifference = Math.abs(totalAssets - totalLiabilitiesAndEquity)
-    const isBalanced = !hasProdStockError && balanceDifference < 1
+    const isBalanced = balanceDifference < 1 && !hasProdStockError
 
     const currentDateStr = formatIndonesianDate(asOfDate)
 
@@ -456,16 +469,25 @@ export default async function NeracaPage({
                             <span className="font-bold text-slate-900">{currentDateStr}</span>
                         </div>
                         {hasProdStockError ? (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-bold">
-                                <span>⚠️ Data Tidak Lengkap (Persediaan Gagal Dimuat)</span>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-bold">
+                                <svg className="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>Data Tidak Lengkap (Persediaan Gagal Dimuat)</span>
                             </div>
                         ) : isBalanced ? (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-bold">
-                                <span>✅ Neraca Seimbang (Balanced)</span>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[11px] font-bold">
+                                <svg className="w-3.5 h-3.5 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Neraca Seimbang (Balanced)</span>
                             </div>
                         ) : (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-bold">
-                                <span>⚠️ Belum Seimbang ({fmt(balanceDifference)})</span>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-bold">
+                                <svg className="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>Belum Seimbang ({fmt(balanceDifference)})</span>
                             </div>
                         )}
                     </div>
@@ -481,7 +503,10 @@ export default async function NeracaPage({
             {hasProdStockError && (
                 <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs no-print">
                     <div className="flex items-center gap-2 font-bold text-amber-900">
-                        <span className="text-base">⚠️</span> Data Persediaan Produk Jadi Belum Dapat Dimuat
+                        <svg className="w-4 h-4 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Data Persediaan Produk Jadi Belum Dapat Dimuat</span>
                     </div>
                     <p className="mt-1 text-xs text-amber-800 leading-relaxed">
                         {prodStockErrorMessage || 'Gagal memuat data stok atau HPP produk dari database.'} Nilai persediaan barang dagangan jadi tidak dapat ditampilkan sebagai Rp0 yang valid. Silakan muat ulang halaman.
@@ -497,7 +522,17 @@ export default async function NeracaPage({
             }`}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                        <span className="text-base">{isBalanced ? '⚖️' : '⚠️'}</span>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isBalanced ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {isBalanced ? (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            )}
+                        </div>
                         <div>
                             <span className="font-extrabold text-sm block">
                                 {isBalanced

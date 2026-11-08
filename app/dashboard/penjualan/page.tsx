@@ -55,7 +55,9 @@ export default async function PenjualanPage() {
             .order('name'),
         supabase
             .from('branches')
-            .select('id, name, address, phone')
+            .select('id, name, address, phone, status')
+            .eq('business_id', profile?.business_id)
+            .eq('status', 'active')
             .order('name'),
         supabase
             .from('product_branch_stocks')
@@ -150,9 +152,11 @@ export default async function PenjualanPage() {
     }))
 
     const activeBranchId = await getActiveBranchId()
-    const effectiveBranchId = (activeBranchId && activeBranchId !== 'all')
+    const primaryBranchId = (branches && branches.length > 0) ? branches[0].id : null
+    const isTargetBranchActive = branches?.some((b) => b.id === activeBranchId)
+    const effectiveBranchId = isTargetBranchActive
         ? activeBranchId
-        : (profile?.branch_id ?? null)
+        : (profile?.branch_id && branches?.some((b) => b.id === profile.branch_id) ? profile.branch_id : primaryBranchId)
 
     return (
         <KasirClient

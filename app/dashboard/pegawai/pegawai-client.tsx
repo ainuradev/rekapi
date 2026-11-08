@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { addEmployee, updatePegawai, removeEmployee } from './actions'
+import { addEmployee, updatePegawai, removeEmployee, toggleEmployeeStatus } from './actions'
 
 export interface EmployeeProfile {
     id: string
@@ -10,13 +10,15 @@ export interface EmployeeProfile {
     email: string
     role: string | null
     branch_id: string | null
-    branches: { id?: string; name: string } | null
+    is_active?: boolean | null
+    branches: { id?: string; name: string; status?: string | null } | null
     created_at?: string
 }
 
 export interface BranchItem {
     id: string
     name: string
+    status?: string | null
 }
 
 interface PegawaiClientProps {
@@ -44,6 +46,7 @@ export default function PegawaiClient({
     const [submittingAdd, setSubmittingAdd] = useState(false)
     const [submittingEdit, setSubmittingEdit] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [togglingId, setTogglingId] = useState<string | null>(null)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -51,10 +54,10 @@ export default function PegawaiClient({
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [editingEmployee, setEditingEmployee] = useState<EmployeeProfile | null>(null)
 
-    // Peta cabang yang sudah ditempati pegawai
+    // Peta cabang yang sudah ditempati pegawai aktif
     const occupiedBranchMap = new Map<string, { employeeId: string; name: string }>()
     employees.forEach((emp) => {
-        if (emp.branch_id) {
+        if (emp.branch_id && emp.is_active !== false) {
             occupiedBranchMap.set(emp.branch_id, {
                 employeeId: emp.id,
                 name: emp.full_name || 'Kasir',
@@ -62,9 +65,50 @@ export default function PegawaiClient({
         }
     })
 
-    const availableBranches = branches.filter((b) => !occupiedBranchMap.has(b.id))
-    const isQuotaFull = !allowed || (maxEmployees !== null && employees.length >= maxEmployees)
+    const activeEmployeesCount = employees.filter((e) => e.is_active !== false).length
+    const availableBranches = branches.filter((b) => !occupiedBranchMap.has(b.id) && (b.status || 'active') === 'active')
+    const isQuotaFull = !allowed || (maxEmployees !== null && activeEmployeesCount >= maxEmployees)
     const noAvailableBranches = availableBranches.length === 0
+
+    const handleToggleStatus = async (emp: EmployeeProfile, targetActive: boolean) => {
+        if (togglingId) return
+
+        if (targetActive) {
+            const limit = maxEmployees ?? 1
+            if (activeEmployeesCount >= limit) {
+                alert(`Batas kuota pegawai aktif paket Anda (${limit} pegawai) sudah penuh. Upgrade paket langganan atau nonaktifkan pegawai lain terlebih dahulu.`)
+                return
+            }
+            if (!emp.branch_id) {
+                alert('Pegawai belum memiliki cabang penugasan. Edit pegawai untuk memilih cabang terlebih dahulu.')
+                return
+            }
+            if (emp.branches?.status && emp.branches.status !== 'active') {
+                alert(`Cabang penugasan (${emp.branches?.name || 'Cabang'}) sedang nonaktif. Aktifkan cabang terlebih dahulu di menu Cabang.`)
+                return
+            }
+        } else {
+            const confirmed = window.confirm(`Nonaktifkan akun pegawai "${emp.full_name || emp.email}"?\nPegawai ini tidak akan dapat login atau membuka dashboard kasir.`)
+            if (!confirmed) return
+        }
+
+        setTogglingId(emp.id)
+        setErrorMsg(null)
+        setSuccessMsg(null)
+        try {
+            const res = await toggleEmployeeStatus(emp.id, targetActive)
+            if (res?.error) {
+                setErrorMsg(res.error)
+            } else {
+                setSuccessMsg(`Status akun pegawai berhasil diubah menjadi ${targetActive ? 'Aktif' : 'Nonaktif'}.`)
+                router.refresh()
+            }
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : 'Gagal mengubah status pegawai.')
+        } finally {
+            setTogglingId(null)
+        }
+    }
 
     // Filter daftar pegawai sesuai cabang aktif dari Top Navbar
     const displayedEmployees = activeBranchId === 'all'
@@ -217,9 +261,9 @@ export default function PegawaiClient({
                         </div>
                         <div className="mt-1 flex items-baseline gap-1.5">
                             <span className={`text-2xl font-bold tabular-nums ${isQuotaFull ? 'text-amber-700' : 'text-slate-900'}`}>
-                                {employees.length} / {maxEmployees !== null ? maxEmployees : '∞'}
+                                {activeEmployeesCount} / {maxEmployees !== null ? maxEmployees : '∞'}
                             </span>
-                            <span className="text-xs text-slate-500 font-medium">terisi</span>
+                            <span className="text-xs text-slate-500 font-medium">kasir aktif</span>
                         </div>
                         <span className="mt-1 text-[11px] text-slate-400 block flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${isQuotaFull ? 'bg-amber-500' : 'bg-emerald-600'}`} />
@@ -233,7 +277,9 @@ export default function PegawaiClient({
             {errorMsg && (
                 <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 flex items-start justify-between gap-3 shadow-2xs">
                     <div className="flex items-start gap-2">
-                        <span className="text-rose-600 font-bold">⚠️</span>
+                        <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <span className="leading-relaxed">{errorMsg}</span>
                     </div>
                     <button
@@ -248,7 +294,9 @@ export default function PegawaiClient({
             {successMsg && (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-xs font-medium text-emerald-800 flex items-start justify-between gap-3 shadow-2xs">
                     <div className="flex items-start gap-2">
-                        <span className="text-emerald-600 font-bold">✓</span>
+                        <svg className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
                         <span className="leading-relaxed">{successMsg}</span>
                     </div>
                     <button
@@ -319,6 +367,7 @@ export default function PegawaiClient({
                                 <th className="px-4 py-3">Nama Lengkap</th>
                                 <th className="px-4 py-3">Email Login Kasir</th>
                                 <th className="px-4 py-3">Cabang Penugasan</th>
+                                <th className="px-4 py-3">Status</th>
                                 <th className="px-4 py-3">Peran</th>
                                 <th className="px-4 py-3 text-right">Aksi</th>
                             </tr>
@@ -329,7 +378,7 @@ export default function PegawaiClient({
                                     {/* Nama Pegawai */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${emp.is_active !== false ? 'bg-emerald-600' : 'bg-slate-400'}`} />
                                             <span className="font-semibold text-slate-900 text-xs">
                                                 {emp.full_name || 'Tanpa Nama'}
                                             </span>
@@ -348,10 +397,30 @@ export default function PegawaiClient({
                                         {emp.branches?.name ? (
                                             <span className="inline-flex items-center gap-1.5">
                                                 <span>{emp.branches.name}</span>
+                                                {emp.branches.status && emp.branches.status !== 'active' && (
+                                                    <span className="text-[10px] text-rose-600 font-normal">
+                                                        (Cabang Nonaktif)
+                                                    </span>
+                                                )}
                                             </span>
                                         ) : (
                                             <span className="text-amber-600 font-normal italic">
                                                 Belum ditugaskan
+                                            </span>
+                                        )}
+                                    </td>
+
+                                    {/* Status Akun */}
+                                    <td className="px-4 py-3">
+                                        {emp.is_active !== false ? (
+                                            <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                                Aktif
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                                Nonaktif
                                             </span>
                                         )}
                                     </td>
@@ -363,8 +432,24 @@ export default function PegawaiClient({
                                         </span>
                                     </td>
 
-                                    {/* Aksi: Edit & Hapus */}
-                                    <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                                    {/* Aksi: Toggle Status, Edit & Hapus */}
+                                    <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleStatus(emp, emp.is_active === false)}
+                                            disabled={togglingId === emp.id}
+                                            className={`rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                                                emp.is_active !== false
+                                                    ? 'text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                                                    : 'text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
+                                            }`}
+                                        >
+                                            {togglingId === emp.id
+                                                ? '...'
+                                                : emp.is_active !== false
+                                                ? 'Nonaktifkan'
+                                                : 'Aktifkan'}
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -372,7 +457,7 @@ export default function PegawaiClient({
                                                 setSuccessMsg(null)
                                                 setEditingEmployee(emp)
                                             }}
-                                            className="rounded px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                                            className="rounded px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
                                         >
                                             Edit
                                         </button>
@@ -395,14 +480,23 @@ export default function PegawaiClient({
                 <div className="md:hidden divide-y divide-slate-100">
                     {displayedEmployees.map((emp) => (
                         <div key={emp.id} className="p-3.5 flex items-start justify-between gap-3">
-                            {/* Kolom Kiri: Nama, Email, Cabang */}
+                            {/* Kolom Kiri: Nama, Email, Cabang, Status */}
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${emp.is_active !== false ? 'bg-emerald-600' : 'bg-slate-400'}`} />
                                     <span className="font-semibold text-xs text-slate-900 truncate">
                                         {emp.full_name || 'Tanpa Nama'}
                                     </span>
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase shrink-0">
+                                    {emp.is_active !== false ? (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase shrink-0">
+                                            Aktif
+                                        </span>
+                                    ) : (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase shrink-0">
+                                            Nonaktif
+                                        </span>
+                                    )}
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-50 text-slate-600 border border-slate-200 uppercase shrink-0">
                                         Kasir
                                     </span>
                                 </div>
@@ -413,11 +507,28 @@ export default function PegawaiClient({
 
                                 <div className="mt-1 text-[11px] text-slate-500 font-medium truncate">
                                     Cabang: <span className="text-slate-800 font-semibold">{emp.branches?.name || 'Belum ada cabang'}</span>
+                                    {emp.branches?.status && emp.branches.status !== 'active' && (
+                                        <span className="ml-1 text-[10px] text-rose-600 font-normal">
+                                            (Nonaktif)
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Kolom Kanan: Tombol Edit & Hapus */}
+                            {/* Kolom Kanan: Tombol Toggle, Edit & Hapus */}
                             <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                                <button
+                                    type="button"
+                                    onClick={() => handleToggleStatus(emp, emp.is_active === false)}
+                                    disabled={togglingId === emp.id}
+                                    className={`rounded px-2 py-1 text-[11px] font-semibold transition cursor-pointer ${
+                                        emp.is_active !== false
+                                            ? 'text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                                            : 'text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
+                                    }`}
+                                >
+                                    {togglingId === emp.id ? '...' : emp.is_active !== false ? 'Nonaktif' : 'Aktifkan'}
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -425,7 +536,7 @@ export default function PegawaiClient({
                                         setSuccessMsg(null)
                                         setEditingEmployee(emp)
                                     }}
-                                    className="rounded px-2 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer"
+                                    className="rounded px-2 py-1 text-[11px] font-semibold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
                                 >
                                     Edit
                                 </button>
@@ -472,9 +583,10 @@ export default function PegawaiClient({
 
             {/* 4. MODAL ON-DEMAND: TAMBAH AKUN PEGAWAI */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-                    <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-900">
                                     Tambah Akun Pegawai
@@ -486,95 +598,103 @@ export default function PegawaiClient({
                             <button
                                 type="button"
                                 onClick={() => setIsAddModalOpen(false)}
-                                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
                             >
-                                ✕
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
-                        <form onSubmit={handleAdd} className="space-y-3.5">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Nama Lengkap Pegawai
-                                </label>
-                                <input
-                                    type="text"
-                                    name="full_name"
-                                    required
-                                    placeholder="Contoh: Kasir Cabang Kemang"
-                                    disabled={submittingAdd}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
-                                />
+                        <form onSubmit={handleAdd} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Nama Lengkap Pegawai
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="full_name"
+                                        required
+                                        placeholder="Contoh: Kasir Cabang Kemang"
+                                        disabled={submittingAdd}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Email Login Kasir
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        required
+                                        placeholder="kasir.kemang@dimsum.com"
+                                        disabled={submittingAdd}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Password Login (Min. 6 Karakter)
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        required
+                                        minLength={6}
+                                        placeholder="••••••••"
+                                        disabled={submittingAdd}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Penugasan Cabang
+                                    </label>
+                                    <select
+                                        name="branch_id"
+                                        required
+                                        defaultValue={defaultBranchForAdd}
+                                        disabled={submittingAdd}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-600 focus:outline-none transition"
+                                    >
+                                        <option value="" disabled>-- Pilih Cabang --</option>
+                                        {branches.map((b) => {
+                                            const occupied = occupiedBranchMap.get(b.id)
+                                            const isBranchInactive = Boolean(b.status && b.status !== 'active')
+                                            return (
+                                                <option key={b.id} value={b.id} disabled={Boolean(occupied || isBranchInactive)}>
+                                                    {b.name} {isBranchInactive ? '(Cabang Nonaktif)' : occupied ? `(Sudah ada: ${occupied.name})` : '— Tersedia'}
+                                                </option>
+                                            )
+                                        })}
+                                    </select>
+                                    <p className="text-[10px] text-slate-500 mt-1">
+                                        Aturan sistem: 1 cabang = 1 akun kasir.
+                                    </p>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Email Login Kasir
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    required
-                                    placeholder="kasir.kemang@dimsum.com"
-                                    disabled={submittingAdd}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Password Login (Min. 6 Karakter)
-                                </label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    required
-                                    minLength={6}
-                                    placeholder="••••••••"
-                                    disabled={submittingAdd}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Penugasan Cabang
-                                </label>
-                                <select
-                                    name="branch_id"
-                                    required
-                                    defaultValue={defaultBranchForAdd}
-                                    disabled={submittingAdd}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-emerald-600 focus:outline-none transition"
-                                >
-                                    <option value="" disabled>-- Pilih Cabang --</option>
-                                    {branches.map((b) => {
-                                        const occupied = occupiedBranchMap.get(b.id)
-                                        return (
-                                            <option key={b.id} value={b.id} disabled={Boolean(occupied)}>
-                                                {b.name} {occupied ? `(Sudah ada: ${occupied.name})` : '— Tersedia'}
-                                            </option>
-                                        )
-                                    })}
-                                </select>
-                                <p className="text-[10px] text-slate-500 mt-1">
-                                    Aturan sistem: 1 cabang = 1 akun kasir.
-                                </p>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsAddModalOpen(false)}
                                     disabled={submittingAdd}
-                                    className="rounded-lg px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submittingAdd}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
                                 >
                                     {submittingAdd ? 'Menyimpan...' : 'Simpan Akun Pegawai'}
                                 </button>
@@ -586,9 +706,10 @@ export default function PegawaiClient({
 
             {/* 5. MODAL ON-DEMAND: EDIT DATA PEGAWAI */}
             {editingEmployee && (
-                <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-                    <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+                        {/* Header Tetap */}
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-900">
                                     Edit Akun Pegawai
@@ -600,104 +721,112 @@ export default function PegawaiClient({
                             <button
                                 type="button"
                                 onClick={() => setEditingEmployee(null)}
-                                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
                             >
-                                ✕
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
-                        <form onSubmit={handleEdit} className="space-y-3.5">
-                            <input type="hidden" name="profile_id" value={editingEmployee.id} />
+                        <form onSubmit={handleEdit} className="flex-1 flex flex-col min-h-0">
+                            {/* Body Scrollable */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                                <input type="hidden" name="profile_id" value={editingEmployee.id} />
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Nama Lengkap Pegawai
-                                </label>
-                                <input
-                                    type="text"
-                                    name="full_name"
-                                    required
-                                    defaultValue={editingEmployee.full_name || ''}
-                                    disabled={submittingEdit}
-                                    placeholder="Contoh: Kasir Cabang Kemang"
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
-                                />
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Nama Lengkap Pegawai
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="full_name"
+                                        required
+                                        defaultValue={editingEmployee.full_name || ''}
+                                        disabled={submittingEdit}
+                                        placeholder="Contoh: Kasir Cabang Kemang"
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Email Login Kasir
+                                    </label>
+                                    <input
+                                        type="email"
+                                        disabled
+                                        value={editingEmployee.email}
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-500 font-mono cursor-not-allowed"
+                                    />
+                                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                                        Email login tidak dapat diubah (digunakan untuk identitas akun).
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Pindahkan Cabang Penugasan
+                                    </label>
+                                    <select
+                                        name="branch_id"
+                                        required
+                                        defaultValue={editingEmployee.branch_id || ''}
+                                        disabled={submittingEdit}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-600 focus:outline-none transition"
+                                    >
+                                        <option value="" disabled>-- Pilih Cabang --</option>
+                                        {branches.map((b) => {
+                                            const occupied = occupiedBranchMap.get(b.id)
+                                            const isCurrentEmployeeBranch = occupied?.employeeId === editingEmployee.id
+                                            const isOccupiedByOther = Boolean(occupied && !isCurrentEmployeeBranch)
+                                            const isBranchInactive = Boolean(b.status && b.status !== 'active')
+
+                                            return (
+                                                <option key={b.id} value={b.id} disabled={Boolean(isOccupiedByOther || (isBranchInactive && !isCurrentEmployeeBranch))}>
+                                                    {b.name} {isBranchInactive ? '(Cabang Nonaktif)' : isCurrentEmployeeBranch ? '(Cabang Saat Ini)' : isOccupiedByOther ? `(Sudah ada: ${occupied?.name})` : '— Tersedia'}
+                                                </option>
+                                            )
+                                        })}
+                                    </select>
+                                    <p className="text-[10px] text-slate-500 mt-1">
+                                        Pilih cabang yang masih tersedia jika ingin merotasi kasir ini ke cabang lain.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Reset Password Baru (Opsional)
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="new_password"
+                                        minLength={6}
+                                        placeholder="Kosongkan jika tidak ingin ganti password"
+                                        disabled={submittingEdit}
+                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
+                                    />
+                                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                                        Isi minimal 6 karakter hanya jika kasir lupa password atau ingin diganti baru.
+                                    </span>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Email Login Kasir
-                                </label>
-                                <input
-                                    type="email"
-                                    disabled
-                                    value={editingEmployee.email}
-                                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-500 font-mono cursor-not-allowed"
-                                />
-                                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                    Email login tidak dapat diubah (digunakan untuk identitas akun).
-                                </span>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Pindahkan Cabang Penugasan
-                                </label>
-                                <select
-                                    name="branch_id"
-                                    required
-                                    defaultValue={editingEmployee.branch_id || ''}
-                                    disabled={submittingEdit}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-emerald-600 focus:outline-none transition"
-                                >
-                                    <option value="" disabled>-- Pilih Cabang --</option>
-                                    {branches.map((b) => {
-                                        const occupied = occupiedBranchMap.get(b.id)
-                                        const isCurrentEmployeeBranch = occupied?.employeeId === editingEmployee.id
-                                        const isOccupiedByOther = Boolean(occupied && !isCurrentEmployeeBranch)
-
-                                        return (
-                                            <option key={b.id} value={b.id} disabled={isOccupiedByOther}>
-                                                {b.name} {isCurrentEmployeeBranch ? '(Cabang Saat Ini)' : isOccupiedByOther ? `(Sudah ada: ${occupied?.name})` : '— Tersedia'}
-                                            </option>
-                                        )
-                                    })}
-                                </select>
-                                <p className="text-[10px] text-slate-500 mt-1">
-                                    Pilih cabang yang masih tersedia jika ingin merotasi kasir ini ke cabang lain.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    Reset Password Baru (Opsional)
-                                </label>
-                                <input
-                                    type="password"
-                                    name="new_password"
-                                    minLength={6}
-                                    placeholder="Kosongkan jika tidak ingin ganti password"
-                                    disabled={submittingEdit}
-                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none transition"
-                                />
-                                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                    Isi minimal 6 karakter hanya jika kasir lupa password atau ingin diganti baru.
-                                </span>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            {/* Footer Tetap */}
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setEditingEmployee(null)}
                                     disabled={submittingEdit}
-                                    className="rounded-lg px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submittingEdit}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-900 disabled:opacity-50 transition cursor-pointer"
                                 >
                                     {submittingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
                                 </button>

@@ -17,14 +17,14 @@ interface SubTabNavProps {
 
 export default function SubTabNav({ items, className = '' }: SubTabNavProps) {
     return (
-        <div className={`mb-6 flex w-full sm:w-auto ${className}`}>
-            <div className="flex w-full sm:w-auto items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-2xs gap-1">
+        <div className={`mb-4 sm:mb-6 w-full max-w-full overflow-x-auto no-scrollbar py-0.5 ${className}`}>
+            <div className="inline-flex sm:flex w-auto sm:w-full items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-2xs gap-1 min-w-max sm:min-w-0">
                 {items.map((tab, idx) => {
                     return (
                         <Link
                             key={idx}
                             href={tab.href}
-                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
+                            className={`shrink-0 sm:shrink sm:flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm whitespace-nowrap transition-all duration-150 ${
                                 tab.active
                                     ? 'bg-white text-emerald-800 font-bold shadow-xs border border-slate-200/60'
                                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'

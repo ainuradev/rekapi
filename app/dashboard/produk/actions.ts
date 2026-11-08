@@ -238,7 +238,18 @@ export type StockMutationResponse = {
     error?: string
 }
 
-export async function updateStock(productId: string, stock: number): Promise<StockMutationResponse> {
+export type ProductStockReductionReason = 'waste_expired' | 'lost_shrinkage' | 'production_usage' | 'input_correction'
+
+export interface UpdateStockOptions {
+    reason?: ProductStockReductionReason
+    notes?: string
+}
+
+export async function updateStock(
+    productId: string,
+    stock: number,
+    options?: UpdateStockOptions
+): Promise<StockMutationResponse> {
     const supabase = await createClient()
 
     const {
@@ -277,7 +288,7 @@ export async function updateStock(productId: string, stock: number): Promise<Sto
     const branchList = branches ?? []
 
     if (branchList.length === 1) {
-        return updateBranchStock(productId, branchList[0].id, cleanStock)
+        return updateBranchStock(productId, branchList[0].id, cleanStock, options)
     }
 
     if (branchList.length > 1) {
@@ -286,10 +297,59 @@ export async function updateStock(productId: string, stock: number): Promise<Sto
         }
     }
 
+    // Ambil data produk untuk cek pengurangan stok & pencatatan Beban Non-Kas
+    const { data: prodData } = await supabase
+        .from('products')
+        .select('id, name, unit, cost_price, stock')
+        .eq('id', productId)
+        .eq('business_id', profile.business_id)
+        .maybeSingle()
+
+    const oldStock = Number(prodData?.stock || 0)
+    const qtyReduced = oldStock - cleanStock
+
+    if (
+        qtyReduced > 0 &&
+        (options?.reason === 'waste_expired' || options?.reason === 'lost_shrinkage') &&
+        prodData
+    ) {
+        const costPrice = Number(prodData.cost_price || 0)
+        const lossAmount = Math.round(qtyReduced * costPrice * 100) / 100
+
+        if (lossAmount > 0) {
+            const reasonTag = options.reason === 'waste_expired' ? '[WASTE/RUSAK]' : '[HILANG/SELISIH]'
+            const desc = `${reasonTag} ${prodData.name} (${qtyReduced} ${prodData.unit || 'pcs'} x Rp ${costPrice.toLocaleString('id-ID')})${options.notes ? ` - ${options.notes.trim()}` : ''}`
+
+            const expensePayload: {
+                business_id: string
+                branch_id: string | null
+                category: 'lainnya'
+                amount: number
+                expense_date: string
+                description: string
+                is_non_cash?: boolean
+            } = {
+                business_id: profile.business_id,
+                branch_id: null,
+                category: 'lainnya',
+                amount: lossAmount,
+                expense_date: new Date().toISOString().split('T')[0],
+                description: desc,
+                is_non_cash: true,
+            }
+
+            const { error: expErr } = await supabase.from('expenses').insert(expensePayload)
+            if (expErr && expErr.code === '42703') {
+                delete expensePayload.is_non_cash
+                await supabase.from('expenses').insert(expensePayload)
+            }
+        }
+    }
+
     // Fallback hanya jika bisnis belum memiliki cabang sama sekali
     const { error } = await supabase
         .from('products')
-        .update({ stock: cleanStock })
+        .update({ stock: cleanStock, updated_at: new Date().toISOString() })
         .eq('id', productId)
         .eq('business_id', profile.business_id)
 
@@ -297,8 +357,12 @@ export async function updateStock(productId: string, stock: number): Promise<Sto
 
     revalidatePath('/dashboard/produk')
     revalidatePath('/dashboard/penjualan')
+    revalidatePath('/dashboard/keuangan')
+    revalidatePath('/dashboard/keuangan/beban')
+    revalidatePath('/dashboard/keuangan/laba-rugi')
     revalidatePath('/dashboard/keuangan/neraca')
-    return { success: true }
+    revalidatePath('/dashboard/keuangan/arus-kas')
+    return { success: true, totalStock: cleanStock }
 }
 
 /**
@@ -308,7 +372,8 @@ export async function updateStock(productId: string, stock: number): Promise<Sto
 export async function updateBranchStock(
     productId: string,
     branchId: string,
-    stock: number
+    stock: number,
+    options?: UpdateStockOptions
 ): Promise<StockMutationResponse> {
     const supabase = await createClient()
 
@@ -341,6 +406,64 @@ export async function updateBranchStock(
     }
     const cleanStock = Math.round(numStock * 100) / 100
 
+    // Ambil data produk & stok cabang saat ini untuk mendeteksi kerugian stok (Beban Non-Kas)
+    const [{ data: prodData }, { data: branchStockRow }] = await Promise.all([
+        supabase
+            .from('products')
+            .select('id, name, unit, cost_price, stock')
+            .eq('id', productId)
+            .eq('business_id', profile!.business_id)
+            .maybeSingle(),
+        supabase
+            .from('product_branch_stocks')
+            .select('stock')
+            .eq('product_id', productId)
+            .eq('branch_id', branchId)
+            .eq('business_id', profile!.business_id)
+            .maybeSingle(),
+    ])
+
+    const currentBranchStock = Number(branchStockRow?.stock ?? prodData?.stock ?? 0)
+    const qtyReduced = currentBranchStock - cleanStock
+
+    if (
+        qtyReduced > 0 &&
+        (options?.reason === 'waste_expired' || options?.reason === 'lost_shrinkage') &&
+        prodData
+    ) {
+        const costPrice = Number(prodData.cost_price || 0)
+        const lossAmount = Math.round(qtyReduced * costPrice * 100) / 100
+
+        if (lossAmount > 0) {
+            const reasonTag = options.reason === 'waste_expired' ? '[WASTE/RUSAK]' : '[HILANG/SELISIH]'
+            const desc = `${reasonTag} ${prodData.name} (${qtyReduced} ${prodData.unit || 'pcs'} x Rp ${costPrice.toLocaleString('id-ID')})${options.notes ? ` - ${options.notes.trim()}` : ''}`
+
+            const expensePayload: {
+                business_id: string
+                branch_id: string | null
+                category: 'lainnya'
+                amount: number
+                expense_date: string
+                description: string
+                is_non_cash?: boolean
+            } = {
+                business_id: profile!.business_id,
+                branch_id: branchId || null,
+                category: 'lainnya',
+                amount: lossAmount,
+                expense_date: new Date().toISOString().split('T')[0],
+                description: desc,
+                is_non_cash: true,
+            }
+
+            const { error: expErr } = await supabase.from('expenses').insert(expensePayload)
+            if (expErr && expErr.code === '42703') {
+                delete expensePayload.is_non_cash
+                await supabase.from('expenses').insert(expensePayload)
+            }
+        }
+    }
+
     // 1. Jalur utama: Eksekusi atomik melalui RPC set_product_branch_stock_atomic (Migrasi 0033)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('set_product_branch_stock_atomic', {
         p_product_id: productId,
@@ -351,7 +474,11 @@ export async function updateBranchStock(
     if (!rpcError && rpcResult?.success) {
         revalidatePath('/dashboard/produk')
         revalidatePath('/dashboard/penjualan')
+        revalidatePath('/dashboard/keuangan')
+        revalidatePath('/dashboard/keuangan/beban')
+        revalidatePath('/dashboard/keuangan/laba-rugi')
         revalidatePath('/dashboard/keuangan/neraca')
+        revalidatePath('/dashboard/keuangan/arus-kas')
         return { success: true, totalStock: Number(rpcResult.total_stock ?? cleanStock) }
     }
 
@@ -421,6 +548,10 @@ export async function updateBranchStock(
 
     revalidatePath('/dashboard/produk')
     revalidatePath('/dashboard/penjualan')
+    revalidatePath('/dashboard/keuangan')
+    revalidatePath('/dashboard/keuangan/beban')
+    revalidatePath('/dashboard/keuangan/laba-rugi')
     revalidatePath('/dashboard/keuangan/neraca')
+    revalidatePath('/dashboard/keuangan/arus-kas')
     return { success: true, totalStock: aggregateStock }
 }

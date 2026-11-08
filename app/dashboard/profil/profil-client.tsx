@@ -88,7 +88,15 @@ function ActionForm({
                                 : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
                     >
-                        <span>{msg.type === 'ok' ? '✓' : '⚠️'}</span>
+                        {msg.type === 'ok' ? (
+                            <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        ) : (
+                            <svg className="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        )}
                         <span>{msg.text}</span>
                     </div>
                 )}
@@ -257,7 +265,10 @@ function QrisUploadField({ defaultValue }: { defaultValue?: string | null }) {
                         </div>
                         <div className="flex-1 text-center sm:text-left space-y-2">
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                <span>✓ QRIS Aktif di Kasir POS</span>
+                                <svg className="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>QRIS Aktif di Kasir POS</span>
                             </div>
                             <p className="text-xs text-slate-600">
                                 Saat kasir memilih metode <strong>QRIS</strong>, gambar QRIS ini akan langsung muncul untuk di-scan oleh pelanggan.
@@ -266,16 +277,22 @@ function QrisUploadField({ defaultValue }: { defaultValue?: string | null }) {
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
                                 >
-                                    🔄 Ganti Gambar QRIS
+                                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span>Ganti Gambar QRIS</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setQrisUrl('')}
-                                    className="px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer shadow-2xs"
                                 >
-                                    🗑️ Hapus QRIS
+                                    <svg className="w-3.5 h-3.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span>Hapus QRIS</span>
                                 </button>
                             </div>
                         </div>
@@ -286,8 +303,10 @@ function QrisUploadField({ defaultValue }: { defaultValue?: string | null }) {
                     onClick={() => fileInputRef.current?.click()}
                     className="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 hover:bg-emerald-50/40 hover:border-emerald-400 p-6 text-center transition"
                 >
-                    <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-2xl shadow-2xs group-hover:scale-105 transition">
-                        📱
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs group-hover:scale-105 transition">
+                        <svg className="w-6 h-6 text-slate-600 group-hover:text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
                     </div>
                     <div className="mt-3 text-xs font-bold text-slate-800 group-hover:text-emerald-700">
                         {previewLoading ? 'Memproses gambar...' : '+ Klik untuk Unggah Gambar QRIS Toko'}
@@ -576,8 +595,12 @@ export default function ProfilClient({
 
             {/* ── Banner untuk user baru Google ── */}
             {isNewUser && (
-                <div className="flex items-start gap-3 rounded-3xl border border-amber-300 bg-amber-50/60 p-5 shadow-2xs">
-                    <span className="text-2xl">👋</span>
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50/70 p-4 shadow-2xs">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-800 shrink-0 mt-0.5">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
                     <div>
                         <p className="text-sm font-bold text-amber-900">Selamat datang di Rekapi!</p>
                         <p className="mt-0.5 text-xs text-amber-800 leading-relaxed">
@@ -672,9 +695,12 @@ export default function ProfilClient({
                         </div>
                         <Field label="Email Terdaftar" name="email" type="email" defaultValue={email} readOnly />
                         {isGoogleUser && (
-                            <p className="mt-2.5 text-[11px] text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                🔗 Terhubung melalui akun Google. Anda dapat menambahkan kata sandi pada menu keamanan.
-                            </p>
+                            <div className="mt-2.5 text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-start gap-2">
+                                <svg className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                <span>Terhubung melalui akun Google. Anda dapat menambahkan kata sandi pada menu keamanan.</span>
+                            </div>
                         )}
                     </div>
 
@@ -703,7 +729,7 @@ export default function ProfilClient({
                         title="Profil Bisnis &amp; Struk Kasir"
                         subtitle={
                             isNewUser
-                                ? '⚠️ Belum diisi — silakan isi nama bisnis Anda.'
+                                ? 'Belum diisi — silakan lengkapi nama bisnis Anda.'
                                 : 'Informasi identitas bisnis yang akan dicetak pada struk kasir dan faktur transaksi.'
                         }
                         submitLabel="Simpan Profil Bisnis"
@@ -891,7 +917,15 @@ function EmployeePasswordForm({ employee }: { employee: Employee }) {
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                     }`}
                 >
-                    <span>{msg.type === 'ok' ? '✓' : '⚠️'}</span>
+                    {msg.type === 'ok' ? (
+                        <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    )}
                     <span>{msg.text}</span>
                 </div>
             )}

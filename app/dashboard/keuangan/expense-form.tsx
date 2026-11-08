@@ -5,16 +5,16 @@ import { addExpense } from './actions'
 import { getIndonesianDate } from '@/lib/date-utils'
 
 const CATEGORIES = [
-    { value: 'gaji', label: 'Penggajian / Upah', icon: '👤' },
-    { value: 'sewa', label: 'Sewa Tempat', icon: '🏠' },
-    { value: 'listrik', label: 'Listrik', icon: '⚡' },
-    { value: 'air', label: 'Air / PDAM', icon: '💧' },
-    { value: 'gas', label: 'Gas', icon: '🔥' },
-    { value: 'transportasi', label: 'Transportasi', icon: '🚗' },
-    { value: 'marketing', label: 'Marketing / Iklan', icon: '📢' },
-    { value: 'packaging', label: 'Packaging', icon: '📦' },
-    { value: 'peralatan', label: 'Peralatan / Alat', icon: '🔧' },
-    { value: 'lainnya', label: 'Lainnya', icon: '🗂️' },
+    { value: 'gaji', label: 'Penggajian / Upah' },
+    { value: 'sewa', label: 'Sewa Tempat' },
+    { value: 'listrik', label: 'Listrik' },
+    { value: 'air', label: 'Air / PDAM' },
+    { value: 'gas', label: 'Gas' },
+    { value: 'transportasi', label: 'Transportasi' },
+    { value: 'marketing', label: 'Marketing / Iklan' },
+    { value: 'packaging', label: 'Packaging' },
+    { value: 'peralatan', label: 'Peralatan / Alat' },
+    { value: 'lainnya', label: 'Lainnya' },
 ] as const
 
 type Category = typeof CATEGORIES[number]['value']
@@ -50,7 +50,8 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
     const [accountId, setAccountId] = useState(defaultAccount?.id || '')
     const [description, setDescription] = useState('')
     const [date, setDate] = useState(() => getIndonesianDate())
-    const [branchId, setBranchId] = useState(initialBranchId || '')
+    const defaultBranchId = initialBranchId && initialBranchId !== 'all' ? initialBranchId : (branches[0]?.id || '')
+    const [branchId, setBranchId] = useState(defaultBranchId)
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -90,7 +91,7 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
             setAmount('')
             setDescription('')
             setCategory('lainnya')
-            setBranchId(initialBranchId || '')
+            setBranchId(defaultBranchId)
             setAccountId(defaultAccount?.id || '')
             setDate(getIndonesianDate())
             setTimeout(() => {
@@ -139,13 +140,11 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
                                     key={cat.value}
                                     type="button"
                                     onClick={() => setCategory(cat.value)}
-                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition ${
-                                        category === cat.value
-                                            ? 'border-black bg-black text-white shadow-sm'
-                                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-400 hover:bg-white'
-                                    }`}
+                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${category === cat.value
+                                            ? 'border-emerald-800 bg-emerald-800 text-white shadow-xs'
+                                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white'
+                                        }`}
                                 >
-                                    <span className="text-base">{cat.icon}</span>
                                     <span className="leading-tight">{cat.label}</span>
                                 </button>
                             ))}
@@ -190,12 +189,12 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
                             >
                                 <option value="" disabled>-- Pilih Akun Kas / Rekening Bank --</option>
                                 {accounts.map((acc) => {
-                                    const icon = acc.type === 'cash' ? '💵' : acc.type === 'e_wallet' ? '📱' : '🏦'
+                                    const typeName = acc.type === 'cash' ? 'Kas' : acc.type === 'e_wallet' ? 'E-Wallet' : 'Bank'
                                     const bal = 'Rp' + Math.round(acc.current_balance || 0).toLocaleString('id-ID')
                                     const defLabel = acc.is_default_cash ? ' (Kas Utama)' : acc.is_default_bank ? ' (Bank Utama)' : ''
                                     return (
                                         <option key={acc.id} value={acc.id}>
-                                            {icon} {acc.name}{defLabel} — Saldo: {bal}
+                                            [{typeName}] {acc.name}{defLabel} — Saldo: {bal}
                                         </option>
                                     )
                                 })}
@@ -266,9 +265,8 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
                     </div>
 
                     {message && (
-                        <p className={`text-center text-sm font-semibold ${
-                            message.type === 'error' ? 'text-red-600' : 'text-green-600'
-                        }`}>
+                        <p className={`text-center text-sm font-semibold ${message.type === 'error' ? 'text-red-600' : 'text-green-600'
+                            }`}>
                             {message.type === 'success' ? '✓ ' : '✕ '}{message.text}
                         </p>
                     )}
@@ -278,7 +276,7 @@ export default function ExpenseForm({ branches, accounts = [], initialBranchId }
                         disabled={loading}
                         className="w-full rounded-xl bg-black py-3 text-sm font-bold text-white shadow transition hover:bg-gray-800 disabled:opacity-50"
                     >
-                        {loading ? 'Menyimpan...' : `Simpan — ${selectedCat?.icon} ${selectedCat?.label}`}
+                        {loading ? 'Menyimpan...' : `Simpan — ${selectedCat?.label || 'Beban'}`}
                     </button>
                 </form>
             )}

@@ -72,29 +72,34 @@ export async function addEmployee(formData: FormData) {
         .select('*', { count: 'exact', head: true })
         .eq('business_id', profile.business_id)
         .eq('role', 'pegawai')
+        .eq('is_active', true)
 
     const { allowed, reason } = canAddEmployee(currentEmployeeCount ?? 0, planLimits, subscriptionStatus)
     if (!allowed) {
         return { error: reason }
     }
 
-    // Pastikan branch itu memang milik business si owner (bukan business lain).
+    // Pastikan branch itu memang milik business si owner (bukan business lain) dan berstatus aktif.
     const { data: branch } = await supabase
         .from('branches')
-        .select('id, name')
+        .select('id, name, status')
         .eq('id', branchId)
         .eq('business_id', profile.business_id)
         .single()
 
     if (!branch) return { error: 'Cabang tidak valid.' }
+    if (branch.status !== 'active') {
+        return { error: `Cabang "${branch.name}" sedang nonaktif. Aktifkan cabang terlebih dahulu sebelum menugaskan pegawai.` }
+    }
 
-    // Aturan: 1 cabang = 1 akun pegawai (tidak share pegawai)
+    // Aturan: 1 cabang = 1 akun pegawai aktif (tidak share pegawai)
     const { data: existingBranchEmployee } = await supabase
         .from('profiles')
         .select('id, full_name')
         .eq('business_id', profile.business_id)
         .eq('branch_id', branchId)
         .eq('role', 'pegawai')
+        .eq('is_active', true)
         .maybeSingle()
 
     if (existingBranchEmployee) {
@@ -307,6 +312,131 @@ export async function removeEmployee(profileId: string) {
     // Hapus dari auth.users — profiles akan ikut terhapus lewat on delete cascade.
     const { error } = await admin.auth.admin.deleteUser(profileId)
     if (error) return { error: error.message }
+
+    revalidatePath('/dashboard/pegawai')
+    return { success: true }
+}
+
+export async function toggleEmployeeStatus(employeeId: string, isActive: boolean) {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select(
+            `business_id, role,
+             businesses(
+               subscription_status,
+               subscription_plan_id,
+               subscription_plans(max_branches, max_employees)
+             )`
+        )
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya owner yang berhak mengubah status aktif pegawai.' }
+    }
+
+    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    if (!employeeId || employeeId === user.id) {
+        return { error: 'ID pegawai tidak valid atau tidak dapat mengubah status akun sendiri.' }
+    }
+
+    const { data: targetEmployee, error: targetError } = await supabase
+        .from('profiles')
+        .select('id, business_id, branch_id, role, is_active')
+        .eq('id', employeeId)
+        .eq('business_id', profile.business_id)
+        .single()
+
+    if (targetError || !targetEmployee) {
+        return { error: 'Pegawai tidak ditemukan atau Anda tidak memiliki akses ke akun ini.' }
+    }
+
+    if (targetEmployee.role !== 'pegawai') {
+        return { error: 'Hanya akun pegawai yang dapat diaktifkan / dinonaktifkan.' }
+    }
+
+    if (isActive) {
+        // Mengaktifkan pegawai:
+        // 1. Pastikan pegawai memiliki cabang penugasan
+        if (!targetEmployee.branch_id) {
+            return { error: 'Pegawai belum memiliki cabang penugasan. Atur cabang terlebih dahulu.' }
+        }
+
+        // 2. Pastikan cabang tempat bertugas berstatus active
+        const { data: branch } = await supabase
+            .from('branches')
+            .select('id, name, status')
+            .eq('id', targetEmployee.branch_id)
+            .eq('business_id', profile.business_id)
+            .single()
+
+        if (!branch || branch.status !== 'active') {
+            return {
+                error: `Cabang "${branch?.name || 'Penugasan'}" sedang nonaktif. Aktifkan cabang terlebih dahulu sebelum mengaktifkan pegawai.`,
+            }
+        }
+
+        // 3. Pastikan cabang belum memiliki pegawai aktif lain (aturan 1 cabang = 1 akun pegawai aktif)
+        const { data: otherActiveBranchEmployee } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('business_id', profile.business_id)
+            .eq('branch_id', targetEmployee.branch_id)
+            .eq('role', 'pegawai')
+            .eq('is_active', true)
+            .neq('id', employeeId)
+            .maybeSingle()
+
+        if (otherActiveBranchEmployee) {
+            return {
+                error: `Cabang "${branch.name}" sudah memiliki pegawai aktif (${otherActiveBranchEmployee.full_name || 'Kasir'}). Nonaktifkan pegawai tersebut terlebih dahulu.`,
+            }
+        }
+
+        // 4. Periksa batas kuota pegawai aktif paket langganan
+        interface BusinessSubData {
+            subscription_status?: string | null
+            subscription_plans?: { max_employees?: number | null } | null
+        }
+        const bData = profile.businesses as unknown as BusinessSubData | null
+        const isSubActive = bData?.subscription_status === 'active'
+        const maxEmployees = isSubActive && bData?.subscription_plans?.max_employees ? bData.subscription_plans.max_employees : 1
+
+        const { count: currentActiveCount } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('business_id', profile.business_id)
+            .eq('role', 'pegawai')
+            .eq('is_active', true)
+            .neq('id', employeeId)
+
+        if ((currentActiveCount ?? 0) >= maxEmployees) {
+            return {
+                error: `Batas kuota pegawai aktif paket Anda (${maxEmployees} pegawai) sudah penuh. Upgrade paket langganan atau nonaktifkan pegawai lain terlebih dahulu.`,
+            }
+        }
+    }
+
+    const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ is_active: isActive })
+        .eq('id', employeeId)
+        .eq('business_id', profile.business_id)
+
+    if (updateErr) {
+        return { error: updateErr.message }
+    }
 
     revalidatePath('/dashboard/pegawai')
     return { success: true }

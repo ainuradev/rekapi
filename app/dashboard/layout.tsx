@@ -1,17 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import DashboardNav from './dashboard-nav'
 import { isSuperAdmin } from '@/lib/auth-admin'
 import { getActiveBranchId } from '@/lib/active-branch'
 import { hasActiveAccess, type SubscriptionStatus } from '@/lib/subscription-access'
+import { executeAutoDeactivateOnDowngrade } from '@/lib/subscription-downgrade'
+import { DashboardNotificationItem } from './notification-actions'
 
 interface ProfileLayoutData {
     role?: string | null
     full_name?: string | null
     business_id?: string | null
     branch_id?: string | null
-    branches?: { name: string; address?: string | null } | null
+    is_active?: boolean | null
+    branches?: { name: string; address?: string | null; status?: string | null } | null
     businesses?: {
         name: string | null
         subscription_status: string | null
@@ -45,11 +49,50 @@ export default async function DashboardLayout({
 
     const { data } = await supabase
         .from('profiles')
-        .select('role, full_name, business_id, branch_id, branches(name, address), businesses(name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name, max_branches))')
+        .select('role, full_name, business_id, branch_id, is_active, branches(name, address, status), businesses(name, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name, max_branches))')
         .eq('id', user.id)
         .single()
 
     const profile = data as unknown as ProfileLayoutData | null
+
+    // Proteksi Kasir Dinonaktifkan: Jika pegawai berstatus is_active = false atau cabangnya tidak aktif
+    if (profile?.role === 'pegawai') {
+        const isEmployeeInactive = profile.is_active === false
+        const isBranchInactive = !profile.branch_id || profile.branches?.status !== 'active'
+
+        if (isEmployeeInactive || isBranchInactive) {
+            return (
+                <div className="min-h-screen w-full flex items-center justify-center bg-[#f8fafc] px-4 font-sans text-slate-800">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm text-center">
+                        <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h1 className="text-base font-bold text-slate-900 mb-2">
+                            Akun Kasir atau Cabang Anda Sedang Dinonaktifkan
+                        </h1>
+                        <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                            {isEmployeeInactive
+                                ? 'Akun kasir Anda saat ini sedang dinonaktifkan oleh Pemilik Bisnis.'
+                                : `Cabang penugasan Anda (${profile.branches?.name || 'Cabang'}) saat ini berstatus non-aktif.`}
+                            <br className="my-1" />
+                            Silakan hubungi Pemilik Bisnis (Owner) untuk mengaktifkan kembali akun kasir atau cabang Anda.
+                        </p>
+                        <form action="/api/auth/signout" method="POST">
+                            <button
+                                type="submit"
+                                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                            >
+                                Keluar dari Akun
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )
+        }
+    }
+
     const isOwner = profile?.role === 'owner'
     const userName = profile?.full_name || user.email || 'Pengguna'
     const branchName = profile?.branches?.name ?? null
@@ -60,7 +103,9 @@ export default async function DashboardLayout({
     const trialEndsAt = businessData?.trial_ends_at ?? null
     const subscriptionExpiresAt = businessData?.subscription_expires_at ?? null
     const planName = businessData?.subscription_plans?.name || (subscriptionStatus === 'active' ? 'Pro' : 'Trial')
-    const maxBranches = businessData?.subscription_plans?.max_branches || 5
+    const maxBranches = subscriptionStatus === 'active'
+        ? (businessData?.subscription_plans?.max_branches ?? 1)
+        : 1
 
     let daysRemaining = 0
     const active = hasActiveAccess({
@@ -100,15 +145,73 @@ export default async function DashboardLayout({
         return <>{children}</>
     }
 
-    // Ambil semua cabang bisnis untuk branch switcher
-    let branchesList: { id: string; name: string; address?: string | null }[] = []
+    // Ambil semua cabang bisnis untuk branch switcher (diurutkan created_at ASC agar Cabang Utama selalu pertama)
+    let branchesList: { id: string; name: string; address?: string | null; code?: string | null; status?: string | null; is_primary?: boolean }[] = []
     if (profile?.business_id) {
         const { data: bList } = await supabase
             .from('branches')
-            .select('id, name, address')
+            .select('id, name, address, code, status, created_at')
             .eq('business_id', profile.business_id)
-            .order('name')
-        if (bList) branchesList = bList
+            .order('created_at', { ascending: true })
+
+        if (bList && bList.length > 0) {
+            branchesList = bList.map((b, idx) => ({
+                id: b.id,
+                name: b.name,
+                address: b.address,
+                code: b.code,
+                status: b.status || 'active',
+                is_primary: idx === 0 || b.code === 'PUSAT' || b.name.toLowerCase().includes('cabang utama'),
+            }))
+
+            // Self-healing kuota cabang: Jika jumlah cabang berstatus active melebihi maxBranches paket aktif
+            const activeBranches = branchesList.filter((b) => b.status === 'active')
+            if (activeBranches.length > maxBranches) {
+                const admin = createAdminClient()
+                await executeAutoDeactivateOnDowngrade(profile.business_id, admin)
+                // Perbarui branchesList lokal agar segera mencerminkan status terbaru
+                const mainBranchId = branchesList.find((b) => b.is_primary)?.id || branchesList[0]?.id
+                branchesList = branchesList.map((b) => ({
+                    ...b,
+                    status: b.id === mainBranchId ? 'active' : 'inactive',
+                }))
+            }
+        } else {
+            // Self-healing: jika bisnis belum memiliki cabang sama sekali, otomatis buat Cabang Utama
+            const admin = createAdminClient()
+            const { data: newBranch } = await admin
+                .from('branches')
+                .insert({
+                    business_id: profile.business_id,
+                    name: 'Cabang Utama',
+                    code: 'PUSAT',
+                    branch_type: 'outlet',
+                    status: 'active',
+                    address: 'Pusat Operasional',
+                })
+                .select('id, name, address, code, status, created_at')
+                .single()
+
+            if (newBranch) {
+                branchesList = [{
+                    id: newBranch.id,
+                    name: newBranch.name,
+                    address: newBranch.address,
+                    code: newBranch.code,
+                    status: newBranch.status || 'active',
+                    is_primary: true,
+                }]
+            }
+        }
+
+        // Sinkronisasi profil jika branch_id belum terisi (kaitkan ke Cabang Utama)
+        if (!profile.branch_id && branchesList.length > 0) {
+            const admin = createAdminClient()
+            await admin
+                .from('profiles')
+                .update({ branch_id: branchesList[0].id })
+                .eq('id', user.id)
+        }
     }
 
     // Resolusi active branch dari cookie (rekapi_active_branch_id)
@@ -125,30 +228,102 @@ export default async function DashboardLayout({
     } else if (isOwner) {
         if (cookieBranchId && cookieBranchId !== 'all') {
             const found = branchesList.find((b) => b.id === cookieBranchId)
-            if (found) {
+            // Pastikan cabang yang dipilih dalam cookie berstatus 'active'.
+            // Jika cabang tersebut nonaktif, jangan izinkan dipilih dan fallback ke Cabang Utama!
+            if (found && found.status === 'active') {
                 activeBranchId = found.id
                 activeBranchName = found.name
                 activeBranchAddress = found.address || 'Pusat Operasional'
             } else if (branchesList.length > 0) {
-                activeBranchId = branchesList[0].id
-                activeBranchName = branchesList[0].name
-                activeBranchAddress = branchesList[0].address || 'Pusat Operasional'
+                const primaryBranch = branchesList.find((b) => b.is_primary && b.status === 'active') || branchesList.find((b) => b.status === 'active') || branchesList[0]
+                activeBranchId = primaryBranch.id
+                activeBranchName = primaryBranch.name
+                activeBranchAddress = primaryBranch.address || 'Pusat Operasional'
             }
         } else if (cookieBranchId === 'all') {
             activeBranchId = 'all'
             activeBranchName = 'Semua Cabang'
             activeBranchAddress = 'Konsolidasi Seluruh Cabang'
         } else if (branchesList.length > 0) {
-            // Default ke cabang pertama jika cookie belum ada
-            activeBranchId = branchesList[0].id
-            activeBranchName = branchesList[0].name
-            activeBranchAddress = branchesList[0].address || 'Pusat Operasional'
+            // Default ke cabang aktif pertama jika cookie belum ada
+            const primaryBranch = branchesList.find((b) => b.is_primary && b.status === 'active') || branchesList.find((b) => b.status === 'active') || branchesList[0]
+            activeBranchId = primaryBranch.id
+            activeBranchName = primaryBranch.name
+            activeBranchAddress = primaryBranch.address || 'Pusat Operasional'
         }
+    }
+
+    // Ambil Notifikasi Super Admin & Sistem Toko untuk pengguna saat ini
+    let initialNotifications: DashboardNotificationItem[] = []
+    if (profile?.business_id) {
+        const { data: rawNotifs } = await supabase
+            .from('system_notifications')
+            .select('id, business_id, title, message, category, action_url, created_at')
+            .or(`business_id.is.null,business_id.eq.${profile.business_id}`)
+            .order('created_at', { ascending: false })
+            .limit(30)
+
+        const notifIds = (rawNotifs ?? []).map((n) => n.id)
+        let readNotifIds = new Set<string>()
+        if (notifIds.length > 0) {
+            const { data: reads } = await supabase
+                .from('notification_reads')
+                .select('notification_id')
+                .eq('user_id', user.id)
+                .in('notification_id', notifIds)
+
+            if (reads) {
+                readNotifIds = new Set(reads.map((r) => r.notification_id))
+            }
+        }
+
+        // Peringatan Sistem Toko Otomatis
+        const systemAlerts: DashboardNotificationItem[] = []
+        if (isExpired) {
+            systemAlerts.push({
+                id: 'sys_expired',
+                business_id: profile.business_id,
+                title: 'Masa Langganan Berakhir',
+                message: 'Masa aktif paket toko Anda telah berakhir. Segera perpanjang agar seluruh fitur kasir dan pelaporan dapat digunakan kembali.',
+                category: 'subscription',
+                source: 'system',
+                action_url: '/dashboard/subscription',
+                created_at: new Date().toISOString(),
+                is_read: false,
+            })
+        } else if (daysRemaining <= 3) {
+            systemAlerts.push({
+                id: `sys_expiring_${daysRemaining}`,
+                business_id: profile.business_id,
+                title: 'Masa Aktif Hampir Habis',
+                message: `Masa aktif paket toko Anda tersisa ${daysRemaining} hari lagi. Segera perpanjang untuk menjaga kelancaran operasional.`,
+                category: 'subscription',
+                source: 'system',
+                action_url: '/dashboard/subscription',
+                created_at: new Date().toISOString(),
+                is_read: false,
+            })
+        }
+
+        const adminNotifs: DashboardNotificationItem[] = (rawNotifs ?? []).map((n) => ({
+            id: n.id,
+            business_id: n.business_id,
+            title: n.title,
+            message: n.message,
+            category: n.category as DashboardNotificationItem['category'],
+            source: 'admin' as const,
+            action_url: n.action_url,
+            created_at: n.created_at,
+            is_read: readNotifIds.has(n.id),
+        }))
+
+        initialNotifications = [...systemAlerts, ...adminNotifs]
     }
 
     return (
         <div className="min-h-screen w-full max-w-full min-w-0 bg-[#f8fafc] text-slate-900 font-sans">
             <DashboardNav
+                userId={user.id}
                 isOwner={isOwner}
                 userName={userName}
                 activeBranchId={activeBranchId}
@@ -164,12 +339,15 @@ export default async function DashboardLayout({
                 branchesList={branchesList}
                 maxBranches={maxBranches}
                 isSuperAdminUser={isSuperAdmin(user.email)}
+                initialNotifications={initialNotifications}
             >
                 <main className="flex-1 w-full min-w-0 py-6 pb-24 sm:pb-12 transition-all">
                     {isExpired && (
                         <div className="border-b border-red-200 bg-red-50/90 backdrop-blur-xs px-6 py-3 text-xs text-red-800 flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <span>⚠️</span>
+                                <svg className="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                                 <span>
                                     <strong>{subscriptionStatus === 'trial' ? 'Masa Trial 7 Hari Berakhir:' : 'Masa Langganan Berakhir:'}</strong>{' '}
                                     {subscriptionStatus === 'trial'

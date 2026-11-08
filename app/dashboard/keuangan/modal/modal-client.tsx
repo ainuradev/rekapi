@@ -241,113 +241,124 @@ export default function ModalClient({ records, accounts }: Props) {
 
             {/* Modal Tambah Transaksi Modal */}
             {openAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                            <h3 className="text-base font-bold text-slate-900">Catat Transaksi Modal Usaha</h3>
-                            <button onClick={() => setOpenAddModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]">
+                    <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">Catat Transaksi Modal Usaha</h3>
+                            <button
+                                type="button"
+                                onClick={() => setOpenAddModal(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <form onSubmit={handleAddRecord} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Jenis Transaksi</label>
-                                <select
-                                    value={type}
-                                    onChange={(e) =>
-                                        setType(
-                                            e.target.value as
-                                                | 'initial_capital'
-                                                | 'additional_capital'
-                                                | 'drawings_prive'
-                                        )
-                                    }
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="initial_capital">Setoran Modal Awal Pendirian Usaha</option>
-                                    <option value="additional_capital">Tambahan Modal Disetor (Injeksi Dana)</option>
-                                    <option value="drawings_prive">Prive Pemilik (Penarikan Dana untuk Pribadi)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Keterangan / Judul</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Contoh: Modal Awal Kas & Peralatan Kafe"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
+                        <form onSubmit={handleAddRecord} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal (Rp)</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Jenis Transaksi</label>
+                                    <select
+                                        value={type}
+                                        onChange={(e) =>
+                                            setType(
+                                                e.target.value as
+                                                    | 'initial_capital'
+                                                    | 'additional_capital'
+                                                    | 'drawings_prive'
+                                            )
+                                        }
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+                                    >
+                                        <option value="initial_capital">Setoran Modal Awal Pendirian Usaha</option>
+                                        <option value="additional_capital">Tambahan Modal Disetor (Injeksi Dana)</option>
+                                        <option value="drawings_prive">Prive Pemilik (Penarikan Dana untuk Pribadi)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Keterangan / Judul</label>
                                     <input
-                                        type="number"
-                                        min="1"
+                                        type="text"
                                         required
-                                        placeholder="0"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
+                                        placeholder="Contoh: Modal Awal Kas & Peralatan Kafe"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
                                     />
                                 </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">Nominal (Rp)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            required
+                                            placeholder="0"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Transaksi</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={entryDate}
+                                            onChange={(e) => setEntryDate(e.target.value)}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Transaksi</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Hubungkan ke Akun Kas / Bank (Opsional)</label>
+                                    <select
+                                        value={accountId}
+                                        onChange={(e) => setAccountId(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+                                    >
+                                        <option value="">-- Tidak Mempengaruhi Saldo Kas (Hanya Catatan) --</option>
+                                        {accounts.map((a) => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.name} (Saldo: {fmt(a.current_balance)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="mt-1 text-[11px] text-slate-400">
+                                        Jika dipilih, saldo kas/rekening akan otomatis bertambah (untuk modal) atau berkurang (untuk prive).
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
                                     <input
-                                        type="date"
-                                        required
-                                        value={entryDate}
-                                        onChange={(e) => setEntryDate(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
+                                        type="text"
+                                        placeholder="Disetor via tunai / transfer pribadi"
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:outline-none"
                                     />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Hubungkan ke Akun Kas / Bank (Opsional)</label>
-                                <select
-                                    value={accountId}
-                                    onChange={(e) => setAccountId(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="">-- Tidak Mempengaruhi Saldo Kas (Hanya Catatan) --</option>
-                                    {accounts.map((a) => (
-                                        <option key={a.id} value={a.id}>
-                                            {a.name} (Saldo: {fmt(a.current_balance)})
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1 text-[11px] text-slate-400">
-                                    Jika dipilih, saldo kas/rekening akan otomatis bertambah (untuk modal) atau berkurang (untuk prive).
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Disetor via tunai / transfer pribadi"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setOpenAddModal(false)}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isPending}
-                                    className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
+                                    className="rounded-lg bg-emerald-800 px-4 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-emerald-900 active:bg-emerald-950 transition disabled:opacity-50 cursor-pointer"
                                 >
                                     {isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
                                 </button>
