@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { BRAND_CONTACT, getWhatsAppUrl } from '@/lib/brand-contact'
+import WhatsAppCSWidget from '@/components/whatsapp-cs-widget'
 
 export default async function ExpiredPage() {
     const supabase = await createClient()
@@ -103,13 +105,28 @@ export default async function ExpiredPage() {
                     </div>
                 </div>
 
-                <p className="text-center text-xs text-gray-500 mt-4">
-                    Butuh bantuan?{' '}
-                    <a href="mailto:support@rekapi.com" className="text-emerald-800 font-semibold hover:underline">
-                        Hubungi Support
-                    </a>
-                </p>
+                <div className="text-center text-xs text-gray-500 mt-4 space-y-1">
+                    <p>
+                        Butuh bantuan aktivasi?{' '}
+                        <a
+                            href={getWhatsAppUrl(`Halo CS Rekapi, saya butuh bantuan perpanjangan langganan untuk bisnis ${businessName}.`)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-800 font-semibold hover:underline"
+                        >
+                            Chat WhatsApp CS ({BRAND_CONTACT.whatsappDisplay})
+                        </a>
+                    </p>
+                    <p>
+                        Email Resmi:{' '}
+                        <a href={`mailto:${BRAND_CONTACT.email}`} className="text-emerald-800 font-medium hover:underline">
+                            {BRAND_CONTACT.email}
+                        </a>
+                    </p>
+                </div>
             </div>
+
+            <WhatsAppCSWidget />
         </div>
     )
 }

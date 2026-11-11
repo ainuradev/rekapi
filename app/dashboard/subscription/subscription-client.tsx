@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { BRAND_CONTACT, getWhatsAppUrl } from '@/lib/brand-contact'
+import WhatsAppCSWidget, { WhatsAppIcon } from '@/components/whatsapp-cs-widget'
 
 interface Plan {
     id: string
@@ -300,8 +302,10 @@ export default function SubscriptionClient({
             {pendingTransaction && (
                 <div className="rounded-2xl border border-amber-300 bg-amber-50/70 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 text-lg border border-amber-200">
-                            ⏳
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 border border-amber-200">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
@@ -500,11 +504,26 @@ export default function SubscriptionClient({
                     <div className="flex items-start gap-2">
                         <span className="text-emerald-600 font-bold">✓</span>
                         <span>
-                            <strong>Bantuan Langsung:</strong> Tim support Rekapi siap membantu jika Anda membutuhkan invoice resmi perusahaan atau panduan aktivasi.
+                            <strong>Bantuan Langsung ({BRAND_CONTACT.whatsappDisplay}):</strong> Tim support Rekapi siap membantu jika Anda membutuhkan konsultasi paket, konfirmasi pembayaran, atau panduan aktivasi melalui{' '}
+                            <a
+                                href={getWhatsAppUrl('Halo CS Rekapi, saya ingin bertanya mengenai Paket Langganan bisnis saya.')}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-bold text-emerald-800 underline hover:text-emerald-950"
+                            >
+                                <WhatsAppIcon className="w-3.5 h-3.5 inline" />
+                                <span>WhatsApp CS Resmi</span>
+                            </a>{' '}
+                            atau email{' '}
+                            <a href={`mailto:${BRAND_CONTACT.email}`} className="font-semibold text-emerald-800 underline hover:text-emerald-950">
+                                {BRAND_CONTACT.email}
+                            </a>.
                         </span>
                     </div>
                 </div>
             </div>
+
+            <WhatsAppCSWidget />
         </div>
     )
 }
