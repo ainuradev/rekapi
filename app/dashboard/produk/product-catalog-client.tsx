@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     updateStock,
     updateBranchStock,
     updateCostPrice,
+    updateProductImage,
     toggleProductStatus,
     ProductStockReductionReason,
 } from './actions'
+import { uploadImageWithCompression } from '@/lib/cloudinary-upload'
 import AddProductForm from './add-product-form'
 
 export interface ProductItem {
@@ -20,6 +22,7 @@ export interface ProductItem {
     status: string
     stock: number
     unit: string
+    image_url?: string | null
     created_at?: string
 }
 
@@ -375,7 +378,50 @@ export default function ProductCatalogClient({
     const [selectedStockStatus, setSelectedStockStatus] = useState<string>('all')
     const [showAddForm, setShowAddForm] = useState(false)
     const [editingStockProduct, setEditingStockProduct] = useState<ProductItem | null>(null)
+    const [editingPhotoProduct, setEditingPhotoProduct] = useState<ProductItem | null>(null)
+    const [photoUploading, setPhotoUploading] = useState(false)
+    const [photoError, setPhotoError] = useState<string | null>(null)
+    const photoInputRef = useRef<HTMLInputElement>(null)
     const [togglingProductId, setTogglingProductId] = useState<string | null>(null)
+
+    const handleUploadProductPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !editingPhotoProduct) return
+        setPhotoError(null)
+        setPhotoUploading(true)
+        try {
+            const uploaded = await uploadImageWithCompression(file, 'product')
+            const res = await updateProductImage(editingPhotoProduct.id, uploaded.url)
+            if (res.error) {
+                setPhotoError(res.error)
+            } else {
+                setEditingPhotoProduct({ ...editingPhotoProduct, image_url: uploaded.url })
+                router.refresh()
+            }
+        } catch (err) {
+            setPhotoError(err instanceof Error ? err.message : 'Gagal mengunggah foto produk.')
+        } finally {
+            setPhotoUploading(false)
+            if (photoInputRef.current) photoInputRef.current.value = ''
+        }
+    }
+
+    const handleRemoveProductPhoto = async () => {
+        if (!editingPhotoProduct) return
+        setPhotoError(null)
+        setPhotoUploading(true)
+        try {
+            const res = await updateProductImage(editingPhotoProduct.id, null)
+            if (res.error) {
+                setPhotoError(res.error)
+            } else {
+                setEditingPhotoProduct({ ...editingPhotoProduct, image_url: null })
+                router.refresh()
+            }
+        } finally {
+            setPhotoUploading(false)
+        }
+    }
 
     // Perhitungan Statistik Ringkas (Stat Strip)
     const allVariants = groupedProducts.flatMap((g) => g.variants)
@@ -622,9 +668,31 @@ export default function ProductCatalogClient({
 
                                     return (
                                         <tr key={p.id} className="hover:bg-slate-50/70 transition">
-                                            {/* Nama Produk & Satuan */}
+                                            {/* Nama Produk, Thumbnail Foto & Satuan */}
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setPhotoError(null)
+                                                            setEditingPhotoProduct(p)
+                                                        }}
+                                                        title="Klik untuk lihat / ubah foto produk"
+                                                        className="relative h-9 w-9 shrink-0 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center hover:border-emerald-600 transition cursor-pointer group"
+                                                    >
+                                                        {p.image_url ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img
+                                                                src={p.image_url}
+                                                                alt={p.name}
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <svg className="w-4 h-4 text-slate-400 group-hover:text-emerald-700 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
                                                     <span
                                                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                                             isOutOfStock
@@ -733,40 +801,64 @@ export default function ProductCatalogClient({
                             const isLowStock = (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5
 
                             return (
-                                <div key={p.id} className="p-3.5 flex items-center justify-between gap-3">
-                                    {/* Kolom Kiri: Nama & Kategori */}
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5">
-                                            <span
-                                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                    isOutOfStock
-                                                        ? 'bg-rose-500'
-                                                        : isLowStock
-                                                        ? 'bg-amber-500'
-                                                        : 'bg-emerald-600'
-                                                }`}
-                                            />
-                                            <span className="font-semibold text-xs text-slate-900 truncate">
-                                                {p.name}
-                                            </span>
-                                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 uppercase shrink-0">
-                                                {p.unit || 'pcs'}
-                                            </span>
-                                        </div>
+                                <div key={p.id} className="p-3.5 flex items-center justify-between gap-2.5">
+                                    {/* Kolom Kiri: Thumbnail, Nama & Kategori */}
+                                    <div className="min-w-0 flex-1 flex items-center gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPhotoError(null)
+                                                setEditingPhotoProduct(p)
+                                            }}
+                                            title="Klik untuk lihat / ubah foto produk"
+                                            className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center cursor-pointer"
+                                        >
+                                            {p.image_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={p.image_url}
+                                                    alt={p.name}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span
+                                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                                        isOutOfStock
+                                                            ? 'bg-rose-500'
+                                                            : isLowStock
+                                                            ? 'bg-amber-500'
+                                                            : 'bg-emerald-600'
+                                                    }`}
+                                                />
+                                                <span className="font-semibold text-xs text-slate-900 truncate">
+                                                    {p.name}
+                                                </span>
+                                                <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600 uppercase shrink-0">
+                                                    {p.unit || 'pcs'}
+                                                </span>
+                                            </div>
 
-                                        <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500">
-                                            <span className="capitalize">{p.category || 'makanan'}</span>
-                                            <span>•</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleStatus(p)}
-                                                disabled={togglingProductId === p.id}
-                                                className={`font-bold uppercase ${
-                                                    p.status === 'aktif' ? 'text-emerald-700' : 'text-slate-400'
-                                                }`}
-                                            >
-                                                {togglingProductId === p.id ? '...' : p.status}
-                                            </button>
+                                            <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500">
+                                                <span className="capitalize">{p.category || 'makanan'}</span>
+                                                <span>•</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleStatus(p)}
+                                                    disabled={togglingProductId === p.id}
+                                                    className={`font-bold uppercase ${
+                                                        p.status === 'aktif' ? 'text-emerald-700' : 'text-slate-400'
+                                                    }`}
+                                                >
+                                                    {togglingProductId === p.id ? '...' : p.status}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -825,6 +917,103 @@ export default function ProductCatalogClient({
                     hasStockColumn={hasStockColumn}
                     onClose={() => setEditingStockProduct(null)}
                 />
+            )}
+
+            {/* Modal Foto Produk (Viewport-Safe) */}
+            {editingPhotoProduct && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-[1px]"
+                    onClick={() => !photoUploading && setEditingPhotoProduct(null)}
+                >
+                    <div
+                        className="w-full max-w-sm max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <div className="min-w-0 pr-2">
+                                <h3 className="text-sm font-bold text-slate-900 truncate">Foto Produk</h3>
+                                <p className="text-[11px] text-slate-500 truncate">{editingPhotoProduct.name}</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEditingPhotoProduct(null)}
+                                disabled={photoUploading}
+                                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            <input
+                                ref={photoInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/jpg"
+                                onChange={handleUploadProductPhoto}
+                                className="hidden"
+                            />
+                            <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                {editingPhotoProduct.image_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={editingPhotoProduct.image_url}
+                                        alt={editingPhotoProduct.name}
+                                        className="h-44 w-44 rounded-xl object-cover border border-slate-200 bg-white shadow-xs"
+                                    />
+                                ) : (
+                                    <div className="h-36 w-36 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="text-[11px] font-medium">Belum ada foto</span>
+                                    </div>
+                                )}
+                                <p className="mt-2.5 text-[11px] text-slate-500 text-center">
+                                    Otomatis dikompresi ke WebP 400x400px (~15–25 KB) agar hemat kuota & cepat dimuat di Kasir POS.
+                                </p>
+                            </div>
+
+                            {photoError && (
+                                <div className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs font-semibold text-rose-700">
+                                    {photoError}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+                            {editingPhotoProduct.image_url ? (
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveProductPhoto}
+                                    disabled={photoUploading}
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition cursor-pointer disabled:opacity-50"
+                                >
+                                    Hapus Foto
+                                </button>
+                            ) : (
+                                <span />
+                            )}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingPhotoProduct(null)}
+                                    disabled={photoUploading}
+                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                                >
+                                    Tutup
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => photoInputRef.current?.click()}
+                                    disabled={photoUploading}
+                                    className="rounded-lg bg-emerald-800 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-900 transition cursor-pointer disabled:opacity-50"
+                                >
+                                    {photoUploading ? 'Memproses...' : editingPhotoProduct.image_url ? 'Ganti Foto' : 'Upload Foto'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )

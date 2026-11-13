@@ -55,6 +55,8 @@ export async function addProduct(formData: FormData) {
 
     const unitRaw = String(formData.get('unit') ?? '').trim().toLowerCase()
     const unit = unitRaw || 'pcs'
+    const imageUrlRaw = String(formData.get('image_url') ?? '').trim()
+    const imageUrl = imageUrlRaw.length > 0 ? imageUrlRaw : null
 
     if (!name) return { error: 'Nama produk wajib diisi.' }
     if (!sellingPrice || sellingPrice <= 0) return { error: 'Harga jual harus lebih dari 0.' }
@@ -91,6 +93,7 @@ export async function addProduct(formData: FormData) {
         status: string
         unit?: string
         stock?: number
+        image_url?: string | null
     } = {
         business_id: profile.business_id,
         name,
@@ -99,6 +102,7 @@ export async function addProduct(formData: FormData) {
         category,
         status: 'aktif',
         unit,
+        image_url: imageUrl,
     }
 
     // Jika bisnis memiliki cabang dan stok awal > 0, insert produk dengan stock = 0 terlebih dahulu
@@ -117,11 +121,12 @@ export async function addProduct(formData: FormData) {
     let error = insertRes.error
     insertedProductId = insertRes.data?.id ?? null
 
-    // Fallback jika migrasi 0008/0009 (kolom stock / unit) belum dijalankan di Supabase
+    // Fallback jika migrasi 0008/0009/0045 (kolom stock / unit / image_url) belum dijalankan di Supabase
     if (error && error.code === '42703') {
         const fallbackPayload = { ...payload }
         delete fallbackPayload.stock
         delete fallbackPayload.unit
+        delete fallbackPayload.image_url
         const retry = await supabase
             .from('products')
             .insert(fallbackPayload)
@@ -154,12 +159,28 @@ export async function updateProductUnit(productId: string, unit: string) {
     } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya Owner yang dapat mengubah satuan produk.' }
+    }
+
+    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
     const cleanUnit = unit.trim().toLowerCase() || 'pcs'
 
     const { error } = await supabase
         .from('products')
         .update({ unit: cleanUnit })
         .eq('id', productId)
+        .eq('business_id', profile.business_id)
 
     if (error) {
         if (error.code === '42703') {
@@ -173,15 +194,91 @@ export async function updateProductUnit(productId: string, unit: string) {
     return { success: true }
 }
 
+export async function updateProductImage(productId: string, imageUrl: string | null) {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile) return { error: 'Profile tidak ditemukan.' }
+
+    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    const cleanImageUrl = imageUrl && imageUrl.trim().length > 0 ? imageUrl.trim() : null
+
+    const { data: targetProduct, error: fetchErr } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('id', productId)
+        .eq('business_id', profile.business_id)
+        .maybeSingle()
+
+    if (fetchErr || !targetProduct) {
+        return { error: fetchErr?.message || 'Produk tidak ditemukan.' }
+    }
+
+    // Update produk dan seluruh varian satuannya yang memiliki nama sama di bisnis tersebut
+    const { error } = await supabase
+        .from('products')
+        .update({ image_url: cleanImageUrl })
+        .eq('business_id', profile.business_id)
+        .eq('name', targetProduct.name)
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath('/dashboard/produk')
+    revalidatePath('/dashboard/penjualan')
+    return { success: true }
+}
+
 export async function updateCostPrice(productId: string, costPrice: number) {
     const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya Owner yang dapat mengubah HPP produk.' }
+    }
+
+    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    const cleanCost = Number(costPrice)
+    if (isNaN(cleanCost) || cleanCost < 0) {
+        return { error: 'HPP tidak boleh bernilai negatif.' }
+    }
 
     // RLS: update products cuma boleh owner — kalau pegawai coba panggil ini,
     // otomatis ditolak di level database.
     const { error } = await supabase
         .from('products')
-        .update({ cost_price: costPrice })
+        .update({ cost_price: cleanCost })
         .eq('id', productId)
+        .eq('business_id', profile.business_id)
 
     if (error) return { error: error.message }
 

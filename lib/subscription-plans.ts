@@ -19,7 +19,8 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     {
         code: 'standard',
         name: 'Standard',
-        price: 149000,
+        price: 49000,
+        original_price: 149000,
         max_branches: 1,
         max_employees: 1,
         duration_days: 28,
@@ -38,7 +39,8 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     {
         code: 'business',
         name: 'Business',
-        price: 299000,
+        price: 99000,
+        original_price: 299000,
         max_branches: 3,
         max_employees: 3,
         duration_days: 28,
@@ -57,7 +59,8 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     {
         code: 'pro',
         name: 'Pro',
-        price: 499000,
+        price: 179000,
+        original_price: 499000,
         max_branches: 5,
         max_employees: 5,
         duration_days: 28,
@@ -88,7 +91,16 @@ export async function ensureSubscriptionPlans(
         .select('*')
         .order('price', { ascending: true })
 
-    if (!fetchErr && existing && existing.length >= 3) {
+    const needsSync =
+        fetchErr ||
+        !existing ||
+        existing.length < 3 ||
+        DEFAULT_SUBSCRIPTION_PLANS.some((def) => {
+            const match = existing.find((row) => row.code === def.code)
+            return !match || Number(match.price) !== def.price
+        })
+
+    if (!needsSync && existing) {
         return existing as unknown as SubscriptionPlanRecord[]
     }
 

@@ -20,7 +20,7 @@ export default async function ProfilPage() {
 
     const { data: business } = await supabase
         .from('businesses')
-        .select('id, name, address, phone, logo_url, qris_url, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name)')
+        .select('id, name, address, phone, logo_url, qris_url, qris_image_url, subscription_status, trial_ends_at, subscription_expires_at, subscription_plan_id, subscription_plans(name)')
         .eq('id', profile.business_id)
         .single()
 
@@ -60,6 +60,7 @@ interface BusinessWithPlan {
     phone: string | null
     logo_url: string | null
     qris_url: string | null
+    qris_image_url?: string | null
     subscription_status: string | null
     trial_ends_at: string | null
     subscription_expires_at: string | null
@@ -88,7 +89,7 @@ interface EmployeeItem {
             businessAddress={biz?.address ?? ''}
             businessPhone={biz?.phone ?? ''}
             businessLogoUrl={biz?.logo_url ?? ''}
-            businessQrisUrl={biz?.qris_url ?? ''}
+            businessQrisUrl={biz?.qris_image_url ?? biz?.qris_url ?? ''}
             subscriptionStatus={biz?.subscription_status ?? 'trial'}
             trialEndsAt={biz?.trial_ends_at ?? null}
             subscriptionExpiresAt={biz?.subscription_expires_at ?? null}

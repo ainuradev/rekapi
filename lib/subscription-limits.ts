@@ -22,6 +22,7 @@ export interface OfficialPlanSpec extends PlanLimits {
     code: 'standard' | 'business' | 'pro'
     name: string
     price: number
+    original_price: number
     max_branches: number
     max_employees: number
     can_advanced_reports: boolean
@@ -30,14 +31,15 @@ export interface OfficialPlanSpec extends PlanLimits {
 }
 
 /**
- * Reference catalog matching Supabase `subscription_plans` (Migration 0027).
+ * Reference catalog matching Supabase `subscription_plans` (Migration 0045).
  * Runtime enforcement still reads the live DB row passed into `getEffectiveLimits`.
  */
 export const OFFICIAL_PLAN_CATALOG: Record<'standard' | 'business' | 'pro', OfficialPlanSpec> = {
     standard: {
         code: 'standard',
         name: 'Standard',
-        price: 149_000,
+        price: 49_000,
+        original_price: 149_000,
         max_branches: 1,
         max_employees: 1,
         can_advanced_reports: false,
@@ -47,7 +49,8 @@ export const OFFICIAL_PLAN_CATALOG: Record<'standard' | 'business' | 'pro', Offi
     business: {
         code: 'business',
         name: 'Business',
-        price: 299_000,
+        price: 99_000,
+        original_price: 299_000,
         max_branches: 3,
         max_employees: 3,
         can_advanced_reports: true,
@@ -57,7 +60,8 @@ export const OFFICIAL_PLAN_CATALOG: Record<'standard' | 'business' | 'pro', Offi
     pro: {
         code: 'pro',
         name: 'Pro',
-        price: 499_000,
+        price: 179_000,
+        original_price: 499_000,
         max_branches: 5,
         max_employees: 5,
         can_advanced_reports: true,

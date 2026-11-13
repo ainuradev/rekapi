@@ -11,6 +11,7 @@ type RawProduct = {
     category?: string | null
     stock?: number | null
     unit?: string | null
+    image_url?: string | null
 }
 
 export default async function PenjualanPage() {
@@ -41,15 +42,15 @@ export default async function PenjualanPage() {
     ] = await Promise.all([
         supabase
             .from('businesses')
-            .select('name, address, phone, logo_url, qris_url')
+            .select('name, address, phone, logo_url, qris_url, qris_image_url')
             .eq('id', profile?.business_id)
             .single(),
         supabase
             .from(isOwner ? 'owner_products_view' : 'products')
             .select(
                 isOwner
-                    ? 'id, name, selling_price, cost_price, category, stock, unit'
-                    : 'id, name, selling_price, category, stock, unit'
+                    ? 'id, name, selling_price, cost_price, category, stock, unit, image_url'
+                    : 'id, name, selling_price, category, stock, unit, image_url'
             )
             .eq('status', 'aktif')
             .order('name'),
@@ -148,6 +149,7 @@ export default async function PenjualanPage() {
         ...p,
         stock: Number(p.stock ?? 0),
         unit: p.unit || 'pcs',
+        image_url: p.image_url ?? null,
         cost_price: isOwner ? Number(p.cost_price ?? 0) : 0,
     }))
 
@@ -158,6 +160,16 @@ export default async function PenjualanPage() {
         ? activeBranchId
         : (profile?.branch_id && branches?.some((b) => b.id === profile.branch_id) ? profile.branch_id : primaryBranchId)
 
+    const bizRow = business as {
+        name?: string | null
+        address?: string | null
+        phone?: string | null
+        logo_url?: string | null
+        qris_url?: string | null
+        qris_image_url?: string | null
+    } | null
+    const resolvedQrisUrl = bizRow?.qris_image_url ?? bizRow?.qris_url ?? null
+
     return (
         <KasirClient
             key={effectiveBranchId ?? 'all'}
@@ -167,11 +179,11 @@ export default async function PenjualanPage() {
             customers={formattedCustomers}
             accounts={accounts ?? []}
             fixedBranchId={isOwner ? (effectiveBranchId ?? null) : (profile?.branch_id ?? null)}
-            businessName={business?.name ?? 'Rekapi'}
-            businessAddress={business?.address ?? null}
-            businessPhone={business?.phone ?? null}
-            businessLogoUrl={business?.logo_url ?? null}
-            businessQrisUrl={business?.qris_url ?? null}
+            businessName={bizRow?.name ?? 'Rekapi'}
+            businessAddress={bizRow?.address ?? null}
+            businessPhone={bizRow?.phone ?? null}
+            businessLogoUrl={bizRow?.logo_url ?? null}
+            businessQrisUrl={resolvedQrisUrl}
             userName={user.email?.split('@')[0] ?? 'Kasir'}
         />
     )

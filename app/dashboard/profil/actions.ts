@@ -63,10 +63,12 @@ export async function updateBusinessName(formData: FormData) {
     return { success: true }
 }
 
-// ─── Update profil bisnis (Nama, Alamat, No. Telp, Logo, QRIS) ─────────────────
+// ─── Update profil bisnis (Nama, Alamat, No. Telp, Logo, QRIS — Khusus Owner) ─
 export async function updateBusinessProfile(formData: FormData) {
     const ctx = await getOwnerProfile()
-    if (!ctx) return { error: 'Unauthorized' }
+    if (!ctx || ctx.profile.role !== 'owner') {
+        return { error: 'Akses ditolak: Hanya Owner yang dapat mengubah profil dan kode QRIS toko.' }
+    }
 
     const name = String(formData.get('business_name') ?? '').trim()
     if (!name) return { error: 'Nama bisnis tidak boleh kosong.' }
@@ -86,7 +88,9 @@ export async function updateBusinessProfile(formData: FormData) {
         logoUrl = rawLogoUrl
     }
 
-    const rawQrisUrl = String(formData.get('business_qris_url') ?? '').trim()
+    const rawQrisUrl = String(
+        formData.get('qris_image_url') ?? formData.get('business_qris_url') ?? ''
+    ).trim()
     let qrisUrl: string | null = null
     if (rawQrisUrl.length > 0) {
         if (!rawQrisUrl.startsWith('http://') && !rawQrisUrl.startsWith('https://') && !rawQrisUrl.startsWith('/') && !rawQrisUrl.startsWith('data:image/')) {
@@ -103,6 +107,7 @@ export async function updateBusinessProfile(formData: FormData) {
             phone,
             logo_url: logoUrl,
             qris_url: qrisUrl,
+            qris_image_url: qrisUrl,
         })
         .eq('id', ctx.profile.business_id)
 

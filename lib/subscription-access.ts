@@ -61,11 +61,11 @@ export function getSubscriptionPlanTier(sub: {
 
 /**
  * Pengecekan Value-Based Feature Gating per modul:
- * 1. Standard (Rp149k): Bahan baku, Kas rekening, Utang piutang terkunci (Min: Business).
+ * 1. Standard (Rp 49.000): Bahan baku, Kas rekening, Utang piutang terkunci (Min: Business).
  *    Modal prive, Arus kas, Neraca SAK EMKM terkunci (Min: Pro).
- * 2. Business (Rp299k): Bahan baku, Kas rekening, Utang piutang terbuka.
+ * 2. Business (Rp 99.000): Bahan baku, Kas rekening, Utang piutang terbuka.
  *    Modal prive, Arus kas, Neraca SAK EMKM terkunci (Min: Pro).
- * 3. Pro (Rp499k) & Trial Aktif: Seluruh 6 modul terbuka penuh.
+ * 3. Pro (Rp 179.000) & Trial Aktif: Seluruh 6 modul terbuka penuh.
  */
 export function checkModuleAccess(
     sub: CheckModuleAccessParams,
@@ -299,4 +299,52 @@ export async function requireActiveSubscription(
     if (!res.allowed) {
         throw new SubscriptionExpiredError(res.error)
     }
+}
+
+/**
+ * Guard untuk Server Actions mutasi modul berjenjang (Business / Pro).
+ * Memastikan masa aktif langganan masih valid DAN tier paket mencukupi untuk modul tersebut.
+ */
+export async function checkServerModuleAccess(
+    businessId: string,
+    module: GatedModule,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabaseClient: any
+): Promise<{ allowed: boolean; error?: string }> {
+    if (!businessId) {
+        return { allowed: false, error: 'Identitas bisnis tidak valid.' }
+    }
+
+    const { data: business, error } = await supabaseClient
+        .from('businesses')
+        .select('id, subscription_status, trial_ends_at, subscription_expires_at, subscription_plans(code, name)')
+        .eq('id', businessId)
+        .single()
+
+    if (error || !business) {
+        return { allowed: false, error: 'Data langganan bisnis tidak ditemukan.' }
+    }
+
+    const plans = business.subscription_plans as { code?: string; name?: string } | { code?: string; name?: string }[] | null
+    const planObj = Array.isArray(plans) ? plans[0] : plans
+    const planCode = planObj?.code || null
+
+    const access = checkModuleAccess(
+        {
+            status: (business.subscription_status as SubscriptionStatus) || 'expired',
+            planCode,
+            expiresAt: business.subscription_expires_at,
+            trialEndsAt: business.trial_ends_at,
+        },
+        module
+    )
+
+    if (!access.allowed) {
+        return {
+            allowed: false,
+            error: access.reason || `Fitur ini memerlukan paket ${access.requiredPlan === 'pro' ? 'Pro' : 'Business'}.`,
+        }
+    }
+
+    return { allowed: true }
 }

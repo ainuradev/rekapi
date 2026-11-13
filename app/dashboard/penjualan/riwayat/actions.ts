@@ -517,10 +517,19 @@ export async function getSaleAuditLogs(saleId: string) {
     } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile?.business_id) return { error: 'Profil bisnis tidak ditemukan.' }
+
     const { data: logs, error } = await supabase
         .from('sale_edit_logs')
         .select('id, sale_id, edited_by, edited_at, old_data, new_data, reason, profiles(full_name, role)')
         .eq('sale_id', saleId)
+        .eq('business_id', profile.business_id)
         .order('edited_at', { ascending: false })
 
     if (error) {
@@ -591,6 +600,13 @@ export async function voidSale(saleId: string, reason?: string) {
     if (!rpcResult?.success) {
         return { error: rpcResult?.message || 'Gagal membatalkan transaksi' }
     }
+
+    // Pastikan entitas piutang dari transaksi void dibersihkan agar tidak tampil sebagai piutang gantung di Buku Utang & Piutang
+    await supabase
+        .from('receivables')
+        .delete()
+        .eq('sale_id', saleId)
+        .eq('business_id', profile.business_id)
 
     revalidatePath('/dashboard/penjualan/riwayat')
     revalidatePath('/dashboard/penjualan')
@@ -723,10 +739,19 @@ export async function getSalePayments(saleId: string) {
     } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile?.business_id) return { error: 'Profil bisnis tidak ditemukan.' }
+
     const { data: payments, error } = await supabase
         .from('sale_payments')
         .select('id, payment_number, amount, payment_method, payment_date, notes, created_at, profiles(full_name), financial_accounts(name)')
         .eq('sale_id', saleId)
+        .eq('business_id', profile.business_id)
         .order('payment_date', { ascending: true })
 
     if (error) {

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { addProduct } from './actions'
+import { uploadImageWithCompression } from '@/lib/cloudinary-upload'
 
 const UNIT_PRESETS = [
     { value: 'porsi', label: 'Porsi (Makanan / F&B)' },
@@ -36,9 +37,28 @@ export default function AddProductForm({
     const [unit, setUnit] = useState('porsi')
     const [customUnit, setCustomUnit] = useState('')
     const [category, setCategory] = useState<'makanan' | 'minuman' | 'lainnya'>('makanan')
+    const [imageUrl, setImageUrl] = useState<string | null>(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [saving, setSaving] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+    async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setErrorMsg(null)
+        setUploadingImage(true)
+        try {
+            const uploaded = await uploadImageWithCompression(file, 'product')
+            setImageUrl(uploaded.url)
+        } catch (err) {
+            setErrorMsg(err instanceof Error ? err.message : 'Gagal memproses foto produk.')
+        } finally {
+            setUploadingImage(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -55,6 +75,7 @@ export default function AddProductForm({
         formData.append('category', category)
         if (costPrice) formData.append('cost_price', costPrice)
         if (stock) formData.append('stock', stock)
+        if (imageUrl) formData.append('image_url', imageUrl)
         if (selectedBranchId && selectedBranchId !== 'all') {
             formData.append('branch_id', selectedBranchId)
         }
@@ -74,6 +95,7 @@ export default function AddProductForm({
         setStock('')
         setCategory('makanan')
         setCustomUnit('')
+        setImageUrl(null)
         router.refresh()
     }
 
@@ -210,9 +232,63 @@ export default function AddProductForm({
                 </div>
             )}
 
+            {/* Foto Produk (Opsional) */}
+            <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Foto Produk <span className="text-slate-400 font-normal">(opsional, kompresi otomatis WebP 400x400px)</span>
+                </label>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                />
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                    <div className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 bg-white overflow-hidden flex items-center justify-center">
+                        {imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={imageUrl}
+                                alt="Preview Foto Produk"
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingImage}
+                                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer disabled:opacity-50"
+                            >
+                                {uploadingImage ? 'Mengompresi...' : imageUrl ? 'Ganti Foto' : 'Pilih Foto'}
+                            </button>
+                            {imageUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => setImageUrl(null)}
+                                    className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer"
+                                >
+                                    Hapus
+                                </button>
+                            )}
+                        </div>
+                        <p className="mt-1 text-[10px] text-slate-500 truncate">
+                            {imageUrl ? 'Foto siap disimpan ke katalog & Kasir POS.' : 'Format JPG/PNG/WebP. Tampil di Katalog & Kasir POS.'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploadingImage}
                 className="w-full rounded-2xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
                 {saving ? 'Menyimpan...' : '+ Tambah Produk ke Katalog'}

@@ -24,7 +24,11 @@ export default async function DataHubPage() {
         businesses: { name: string } | null
     } | null
 
-    const businessId = profile?.business_id
+    if (!profile || profile.role !== 'owner' || !profile.business_id) {
+        redirect('/dashboard')
+    }
+
+    const businessId = profile.business_id
     const businessName = profile?.businesses?.name || 'Bisnis Anda'
     const activeBranchId = await getActiveBranchId()
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { getMidtransSnap, validateMidtransConfig, MidtransConfigError } from '@/lib/midtrans/config'
+import { OFFICIAL_PLAN_CATALOG } from '@/lib/subscription-limits'
 
 export async function POST(request: NextRequest) {
     try {
@@ -68,12 +69,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: subError.message }, { status: 500 })
         }
 
+        const chargeAmount =
+            OFFICIAL_PLAN_CATALOG[plan.code as keyof typeof OFFICIAL_PLAN_CATALOG]?.price ?? Number(plan.price)
+
         // Create payment transaction record
         await supabaseAdmin.from('payment_transactions').insert({
             business_id: businessId,
             subscription_id: subscription.id,
             midtrans_order_id: orderId,
-            amount: plan.price,
+            amount: chargeAmount,
             status: 'pending',
         })
 
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
         const parameter = {
             transaction_details: {
                 order_id: orderId,
-                gross_amount: Number(plan.price),
+                gross_amount: chargeAmount,
             },
             customer_details: {
                 first_name: customerName,
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
             item_details: [
                 {
                     id: plan.code,
-                    price: Number(plan.price),
+                    price: chargeAmount,
                     quantity: 1,
                     name: `Rekapi ${plan.name} - ${plan.duration_days ?? 28} Hari`,
                 },

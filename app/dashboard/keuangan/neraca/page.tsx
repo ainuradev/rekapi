@@ -180,7 +180,7 @@ export default async function NeracaPage({
     // ── 4. Fetch Expenses (Beban Operasional & Aset Peralatan hingga tanggal posisi) ──
     let expensesQuery = supabase
         .from('expenses')
-        .select('amount, category, branch_id, expense_date, description')
+        .select('amount, category, branch_id, expense_date, description, is_non_cash')
         .eq('business_id', businessId)
         .lte('expense_date', asOfDate)
 
@@ -273,7 +273,7 @@ export default async function NeracaPage({
     try {
         const { data: recs } = await supabase
             .from('receivables')
-            .select('total_amount, paid_amount, branch_id, sales(branch_id)')
+            .select('total_amount, paid_amount, branch_id, sales(branch_id, status)')
             .eq('business_id', businessId)
             .neq('status', 'paid')
             .neq('status', 'cancelled')
@@ -281,8 +281,10 @@ export default async function NeracaPage({
         if (recs) {
             tradeReceivables = recs
                 .filter((r) => {
+                    const saleObj = r.sales as { branch_id?: string | null; status?: string | null } | null
+                    if (saleObj?.status === 'voided') return false
                     if (selectedBranchId === 'all') return true
-                    const bId = r.branch_id || (r.sales as { branch_id?: string | null } | null)?.branch_id
+                    const bId = r.branch_id || saleObj?.branch_id
                     return bId === selectedBranchId
                 })
                 .reduce(

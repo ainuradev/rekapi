@@ -7,6 +7,7 @@ import {
     changeOwnPassword,
     changeEmployeePassword,
 } from './actions'
+import { uploadImageWithCompression } from '@/lib/cloudinary-upload'
 
 interface Employee {
     id: string
@@ -186,66 +187,42 @@ function Field({
 function QrisUploadField({ defaultValue }: { defaultValue?: string | null }) {
     const [qrisUrl, setQrisUrl] = useState(defaultValue ?? '')
     const [previewLoading, setPreviewLoading] = useState(false)
+    const [uploadErr, setUploadErr] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
-        if (!file.type.startsWith('image/')) {
-            alert('Silakan pilih file gambar (PNG, JPG, atau WEBP).')
-            return
-        }
-
+        setUploadErr(null)
         setPreviewLoading(true)
-        const reader = new FileReader()
-        reader.onload = (event) => {
-            const rawDataUrl = event.target?.result as string
-            const img = new Image()
-            img.onload = () => {
-                const canvas = document.createElement('canvas')
-                const maxDim = 600
-                let width = img.width
-                let height = img.height
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = Math.round((height * maxDim) / width)
-                        width = maxDim
-                    } else {
-                        width = Math.round((width * maxDim) / height)
-                        height = maxDim
-                    }
-                }
-                canvas.width = width
-                canvas.height = height
-                const ctx = canvas.getContext('2d')
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0, width, height)
-                    const compressed = canvas.toDataURL('image/webp', 0.9)
-                    setQrisUrl(compressed)
-                } else {
-                    setQrisUrl(rawDataUrl)
-                }
-                setPreviewLoading(false)
-            }
-            img.onerror = () => {
-                setQrisUrl(rawDataUrl)
-                setPreviewLoading(false)
-            }
-            img.src = rawDataUrl
+        try {
+            const uploaded = await uploadImageWithCompression(file, 'qris')
+            setQrisUrl(uploaded.url)
+        } catch (err) {
+            setUploadErr(err instanceof Error ? err.message : 'Gagal memproses gambar QRIS.')
+        } finally {
+            setPreviewLoading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
         }
-        reader.readAsDataURL(file)
     }
 
     return (
         <div className="space-y-2.5 pt-3 border-t border-slate-100">
             <label className="block text-xs font-semibold text-slate-800">
-                Gambar QRIS Toko (Untuk Pembayaran Kasir POS)
+                Kode QRIS Statis Toko (Tampil di Kasir POS)
             </label>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-                Unggah gambar/screenshot QRIS statis toko Anda (BCA, Mandiri, GoPay, OVO, ShopeePay, DANA, dll). Gambar ini akan otomatis muncul sebagai pop-up di layar kasir saat pelanggan memilih bayar dengan QRIS.
+                Unggah gambar/screenshot QRIS statis toko Anda (BCA, Mandiri, BRI, GoPay, OVO, ShopeePay, DANA, dll). Gambar diproses dengan resolusi tajam (800x1000 px WebP kualitas tinggi tanpa crop kotak) agar matriks barcode mudah dipindai kamera HP pelanggan, dan hanya dapat diubah oleh Owner.
             </p>
 
+            <input type="hidden" name="qris_image_url" value={qrisUrl} />
             <input type="hidden" name="business_qris_url" value={qrisUrl} />
+
+            {uploadErr && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-semibold text-rose-700">
+                    {uploadErr}
+                </div>
+            )}
 
             {qrisUrl ? (
                 <div className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-4">

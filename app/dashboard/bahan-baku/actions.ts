@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { checkActiveSubscription } from '@/lib/subscription-access'
+import { checkActiveSubscription, checkServerModuleAccess } from '@/lib/subscription-access'
 
 export type PurchaseItemInput = {
     raw_material_id?: string | null
@@ -44,6 +44,11 @@ export async function addPurchase(payload: {
     const subCheck = await checkActiveSubscription(profile.business_id, supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    const modCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
+    if (!modCheck.allowed) {
+        return { error: modCheck.error || 'Fitur ini memerlukan paket Business atau Pro.' }
     }
 
     if (!payload.branch_id) return { error: 'Pilih cabang terlebih dahulu.' }
@@ -385,6 +390,26 @@ export async function addPurchase(payload: {
         }
     }
 
+    // Sinkronkan stok global (raw_materials.stock) dengan penjumlahan stok seluruh cabang
+    const uniqueMaterialIds = Array.from(
+        new Set(validatedItems.map((i) => i.raw_material_id).filter((id): id is string => Boolean(id)))
+    )
+    for (const matId of uniqueMaterialIds) {
+        const { data: allStocks } = await supabase
+            .from('raw_material_branch_stocks')
+            .select('quantity')
+            .eq('raw_material_id', matId)
+            .eq('business_id', profile.business_id)
+        if (allStocks) {
+            const total = allStocks.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+            await supabase
+                .from('raw_materials')
+                .update({ stock: total, updated_at: new Date().toISOString() })
+                .eq('id', matId)
+                .eq('business_id', profile.business_id)
+        }
+    }
+
     revalidatePath('/dashboard/bahan-baku')
     revalidatePath('/dashboard/keuangan')
     revalidatePath('/dashboard')
@@ -412,6 +437,11 @@ export async function deletePurchase(purchaseId: string) {
     const subCheck = await checkActiveSubscription(profile.business_id, supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
+    const modCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
+    if (!modCheck.allowed) {
+        return { error: modCheck.error || 'Fitur ini memerlukan paket Business atau Pro.' }
     }
 
     // 1. Ambil data pembelian beserta item dan relasi bahan bakunya
@@ -456,6 +486,20 @@ export async function deletePurchase(purchaseId: string) {
                 p_notes: `Pembatalan Pembelian #${purchaseId.slice(0, 8)}`,
                 p_reference_id: `cancel_${purchaseId}`,
             })
+
+            const { data: allStocks } = await supabase
+                .from('raw_material_branch_stocks')
+                .select('quantity')
+                .eq('raw_material_id', it.raw_material_id)
+                .eq('business_id', profile.business_id)
+            if (allStocks) {
+                const total = allStocks.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+                await supabase
+                    .from('raw_materials')
+                    .update({ stock: total, updated_at: new Date().toISOString() })
+                    .eq('id', it.raw_material_id)
+                    .eq('business_id', profile.business_id)
+            }
         }
     }
 

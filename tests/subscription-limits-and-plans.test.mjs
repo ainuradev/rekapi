@@ -24,7 +24,7 @@ import {
 const ROOT = process.cwd()
 
 describe('Subscription Limits, Official Plan Quotas & Midtrans Sync Consistency', () => {
-    test('1. Spesifikasi resmi paket (Standard Rp149k, Business Rp299k, Pro Rp499k / 28 hari) konsisten dengan kuota cabang & kasir', () => {
+    test('1. Spesifikasi resmi paket (Standard Rp49k, Business Rp99k, Pro Rp179k / 28 hari) konsisten dengan kuota cabang & kasir', () => {
         assert.equal(DEFAULT_PLAN_DURATION_DAYS, 28)
         assert.equal(TRIAL_DURATION_DAYS, 7)
         assert.equal(MAX_EMPLOYEES_PER_BRANCH, 1)
@@ -36,24 +36,27 @@ describe('Subscription Limits, Official Plan Quotas & Midtrans Sync Consistency'
         assert.equal(TRIAL_LIMITS.can_advanced_reports, false)
         assert.equal(TRIAL_LIMITS.can_api_access, false)
 
-        // Standard: Rp149.000 / 28 hari, 1 cabang, 1 pegawai
-        assert.equal(OFFICIAL_PLAN_CATALOG.standard.price, 149_000)
+        // Standard: Rp49.000 (coret Rp149.000) / 28 hari, 1 cabang, 1 pegawai
+        assert.equal(OFFICIAL_PLAN_CATALOG.standard.price, 49_000)
+        assert.equal(OFFICIAL_PLAN_CATALOG.standard.original_price, 149_000)
         assert.equal(OFFICIAL_PLAN_CATALOG.standard.duration_days, 28)
         assert.equal(OFFICIAL_PLAN_CATALOG.standard.max_branches, 1)
         assert.equal(OFFICIAL_PLAN_CATALOG.standard.max_employees, 1)
         assert.equal(OFFICIAL_PLAN_CATALOG.standard.can_advanced_reports, false)
         assert.equal(OFFICIAL_PLAN_CATALOG.standard.can_api_access, false)
 
-        // Business: Rp299.000 / 28 hari, 3 cabang, 3 pegawai
-        assert.equal(OFFICIAL_PLAN_CATALOG.business.price, 299_000)
+        // Business: Rp99.000 (coret Rp299.000) / 28 hari, 3 cabang, 3 pegawai
+        assert.equal(OFFICIAL_PLAN_CATALOG.business.price, 99_000)
+        assert.equal(OFFICIAL_PLAN_CATALOG.business.original_price, 299_000)
         assert.equal(OFFICIAL_PLAN_CATALOG.business.duration_days, 28)
         assert.equal(OFFICIAL_PLAN_CATALOG.business.max_branches, 3)
         assert.equal(OFFICIAL_PLAN_CATALOG.business.max_employees, 3)
         assert.equal(OFFICIAL_PLAN_CATALOG.business.can_advanced_reports, true)
         assert.equal(OFFICIAL_PLAN_CATALOG.business.can_api_access, false)
 
-        // Pro: Rp499.000 / 28 hari, 5 cabang, 5 pegawai
-        assert.equal(OFFICIAL_PLAN_CATALOG.pro.price, 499_000)
+        // Pro: Rp179.000 (coret Rp499.000) / 28 hari, 5 cabang, 5 pegawai
+        assert.equal(OFFICIAL_PLAN_CATALOG.pro.price, 179_000)
+        assert.equal(OFFICIAL_PLAN_CATALOG.pro.original_price, 499_000)
         assert.equal(OFFICIAL_PLAN_CATALOG.pro.duration_days, 28)
         assert.equal(OFFICIAL_PLAN_CATALOG.pro.max_branches, 5)
         assert.equal(OFFICIAL_PLAN_CATALOG.pro.max_employees, 5)

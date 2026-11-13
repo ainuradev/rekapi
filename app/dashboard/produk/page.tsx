@@ -48,10 +48,10 @@ export default async function ProdukPage({
     let prodsResult = await (isOwner
         ? supabase
             .from('owner_products_view')
-            .select('id, name, selling_price, cost_price, category, status, stock, unit, created_at')
+            .select('id, name, selling_price, cost_price, category, status, stock, unit, image_url, created_at')
         : supabase
             .from('products')
-            .select('id, name, selling_price, category, status, stock, unit, created_at')
+            .select('id, name, selling_price, category, status, stock, unit, image_url, created_at')
     )
         .eq('business_id', profile.business_id)
         .order('created_at', { ascending: true })
@@ -60,7 +60,7 @@ export default async function ProdukPage({
     if (isOwner && prodsResult.error && prodsResult.error.code === '42P01') {
         prodsResult = await supabase
             .from('products')
-            .select('id, name, selling_price, cost_price, category, status, stock, unit, created_at')
+            .select('id, name, selling_price, cost_price, category, status, stock, unit, image_url, created_at')
             .eq('business_id', profile.business_id)
             .order('created_at', { ascending: true })
     }
@@ -112,6 +112,7 @@ export default async function ProdukPage({
         status: string
         stock: number
         unit: string
+        image_url?: string | null
         created_at?: string
     }
 
@@ -124,6 +125,7 @@ export default async function ProdukPage({
         status?: string | null
         stock?: number | null
         unit?: string | null
+        image_url?: string | null
         created_at?: string
     }
 
@@ -182,6 +184,7 @@ export default async function ProdukPage({
             status: rawP.status || 'aktif',
             unit: rawP.unit || 'pcs',
             stock: displayStock,
+            image_url: rawP.image_url ?? null,
             created_at: rawP.created_at,
         }
 

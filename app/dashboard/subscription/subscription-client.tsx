@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BRAND_CONTACT, getWhatsAppUrl } from '@/lib/brand-contact'
+import { OFFICIAL_PLAN_CATALOG } from '@/lib/subscription-limits'
 import WhatsAppCSWidget, { WhatsAppIcon } from '@/components/whatsapp-cs-widget'
 
 interface Plan {
@@ -350,6 +351,10 @@ export default function SubscriptionClient({
             <div className="grid md:grid-cols-3 gap-6 pt-2">
                 {plans.map((plan) => {
                     const isBusiness = plan.code === 'business'
+                    const catalogPlan =
+                        OFFICIAL_PLAN_CATALOG[plan.code as keyof typeof OFFICIAL_PLAN_CATALOG]
+                    const activePrice = catalogPlan?.price ?? Number(plan.price)
+                    const originalPrice = catalogPlan?.original_price ?? null
                     const isCurrent =
                         isActive &&
                         (currentPlanId
@@ -381,11 +386,23 @@ export default function SubscriptionClient({
                                     )}
                                 </div>
 
-                                <div className="mt-4 flex items-baseline gap-1">
-                                    <span className="text-3xl font-black text-slate-900">
-                                        {formatPrice(plan.price)}
-                                    </span>
-                                    <span className="text-xs text-slate-400 font-medium">/ {plan.duration_days ?? 28} hari</span>
+                                <div className="mt-4">
+                                    {originalPrice && originalPrice > activePrice && (
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-semibold text-slate-400 line-through tabular-nums">
+                                                {formatPrice(originalPrice)}
+                                            </span>
+                                            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/70">
+                                                Promo Spesial
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-black text-slate-900 tabular-nums">
+                                            {formatPrice(activePrice)}
+                                        </span>
+                                        <span className="text-xs text-slate-400 font-medium">/bln ({plan.duration_days ?? 28} hari)</span>
+                                    </div>
                                 </div>
 
                                 <p className="mt-2 text-xs text-slate-500 leading-relaxed min-h-[36px]">

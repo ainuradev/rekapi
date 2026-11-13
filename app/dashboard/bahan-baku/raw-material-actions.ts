@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { RawMaterial } from '@/types/inventory'
-import { checkActiveSubscription } from '@/lib/subscription-access'
+import { checkServerModuleAccess } from '@/lib/subscription-access'
 
 export interface CreateRawMaterialInput {
     sku?: string
@@ -45,7 +45,7 @@ export async function createRawMaterial(payload: CreateRawMaterialInput) {
     if (!profile) return { error: 'Profil pengguna tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat menambahkan master bahan baku.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -97,9 +97,11 @@ export async function createRawMaterial(payload: CreateRawMaterialInput) {
 
     // 2. Jika ada saldo awal (initial_stocks) untuk cabang, catat mutasi opening_balance secara atomik
     if (payload.initial_stocks && payload.initial_stocks.length > 0) {
+        let totalInitialStock = 0
         for (const item of payload.initial_stocks) {
             const qty = Number(item.quantity) || 0
             if (qty > 0) {
+                totalInitialStock += qty
                 const { error: rpcError } = await supabase.rpc('record_inventory_mutation_atomic', {
                     p_business_id: profile.business_id,
                     p_branch_id: item.branch_id,
@@ -140,6 +142,14 @@ export async function createRawMaterial(payload: CreateRawMaterialInput) {
                 }
             }
         }
+
+        if (totalInitialStock > 0) {
+            await supabase
+                .from('raw_materials')
+                .update({ stock: totalInitialStock, updated_at: new Date().toISOString() })
+                .eq('id', material.id)
+                .eq('business_id', profile.business_id)
+        }
     }
 
     revalidatePath('/dashboard/bahan-baku')
@@ -163,7 +173,7 @@ export async function updateRawMaterial(id: string, payload: UpdateRawMaterialIn
     if (!profile) return { error: 'Profil tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat mengubah master bahan baku.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -232,7 +242,7 @@ export async function deleteRawMaterial(id: string) {
     if (!profile) return { error: 'Profil tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat menghapus bahan baku.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -291,7 +301,7 @@ export async function updateRawMaterialGlobalStock(id: string, newStock: number)
         return { error: 'Hanya owner yang dapat mengubah stok global (induk) bahan baku.' }
     }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -330,8 +340,9 @@ export async function recordStockAdjustment(payload: RecordStockAdjustmentPayloa
         .single()
 
     if (!profile) return { error: 'Profil pengguna tidak ditemukan.' }
+    if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat mengelola stok bahan baku.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -517,8 +528,9 @@ export async function recordStockTransfer(payload: RecordStockTransferPayload) {
         .single()
 
     if (!profile) return { error: 'Profil tidak ditemukan.' }
+    if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat mentransfer stok bahan baku.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }

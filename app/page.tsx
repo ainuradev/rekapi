@@ -665,25 +665,41 @@ export default async function HomePage() {
                             <div className="rounded-2xl border border-slate-200 bg-white p-7 sm:p-8 flex flex-col justify-between shadow-xs hover:shadow-md transition">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-900">Standard</h3>
-                                    <p className="mt-1 text-xs text-slate-500">Cocok untuk bisnis kecil yang baru mulai.</p>
+                                    <p className="mt-1 text-xs text-slate-500">Cocok untuk bisnis dengan 1 cabang dan 1 akun pegawai kasir</p>
 
-                                    <div className="mt-6 flex items-baseline gap-1">
-                                        <span className="text-3xl font-extrabold text-slate-900">Rp 149.000</span>
-                                        <span className="text-xs text-slate-500 font-medium">/ 28 hari</span>
+                                    <div className="mt-6">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-semibold text-slate-400 line-through tabular-nums">
+                                                Rp 149.000
+                                            </span>
+                                            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80">
+                                                Hemat 67%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-extrabold text-slate-900 tabular-nums">Rp 49.000</span>
+                                            <span className="text-xs text-slate-500 font-medium">/bln (28 hari)</span>
+                                        </div>
                                     </div>
 
-                                    <ul className="mt-6 space-y-3 text-xs text-slate-700 font-medium">
+                                    <ul className="mt-6 space-y-3 pt-6 border-t border-slate-100 text-xs text-slate-700 font-medium">
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> 1 Cabang
+                                            <span className="text-[#0f7654] font-bold">✓</span> Maksimal 1 cabang
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Kasir & Laporan Keuangan
+                                            <span className="text-[#0f7654] font-bold">✓</span> 1 akun pegawai (khusus cabang)
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Manajemen Stok
+                                            <span className="text-[#0f7654] font-bold">✓</span> Semua fitur kasir POS
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Dukungan Support
+                                            <span className="text-[#0f7654] font-bold">✓</span> Laporan harian &amp; mingguan
+                                        </li>
+                                        <li className="flex items-center gap-2.5">
+                                            <span className="text-[#0f7654] font-bold">✓</span> Export CSV
+                                        </li>
+                                        <li className="flex items-center gap-2.5">
+                                            <span className="text-[#0f7654] font-bold">✓</span> Support standar
                                         </li>
                                     </ul>
                                 </div>
@@ -709,25 +725,41 @@ export default async function HomePage() {
 
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-900">Business</h3>
-                                    <p className="mt-1 text-xs text-slate-500">Untuk bisnis yang sedang berkembang.</p>
+                                    <p className="mt-1 text-xs text-slate-500">Untuk bisnis yang mulai berkembang hingga 3 cabang</p>
 
-                                    <div className="mt-6 flex items-baseline gap-1">
-                                        <span className="text-3xl font-extrabold text-slate-900">Rp 299.000</span>
-                                        <span className="text-xs text-slate-500 font-medium">/ 28 hari</span>
+                                    <div className="mt-6">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-semibold text-slate-400 line-through tabular-nums">
+                                                Rp 299.000
+                                            </span>
+                                            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80">
+                                                Hemat 67%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-extrabold text-slate-900 tabular-nums">Rp 99.000</span>
+                                            <span className="text-xs text-slate-500 font-medium">/bln (28 hari)</span>
+                                        </div>
                                     </div>
 
-                                    <ul className="mt-6 space-y-3 text-xs text-slate-700 font-medium">
+                                    <ul className="mt-6 space-y-3 pt-6 border-t border-slate-100 text-xs text-slate-700 font-medium">
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> 3 Cabang
+                                            <span className="text-[#0f7654] font-bold">✓</span> Maksimal 3 cabang
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Kasir & Laporan Keuangan
+                                            <span className="text-[#0f7654] font-bold">✓</span> 3 akun pegawai (1 pegawai per cabang)
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Manajemen Stok
+                                            <span className="text-[#0f7654] font-bold">✓</span> Semua fitur Standard
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Dukungan Support Prioritas
+                                            <span className="text-[#0f7654] font-bold">✓</span> Laporan advanced &amp; HPP
+                                        </li>
+                                        <li className="flex items-center gap-2.5">
+                                            <span className="text-[#0f7654] font-bold">✓</span> Export Excel
+                                        </li>
+                                        <li className="flex items-center gap-2.5">
+                                            <span className="text-[#0f7654] font-bold">✓</span> Support prioritas
                                         </li>
                                     </ul>
                                 </div>
@@ -746,28 +778,41 @@ export default async function HomePage() {
                             <div className="rounded-2xl border border-slate-200 bg-white p-7 sm:p-8 flex flex-col justify-between shadow-xs hover:shadow-md transition">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-900">Pro</h3>
-                                    <p className="mt-1 text-xs text-slate-500">Untuk bisnis skala lebih besar.</p>
+                                    <p className="mt-1 text-xs text-slate-500">Untuk bisnis berkembang pesat hingga 5 cabang</p>
 
-                                    <div className="mt-6 flex items-baseline gap-1">
-                                        <span className="text-3xl font-extrabold text-slate-900">Rp 499.000</span>
-                                        <span className="text-xs text-slate-500 font-medium">/ 28 hari</span>
+                                    <div className="mt-6">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs font-semibold text-slate-400 line-through tabular-nums">
+                                                Rp 499.000
+                                            </span>
+                                            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80">
+                                                Hemat 64%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-extrabold text-slate-900 tabular-nums">Rp 179.000</span>
+                                            <span className="text-xs text-slate-500 font-medium">/bln (28 hari)</span>
+                                        </div>
                                     </div>
 
-                                    <ul className="mt-6 space-y-3 text-xs text-slate-700 font-medium">
+                                    <ul className="mt-6 space-y-3 pt-6 border-t border-slate-100 text-xs text-slate-700 font-medium">
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> 5 Cabang
+                                            <span className="text-[#0f7654] font-bold">✓</span> Maksimal 5 cabang
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Kasir & Laporan Keuangan
+                                            <span className="text-[#0f7654] font-bold">✓</span> 5 akun pegawai (1 pegawai per cabang)
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Manajemen Stok
+                                            <span className="text-[#0f7654] font-bold">✓</span> Semua fitur Business
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Fitur Barcode & SKU
+                                            <span className="text-[#0f7654] font-bold">✓</span> Laporan advanced &amp; HPP
                                         </li>
                                         <li className="flex items-center gap-2.5">
-                                            <span className="text-[#0f7654] font-bold">✓</span> Dukungan Support Prioritas
+                                            <span className="text-[#0f7654] font-bold">✓</span> Akses API
+                                        </li>
+                                        <li className="flex items-center gap-2.5">
+                                            <span className="text-[#0f7654] font-bold">✓</span> Support prioritas 24/7
                                         </li>
                                     </ul>
                                 </div>

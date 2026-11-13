@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { checkActiveSubscription } from '@/lib/subscription-access'
+import { checkActiveSubscription, checkServerModuleAccess, type GatedModule } from '@/lib/subscription-access'
 
 const EXPENSE_CATEGORIES = [
     'gaji', 'listrik', 'air', 'sewa', 'gas',
@@ -11,7 +11,7 @@ const EXPENSE_CATEGORIES = [
 
 type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 
-async function getAuthorizedOwner() {
+async function getAuthorizedOwner(requiredModule?: GatedModule) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized', supabase: null, user: null, profile: null }
@@ -27,9 +27,16 @@ async function getAuthorizedOwner() {
         return { error: 'Hanya Owner yang berhak mengelola pembukuan keuangan.', supabase: null, user: null, profile: null }
     }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
-    if (!subCheck.allowed) {
-        return { error: subCheck.error || 'Langganan Anda telah berakhir.', supabase: null, user: null, profile: null }
+    if (requiredModule) {
+        const modCheck = await checkServerModuleAccess(profile.business_id, requiredModule, supabase)
+        if (!modCheck.allowed) {
+            return { error: modCheck.error || 'Paket langganan Anda belum mencakup fitur ini.', supabase: null, user: null, profile: null }
+        }
+    } else {
+        const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+        if (!subCheck.allowed) {
+            return { error: subCheck.error || 'Langganan Anda telah berakhir.', supabase: null, user: null, profile: null }
+        }
     }
 
     return { error: null, supabase, user, profile }
@@ -202,7 +209,7 @@ export async function createFinancialAccount(payload: {
     is_default_cash?: boolean
     is_default_bank?: boolean
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('cash_accounts')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (!payload.name?.trim()) return { error: 'Nama kas / rekening wajib diisi.' }
@@ -267,7 +274,7 @@ export async function updateFinancialAccount(payload: {
     is_default_cash?: boolean
     is_default_bank?: boolean
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('cash_accounts')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (!payload.name?.trim()) return { error: 'Nama kas / rekening wajib diisi.' }
@@ -307,7 +314,7 @@ export async function updateFinancialAccount(payload: {
 }
 
 export async function deleteFinancialAccount(accountId: string) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('cash_accounts')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     // 1. Verifikasi akun yang akan dihapus
@@ -384,7 +391,7 @@ export async function deleteFinancialAccount(accountId: string) {
 }
 
 export async function setAccountInitialBalance(accountId: string, newInitialBalance: number) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('cash_accounts')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     const newBal = Number(newInitialBalance)
@@ -427,7 +434,7 @@ export async function transferBetweenAccounts(payload: {
     notes?: string
     transfer_date: string
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('cash_accounts')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (payload.from_account_id === payload.to_account_id) {
@@ -509,7 +516,7 @@ export async function createDebtPayable(payload: {
     due_date?: string
     notes?: string
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (!payload.title?.trim()) return { error: 'Judul atau keperluan utang wajib diisi.' }
@@ -566,7 +573,7 @@ export async function payDebt(payload: {
     payment_date: string
     notes?: string
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     const amt = Number(payload.payment_amount)
@@ -646,7 +653,7 @@ export async function payDebt(payload: {
 }
 
 export async function deleteDebtPayable(debtId: string) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     const { data: debt } = await supabase
@@ -696,7 +703,7 @@ export async function createReceivable(payload: {
     due_date?: string
     notes?: string
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (!payload.title?.trim()) return { error: 'Keterangan piutang wajib diisi.' }
@@ -755,7 +762,7 @@ export async function payReceivable(payload: {
     notes?: string
     payment_method?: string
 }) {
-    const { error: authErr, supabase, user, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, user, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile || !user) return { error: authErr || 'Unauthorized' }
 
     const amt = Number(payload.payment_amount)
@@ -873,7 +880,7 @@ export async function payReceivable(payload: {
 }
 
 export async function deleteReceivable(receivableId: string) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('debts_receivables')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     const { data: rec } = await supabase
@@ -915,7 +922,7 @@ export async function createEquityRecord(payload: {
     entry_date: string
     notes?: string
 }) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('capital_equity')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     if (!payload.title?.trim()) return { error: 'Keterangan transaksi modal wajib diisi.' }
@@ -975,7 +982,7 @@ export async function createEquityRecord(payload: {
 }
 
 export async function deleteEquityRecord(equityId: string) {
-    const { error: authErr, supabase, profile } = await getAuthorizedOwner()
+    const { error: authErr, supabase, profile } = await getAuthorizedOwner('capital_equity')
     if (authErr || !supabase || !profile) return { error: authErr || 'Unauthorized' }
 
     // 1. Ambil mutasi kas terkait di financial_transactions

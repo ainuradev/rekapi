@@ -1,6 +1,6 @@
 # Blueprint SaaS POS & Akuntansi UMKM — **Rekapi**
 
-*Versi Arsitektur & Spesifikasi Terkini — Mencakup Implementasi Lengkap Fase 1, Fase 2, dan Fase 3 (Migrasi 0001 s/d 0030).*
+*Versi Arsitektur & Spesifikasi Terkini — Mencakup Implementasi Lengkap Fase 1, Fase 2, dan Fase 3 (Migrasi 0001 s/d 0045).*
 
 ---
 
@@ -13,8 +13,9 @@
 
 **Tech Stack Inti:**
 * **Frontend:** Next.js 16 (App Router, React Server Components, Server Actions).
-* **Styling & UI:** Tailwind CSS (Modern Clean Slate/Emerald, Spreadsheet Table View, Responsive Mobile-First).
+* **Styling & UI:** Tailwind CSS (Clean Sheet Emerald, Spreadsheet Table View, Responsive Mobile-First).
 * **Backend & Database:** Supabase (PostgreSQL 15+, Database Triggers, PL/pgSQL Atomic Stored Procedures, Row Level Security).
+* **Media Storage & Image CDN:** Cloudinary Unsigned Upload (`400x400 px` WebP untuk Foto Produk & `800x1000 px` WebP untuk QRIS Statis Toko).
 * **Payment Gateway & Billing:** Midtrans Snap & Core API (QRIS, GoPay, Virtual Account, Credit Card) dengan Webhook Idempotency.
 
 ---
@@ -57,9 +58,11 @@
 | **MOD-14** | **Biaya & Beban Operasional** | ✅ Selesai | Kategori beban (gaji, listrik, sewa, dll.), pemotongan akun kas/rekening penampung riil, dan pemulihan saldo saat beban dihapus. *(0028)* |
 | **MOD-15** | **Laporan Laba-Rugi (P&L)** | ✅ Selesai | Perhitungan Omzet Penjualan (non-void), HPP Modal Snapshot, Laba Kotor, Total Beban, dan Laba Bersih Operasional. *(0003, 0028, 0029)* |
 | **MOD-16** | **Laporan Neraca (Balance Sheet)** | ✅ Selesai | Posisi Aset Lancar (Kas & Bank + Piutang Usaha + Persediaan Produk & Bahan Baku `quantity * cost_per_unit`) = Kewajiban (Utang Usaha) + Ekuitas Bersih. *(0028, 0031)* |
-| **MOD-17** | **Laporan Arus Kas (Cash Flow)** | ✅ Selesai | Arus kas masuk (penjualan tunai, DP, pelunasan piutang, modal) vs arus kas keluar (beban operasional, pembelian bahan baku riil `paid_amount`, pembayaran utang, prive). *(0028, 0029, 0031)* |
-| **MOD-18** | **Cetak Struk & Nota POS** | ✅ Selesai | Komponen `InvoiceModal` mendukung format Thermal 58mm, Thermal 80mm, dan standar A4 dengan logo bisnis dan QRIS dinamis. *(0020, 0025)* |
-| **MOD-19** | **Langganan Midtrans** | ✅ Selesai | Paket langganan (Trial, Lite, Pro, Enterprise), checkout token Snap, sinkronisasi webhook idempotency key, aktivasi instan, dan batas kuota cabang. *(0010, 0011, 0015, 0027)* |
+| **MOD-17** | **Laporan Arus Kas (Cash Flow)** | ✅ Selesai | Arus kas masuk (penjualan tunai, DP, pelunasan piutang, modal) vs arus kas keluar (beban operasional kas, pembelian bahan baku riil `paid_amount`, pembayaran utang, prive; beban non-kas dikecualikan). *(0028, 0029, 0031, 0042)* |
+| **MOD-18** | **Cetak Struk, Nota POS & QRIS Toko** | ✅ Selesai | Komponen `InvoiceModal` mendukung format Thermal 58mm, Thermal 80mm, dan standar A4, disertai penampilan gambar QRIS statis toko (`qris_image_url`, `800x1000 px`) saat kasir memilih metode bayar `QRIS`. *(0020, 0025, 0045)* |
+| **MOD-19** | **Langganan Midtrans & Tier Gating** | ✅ Selesai | Paket langganan 28 hari: **Standard (`Rp 49.000`, coret `Rp 149.000`, 1 Cabang Utama & 1 Kasir)**, **Business (`Rp 99.000`, coret `Rp 299.000`, Maks 3 Cabang & 3 Kasir)**, dan **Pro (`Rp 179.000`, coret `Rp 499.000`, Maks 5 Cabang & 5 Kasir)** + Trial 7 Hari. Dilengkapi auto-deactivate cabang/kasir saat downgrade (`auto_deactivate_on_downgrade`). *(0010, 0011, 0015, 0027, 0039, 0040, 0045)* |
+| **MOD-20** | **Cabang Utama (`PUSAT`) & Penyatuan Stok Induk** | ✅ Selesai | Setiap bisnis wajib memiliki 1 Cabang Utama (`code = 'PUSAT'`). Mode Konsolidasi (`all`) otomatis meresolusi mutasi ke Cabang Utama. Penyesuaian stok rusak/kedaluwarsa (`waste_expired`) otomatis mencatat Beban Kerugian Non-Kas (`expenses.is_non_cash = true`) tanpa memotong saldo Kas/Bank. *(0039, 0042)* |
+| **MOD-21** | **Pusat Notifikasi & Interactive Product Tour** | ✅ Selesai | Pengumuman broadcast & notifikasi tenant dari Super Admin (`system_notifications` & `notification_reads`) terhubung ke lonceng navbar, dilengkapi panduan interaktif `ProductTour` untuk pengguna baru. *(0043, 0044)* |
 
 ---
 
@@ -140,6 +143,22 @@ Tabel `financial_transactions` adalah buku besar kas tunggal untuk memantau alir
 4. **`record_inventory_mutation_atomic`**:
    * Mencatat mutasi keluar/masuk bahan baku pada cabang.
    * Menjaga integritas saldo kumulatif (`balance_after`) pada kartu stok persediaan.
+5. **`auto_deactivate_on_downgrade`**:
+   * Saat bisnis turun paket (misal dari `Pro`/`Business` ke `Standard` atau berakhirnya masa aktif), secara atomik mempertahankan **Cabang Utama (`code = 'PUSAT'`)** tetap `active`, menonaktifkan cabang tambahan (`branches.status = 'inactive'`), serta menonaktifkan akun kasir di cabang tambahan (`profiles.is_active = false`).
+6. **`record_purchase_with_stock_atomic`**:
+   * Mencatat pembelian bahan baku beserta detail item secara atomik, memperbarui stok cabang dan harga beli acuan (`cost_per_unit`), serta memotong saldo kas/bank (untuk pembelian lunas) atau menerbitkan utang usaha di `debts_payables` (untuk pembelian tempo/kredit tanpa mendouble-count ke beban operasional).
+
+---
+
+## 5B. Tabel Resmi Paket Langganan, Kuota & Value-Based Feature Gating
+
+Seluruh paket berbayar berlaku selama **28 hari** (ditambah masa **Trial 7 Hari** untuk bisnis baru dengan akses fitur setara Pro, kuota 1 Cabang Utama & 1 Kasir):
+
+| Kode Paket | Nama Paket | Harga Aktif (28 Hari) | Harga Coret | Kuota Cabang (`max_branches`) | Kuota Kasir (`max_employees`) | Modul yang Terbuka |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`standard`** | **Standard** | **Rp 49.000** /bln | ~~Rp 149.000~~ | **1 Cabang Utama** | **1 Akun Kasir** | Kasir POS 7 Channel, Katalog Produk & Foto (`image_url`) + HPP, QRIS Statis Toko (`qris_image_url`), CRM Pelanggan, Beban Operasional, Laba Rugi, Kinerja Produk |
+| **`business`** | **Business** *(Populer)* | **Rp 99.000** /bln | ~~Rp 299.000~~ | **Maks 3 Cabang** | **Maks 3 Akun Kasir** | Semua fitur Standard + **Stok Bahan Baku & Pembelian Supplier**, **Buku Kas & Rekening Bank + Setoran Cabang**, **Buku Utang Supplier & Piutang Pelanggan**, Ekspor Excel/CSV |
+| **`pro`** | **Pro** | **Rp 179.000** /bln | ~~Rp 499.000~~ | **Maks 5 Cabang** | **Maks 5 Akun Kasir** | Semua fitur Business + **Laporan Neraca SAK EMKM**, **Laporan Arus Kas (3 Aktivitas)**, **Manajemen Modal Disetor & Prive**, Konsolidasi Keuangan Lintas Cabang & Akses API |
 
 ---
 

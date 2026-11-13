@@ -17,6 +17,7 @@ type Product = {
     cost_price: number
     stock: number
     unit?: string
+    image_url?: string | null
     category?: 'makanan' | 'minuman' | 'lainnya' | string | null
 }
 
@@ -34,6 +35,20 @@ type CartLine = {
     price: number
     cost_price: number
     unit?: string
+    image_url?: string | null
+}
+
+function getProductInitials(name: string): string {
+    const cleaned = name.trim()
+    if (!cleaned) return 'PR'
+    const words = cleaned.split(/\s+/).filter(Boolean)
+    if (words[0] && words[0].length === 2 && /^[A-Za-z0-9]+$/.test(words[0])) {
+        return words[0].toUpperCase()
+    }
+    if (words.length >= 2) {
+        return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase()
+    }
+    return cleaned.slice(0, 2).toUpperCase()
 }
 
 const CHANNELS = ['offline', 'gofood', 'grabfood', 'shopeefood', 'whatsapp', 'qris', 'lainnya']
@@ -281,8 +296,18 @@ export default function KasirClient({
                     cost_price: product.cost_price,
                     quantity: existingQty + 1,
                     unit: product.unit || 'pcs',
+                    image_url: product.image_url ?? null,
                 },
             }
+        })
+    }
+
+    function removeFromCart(productId: string) {
+        setMessage(null)
+        setCart((prev) => {
+            const next = { ...prev }
+            delete next[productId]
+            return next
         })
     }
 
@@ -585,7 +610,7 @@ export default function KasirClient({
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Product Catalog List (Compact 2-Col Mobile & 3-Col Desktop Grid) */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
                         {filteredGroupedProducts.map((group) => {
                             const isSingle = group.variants.length === 1
 
@@ -595,91 +620,116 @@ export default function KasirClient({
                                 const stock = product.stock !== undefined && product.stock !== null ? Number(product.stock) : null
                                 const outOfStock = stock !== null && stock <= 0
                                 const reachedLimit = stock !== null && qtyInCart >= stock
-                                const lowStock = stock !== null && stock > 0 && stock <= 5
                                 const isDisabled = outOfStock || reachedLimit
 
                                 return (
                                     <div
                                         key={product.id}
                                         onClick={() => !isDisabled && addToCart(product)}
-                                        className={`flex flex-col justify-between rounded-lg border bg-white p-3 transition text-left select-none cursor-pointer ${
-                                            isDisabled
+                                        className={`flex flex-col justify-between rounded-2xl border overflow-hidden bg-white transition text-left select-none cursor-pointer ${
+                                            outOfStock
                                                 ? 'border-slate-200 opacity-60 bg-slate-50 cursor-not-allowed'
                                                 : qtyInCart > 0
-                                                ? 'border-emerald-700 ring-1 ring-emerald-700 shadow-2xs'
+                                                ? 'border-emerald-700 ring-1 ring-emerald-700 shadow-xs'
                                                 : 'border-slate-200 hover:border-emerald-700 shadow-2xs'
                                         }`}
                                     >
-                                        {/* Baris Atas: Nama Produk + Badge Qty jika ada di keranjang */}
-                                        <div className="flex items-start justify-between gap-1 mb-1.5">
+                                        {/* Area Gambar Atas (Full-Bleed Top Image + Floating Stock Badge) */}
+                                        <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
+                                            {product.image_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={product.image_url}
+                                                    alt={product.name}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full bg-gradient-to-br from-slate-200 via-emerald-100/75 to-teal-200/70 flex items-center justify-center">
+                                                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-400/50 via-emerald-600/55 to-emerald-900/70 shadow-md flex items-center justify-center">
+                                                        <span className="text-emerald-950 font-extrabold text-lg sm:text-xl tracking-tight">
+                                                            {getProductInitials(product.name)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Floating Stock Pill di Pojok Kanan Atas Gambar */}
+                                            <span
+                                                className={`absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-xs backdrop-blur-xs tabular-nums ${
+                                                    outOfStock
+                                                        ? 'bg-rose-600/95 text-white'
+                                                        : 'bg-white/95 text-slate-800'
+                                                }`}
+                                            >
+                                                {outOfStock
+                                                    ? 'Habis'
+                                                    : stock !== null
+                                                    ? `Stok ${stock} ${product.unit || 'pcs'}`
+                                                    : 'Tersedia'}
+                                            </span>
+                                        </div>
+
+                                        {/* Area Konten Bawah Kartu: Nama Produk, Harga, dan Stepper / Tombol + */}
+                                        <div className="p-3 sm:p-3.5 flex flex-col gap-2.5 flex-1 justify-between">
                                             <h3
-                                                className="font-medium text-sm text-slate-900 line-clamp-1 leading-snug"
+                                                className="font-bold text-sm sm:text-[15px] text-slate-900 line-clamp-1 leading-snug"
                                                 title={product.name}
                                             >
                                                 {product.name}
                                             </h3>
-                                            {qtyInCart > 0 && (
-                                                <span className="shrink-0 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-900 tabular-nums">
-                                                    {qtyInCart}x
+
+                                            <div className="flex items-center justify-between gap-2 pt-0.5">
+                                                <span className="font-bold text-sm sm:text-[15px] tabular-nums text-emerald-900">
+                                                    Rp {product.selling_price.toLocaleString('id-ID')}
                                                 </span>
-                                            )}
-                                        </div>
 
-                                        {/* Tengah: Harga Jual */}
-                                        <div className="mb-2">
-                                            <span className="font-semibold text-sm tabular-nums text-emerald-900">
-                                                Rp {product.selling_price.toLocaleString('id-ID')}
-                                            </span>
-                                        </div>
-
-                                        {/* Bawah: Indikator titik warna (6px) + teks sisa stok cabang + tombol + */}
-                                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-auto">
-                                            <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                                                <span
-                                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                        outOfStock
-                                                            ? 'bg-rose-500'
-                                                            : lowStock
-                                                            ? 'bg-amber-500'
-                                                            : 'bg-emerald-600'
-                                                    }`}
-                                                />
-                                                <span className="text-[11px] text-slate-500 truncate tabular-nums">
-                                                    {outOfStock
-                                                        ? 'Habis'
-                                                        : stock !== null
-                                                        ? `Stok ${stock} ${product.unit || 'pcs'}`
-                                                        : 'Tersedia'}
-                                                </span>
-                                            </div>
-
-                                            <div
-                                                className="flex items-center gap-1 shrink-0"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                {qtyInCart > 0 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => changeQty(product.id, -1)}
-                                                        className="w-6 h-6 rounded border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-100 active:scale-95 transition cursor-pointer"
-                                                        title="Kurangi"
-                                                    >
-                                                        -
-                                                    </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => !isDisabled && addToCart(product)}
-                                                    disabled={isDisabled}
-                                                    className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs transition cursor-pointer ${
-                                                        isDisabled
-                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                                            : 'bg-emerald-800 text-white hover:bg-emerald-900 active:scale-95'
-                                                    }`}
-                                                    title="Tambah ke Keranjang"
+                                                <div
+                                                    className="flex items-center shrink-0"
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    +
-                                                </button>
+                                                    {qtyInCart > 0 ? (
+                                                        <div className="inline-flex items-center rounded-lg border border-emerald-800 overflow-hidden bg-white shadow-2xs">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => changeQty(product.id, -1)}
+                                                                className="w-7 h-7 bg-emerald-800 text-white hover:bg-emerald-900 font-bold text-sm flex items-center justify-center transition cursor-pointer"
+                                                                title="Kurangi"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="w-7 h-7 bg-white text-slate-900 font-bold text-xs flex items-center justify-center tabular-nums">
+                                                                {qtyInCart}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => !isDisabled && addToCart(product)}
+                                                                disabled={isDisabled}
+                                                                className={`w-7 h-7 font-bold text-sm flex items-center justify-center transition cursor-pointer ${
+                                                                    isDisabled
+                                                                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                                        : 'bg-emerald-800 text-white hover:bg-emerald-900'
+                                                                }`}
+                                                                title="Tambah"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => !isDisabled && addToCart(product)}
+                                                            disabled={isDisabled}
+                                                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-base transition cursor-pointer ${
+                                                                isDisabled
+                                                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                                    : 'bg-emerald-800 text-white hover:bg-emerald-900 shadow-2xs active:scale-95'
+                                                            }`}
+                                                            title="Tambah ke Keranjang"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -691,6 +741,7 @@ export default function KasirClient({
                             const allOutOfStock = group.variants.every(
                                 (v) => v.stock !== undefined && v.stock !== null && Number(v.stock) <= 0
                             )
+                            const groupImageUrl = group.variants.find((v) => v.image_url)?.image_url || null
 
                             const prices = group.variants.map((v) => v.selling_price)
                             const minPrice = Math.min(...prices)
@@ -703,53 +754,77 @@ export default function KasirClient({
                                 <div
                                     key={group.name}
                                     onClick={() => !allOutOfStock && setSelectingGroup(group)}
-                                    className={`flex flex-col justify-between rounded-lg border bg-white p-3 transition text-left select-none cursor-pointer ${
+                                    className={`flex flex-col justify-between rounded-2xl border overflow-hidden bg-white transition text-left select-none cursor-pointer ${
                                         allOutOfStock
                                             ? 'border-slate-200 opacity-60 bg-slate-50 cursor-not-allowed'
                                             : groupQtyInCart > 0
-                                            ? 'border-emerald-700 ring-1 ring-emerald-700 shadow-2xs'
+                                            ? 'border-emerald-700 ring-1 ring-emerald-700 shadow-xs'
                                             : 'border-slate-200 hover:border-emerald-700 shadow-2xs'
                                     }`}
                                 >
-                                    {/* Baris Atas */}
-                                    <div className="flex items-start justify-between gap-1 mb-1.5">
-                                        <h3
-                                            className="font-medium text-sm text-slate-900 line-clamp-1 leading-snug"
-                                            title={group.name}
-                                        >
-                                            {group.name}
-                                        </h3>
-                                        {groupQtyInCart > 0 && (
-                                            <span className="shrink-0 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-900 tabular-nums">
-                                                {groupQtyInCart}x
-                                            </span>
+                                    {/* Area Gambar Atas (Full-Bleed Top Image + Floating Variant Badge) */}
+                                    <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
+                                        {groupImageUrl ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img
+                                                src={groupImageUrl}
+                                                alt={group.name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="h-full w-full bg-gradient-to-br from-slate-200 via-emerald-100/75 to-teal-200/70 flex items-center justify-center">
+                                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-400/50 via-emerald-600/55 to-emerald-900/70 shadow-md flex items-center justify-center">
+                                                    <span className="text-emerald-950 font-extrabold text-lg sm:text-xl tracking-tight">
+                                                        {getProductInitials(group.name)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         )}
-                                    </div>
 
-                                    {/* Tengah: Rentang Harga */}
-                                    <div className="mb-2">
-                                        <span className="font-semibold text-sm tabular-nums text-emerald-900">
-                                            {priceDisplay}
+                                        <span
+                                            className={`absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-xs backdrop-blur-xs ${
+                                                allOutOfStock
+                                                    ? 'bg-rose-600/95 text-white'
+                                                    : 'bg-white/95 text-slate-800'
+                                            }`}
+                                        >
+                                            {allOutOfStock ? 'Habis' : `${group.variants.length} Varian`}
                                         </span>
                                     </div>
 
-                                    {/* Bawah: Indikator titik + Varian */}
-                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-auto">
-                                        <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                                            <span
-                                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                    allOutOfStock ? 'bg-rose-500' : 'bg-emerald-600'
-                                                }`}
-                                            />
-                                            <span className="text-[11px] text-slate-500 truncate">
-                                                {allOutOfStock ? 'Habis' : `${group.variants.length} Varian`}
-                                            </span>
+                                    {/* Area Konten Bawah Kartu */}
+                                    <div className="p-3 sm:p-3.5 flex flex-col gap-2.5 flex-1 justify-between">
+                                        <div className="flex items-start justify-between gap-1">
+                                            <h3
+                                                className="font-bold text-sm sm:text-[15px] text-slate-900 line-clamp-1 leading-snug"
+                                                title={group.name}
+                                            >
+                                                {group.name}
+                                            </h3>
+                                            {groupQtyInCart > 0 && (
+                                                <span className="shrink-0 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-900 tabular-nums">
+                                                    {groupQtyInCart}x
+                                                </span>
+                                            )}
                                         </div>
 
-                                        <div className="flex items-center shrink-0">
-                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-                                                Pilih
+                                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                                            <span className="font-bold text-sm sm:text-[15px] tabular-nums text-emerald-900 truncate">
+                                                {priceDisplay}
                                             </span>
+
+                                            <button
+                                                type="button"
+                                                disabled={allOutOfStock}
+                                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-base shrink-0 transition cursor-pointer ${
+                                                    allOutOfStock
+                                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                        : 'bg-emerald-800 text-white hover:bg-emerald-900 shadow-2xs active:scale-95'
+                                                }`}
+                                                title="Pilih Varian"
+                                            >
+                                                +
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -766,7 +841,7 @@ export default function KasirClient({
 
                 {/* Desktop Cart Sidebar */}
                 <div className="hidden lg:block">
-                    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs sticky top-20">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sticky top-20">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <h2 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                                 <span>Keranjang</span>
@@ -787,36 +862,73 @@ export default function KasirClient({
                             )}
                         </div>
 
-                        <div className="mt-3 space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                            {Object.values(cart).map((item) => (
-                                <div key={item.product_id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
-                                    <div className="min-w-0 pr-2">
-                                        <div className="font-semibold text-slate-800 truncate">{item.name}</div>
-                                        <div className="text-[11px] text-slate-500 tabular-nums">
-                                            Rp {item.price.toLocaleString('id-ID')}
+                        <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                            {Object.values(cart).map((item) => {
+                                const itemImageUrl =
+                                    item.image_url ??
+                                    products.find((p) => p.id === item.product_id)?.image_url ??
+                                    null
+
+                                return (
+                                    <div key={item.product_id} className="flex items-start justify-between gap-3 py-2 border-b border-slate-100 last:border-b-0">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-14 h-14 shrink-0 rounded-xl border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
+                                                {itemImageUrl ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={itemImageUrl}
+                                                        alt={item.name}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="h-full w-full bg-gradient-to-br from-slate-200 via-emerald-100/75 to-teal-200/70 flex items-center justify-center">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400/50 via-emerald-600/55 to-emerald-900/70 flex items-center justify-center">
+                                                            <span className="text-emerald-950 font-extrabold text-[11px] tracking-tight">
+                                                                {getProductInitials(item.name)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-semibold text-xs text-slate-800 truncate">{item.name}</div>
+                                                <div className="text-[11px] font-bold text-emerald-700 tabular-nums mt-0.5">
+                                                    Rp {item.price.toLocaleString('id-ID')}
+                                                </div>
+                                                <div className="inline-flex items-center gap-1 mt-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => changeQty(item.product_id, -1)}
+                                                        className="w-6 h-6 rounded-md border border-slate-200 bg-slate-50 font-bold text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition cursor-pointer"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="w-6 text-center font-bold text-xs text-slate-800 tabular-nums">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => changeQty(item.product_id, 1)}
+                                                        className="w-6 h-6 rounded-md bg-emerald-800 text-white font-bold flex items-center justify-center hover:bg-emerald-900 active:scale-95 transition cursor-pointer"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+
                                         <button
                                             type="button"
-                                            onClick={() => changeQty(item.product_id, -1)}
-                                            className="w-6 h-6 rounded border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition cursor-pointer"
+                                            onClick={() => removeFromCart(item.product_id)}
+                                            className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 hover:bg-rose-200 flex items-center justify-center text-[10px] font-bold shrink-0 transition cursor-pointer"
+                                            title="Hapus dari Keranjang"
                                         >
-                                            -
-                                        </button>
-                                        <span className="w-5 text-center font-bold text-slate-800 tabular-nums">
-                                            {item.quantity}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => changeQty(item.product_id, 1)}
-                                            className="w-6 h-6 rounded border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition cursor-pointer"
-                                        >
-                                            +
+                                            ✕
                                         </button>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
 
                             {Object.keys(cart).length === 0 && (
                                 <div className="py-8 text-center text-xs text-slate-400">
@@ -981,18 +1093,37 @@ export default function KasirClient({
                                             ))}
                                         </select>
                                         {paymentMethod === 'qris' && businessQrisUrl && (
-                                            <div className="mt-1.5 flex items-center justify-between px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[10px] font-medium text-emerald-800">
-                                                <span className="flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    Pop-up QRIS Siap
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowQrisModal(true)}
-                                                    className="text-emerald-700 hover:underline font-bold cursor-pointer"
-                                                >
-                                                    Buka QRIS &rarr;
-                                                </button>
+                                            <div className="mt-2 rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 space-y-2">
+                                                <div className="flex items-center gap-2.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowQrisModal(true)}
+                                                        title="Klik untuk memperbesar Kode QRIS"
+                                                        className="h-14 w-14 shrink-0 rounded-lg border border-emerald-200 bg-white p-1 overflow-hidden flex items-center justify-center hover:border-emerald-600 transition cursor-pointer shadow-2xs"
+                                                    >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={businessQrisUrl}
+                                                            alt="Preview QRIS Toko"
+                                                            className="h-full w-full object-contain"
+                                                        />
+                                                    </button>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-[11px] font-bold text-emerald-950">
+                                                            Kode QRIS Statis Toko
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowQrisModal(true)}
+                                                            className="mt-1 inline-flex items-center gap-1 rounded-lg bg-emerald-800 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-emerald-900 transition cursor-pointer"
+                                                        >
+                                                            <span>Lihat / Tampilkan Kode QRIS Toko</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[10px] text-emerald-900 leading-snug border-t border-emerald-200/70 pt-1.5">
+                                                    Pastikan bukti pembayaran QRIS pada HP pelanggan telah berhasil sebelum menekan tombol Proses Pembayaran.
+                                                </p>
                                             </div>
                                         )}
                                         {paymentMethod === 'qris' && !businessQrisUrl && (
@@ -1214,31 +1345,70 @@ export default function KasirClient({
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                             <div className="py-1 space-y-2">
-                                {Object.values(cart).map((item) => (
-                                    <div key={item.product_id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
-                                        <div>
-                                            <div className="font-bold text-slate-800">{item.name}</div>
-                                            <div className="text-[11px] text-slate-500 tabular-nums">Rp {item.price.toLocaleString('id-ID')}</div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
+                                {Object.values(cart).map((item) => {
+                                    const itemImageUrl =
+                                        item.image_url ??
+                                        products.find((p) => p.id === item.product_id)?.image_url ??
+                                        null
+
+                                    return (
+                                        <div key={item.product_id} className="flex items-start justify-between gap-3 py-2 border-b border-slate-100 last:border-b-0">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="w-12 h-12 shrink-0 rounded-xl border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
+                                                    {itemImageUrl ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={itemImageUrl}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-full w-full bg-gradient-to-br from-slate-200 via-emerald-100/75 to-teal-200/70 flex items-center justify-center">
+                                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400/50 via-emerald-600/55 to-emerald-900/70 flex items-center justify-center">
+                                                                <span className="text-emerald-950 font-extrabold text-[10px] tracking-tight">
+                                                                    {getProductInitials(item.name)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-bold text-xs text-slate-800 truncate">{item.name}</div>
+                                                    <div className="text-[11px] font-bold text-emerald-700 tabular-nums mt-0.5">
+                                                        Rp {item.price.toLocaleString('id-ID')}
+                                                    </div>
+                                                    <div className="inline-flex items-center gap-1.5 mt-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => changeQty(item.product_id, -1)}
+                                                            className="w-6 h-6 rounded-md border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <span className="w-5 text-center font-bold text-xs tabular-nums">{item.quantity}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => changeQty(item.product_id, 1)}
+                                                            className="w-6 h-6 rounded-md bg-emerald-800 text-white font-bold flex items-center justify-center active:scale-95 transition cursor-pointer"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <button
                                                 type="button"
-                                                onClick={() => changeQty(item.product_id, -1)}
-                                                className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
+                                                onClick={() => removeFromCart(item.product_id)}
+                                                className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 hover:bg-rose-200 flex items-center justify-center text-[10px] font-bold shrink-0 transition cursor-pointer"
+                                                title="Hapus dari Keranjang"
                                             >
-                                                -
-                                            </button>
-                                            <span className="w-5 text-center font-bold tabular-nums">{item.quantity}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => changeQty(item.product_id, 1)}
-                                                className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-700 flex items-center justify-center active:scale-95 transition cursor-pointer"
-                                            >
-                                                +
+                                                ✕
                                             </button>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
 
                         <div className="space-y-3 pt-3 border-t border-slate-100">
@@ -1356,6 +1526,39 @@ export default function KasirClient({
                                             </option>
                                         ))}
                                     </select>
+                                    {paymentMethod === 'qris' && businessQrisUrl && (
+                                        <div className="mt-2 rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 space-y-2">
+                                            <div className="flex items-center gap-2.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowQrisModal(true)}
+                                                    className="h-14 w-14 shrink-0 rounded-lg border border-emerald-200 bg-white p-1 overflow-hidden flex items-center justify-center cursor-pointer"
+                                                >
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={businessQrisUrl}
+                                                        alt="Preview QRIS Toko"
+                                                        className="h-full w-full object-contain"
+                                                    />
+                                                </button>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-[11px] font-bold text-emerald-950">
+                                                        Kode QRIS Statis Toko
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowQrisModal(true)}
+                                                        className="mt-1 inline-flex items-center gap-1 rounded-lg bg-emerald-800 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-emerald-900 transition cursor-pointer"
+                                                    >
+                                                        <span>Lihat / Tampilkan Kode QRIS Toko</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-emerald-900 leading-snug border-t border-emerald-200/70 pt-1.5">
+                                                Pastikan bukti pembayaran QRIS pada HP pelanggan telah berhasil sebelum menekan tombol Proses Pembayaran.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -1691,6 +1894,9 @@ export default function KasirClient({
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                         </svg>
                                         <span>Arahkan kamera / e-wallet pelanggan ke QRIS di atas</span>
+                                    </p>
+                                    <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-center text-[11px] font-medium text-amber-900 leading-snug">
+                                        Pastikan bukti pembayaran QRIS pada HP pelanggan telah berhasil sebelum menekan tombol Proses Pembayaran.
                                     </p>
                                 </div>
                             ) : (

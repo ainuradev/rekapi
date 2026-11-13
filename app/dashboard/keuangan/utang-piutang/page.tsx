@@ -102,7 +102,7 @@ export default async function UtangPiutangPage({
             .order('created_at', { ascending: false }),
         supabase
             .from('receivables')
-            .select('*, sales(branch_id)')
+            .select('*, sales(branch_id, status)')
             .eq('business_id', businessId)
             .order('due_date', { ascending: true, nullsFirst: false })
             .order('created_at', { ascending: false }),
@@ -118,7 +118,8 @@ export default async function UtangPiutangPage({
     const { selectedBranchId, selectedBranch, branchLabel } = resolveEffectiveBranchFilter(candidateBranchId, branchList)
 
     const allDebts = (debtsRaw as (DebtRecord & { purchases?: { branch_id?: string | null } | null })[]) ?? []
-    const allReceivables = (receivablesRaw as (ReceivableRecord & { sales?: { branch_id?: string | null } | null })[]) ?? []
+    const allReceivables = ((receivablesRaw as (ReceivableRecord & { sales?: { branch_id?: string | null; status?: string | null } | null })[]) ?? [])
+        .filter((r) => r.sales?.status !== 'voided' && !(r.notes && r.notes.includes('[Dibatalkan / Void:')))
 
     // Filter Utang berdasarkan Cabang Aktif
     const filteredDebtsByBranch = selectedBranchId !== 'all'

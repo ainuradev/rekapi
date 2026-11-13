@@ -96,14 +96,16 @@ export default function UtangPiutangClient({ debts, receivables, accounts, branc
     const [payRecNotes, setPayRecNotes] = useState('')
 
     // Computations Debts
-    const totalDebts = debts.reduce((sum, d) => sum + Number(d.total_amount || 0), 0)
     const totalPaidDebts = debts.reduce((sum, d) => sum + Number(d.paid_amount || 0), 0)
-    const remainingDebts = totalDebts - totalPaidDebts
+    const remainingDebts = debts
+        .filter((d) => d.status !== 'paid')
+        .reduce((sum, d) => sum + Math.max(0, Number(d.total_amount || 0) - Number(d.paid_amount || 0)), 0)
 
     // Computations Receivables
-    const totalReceivables = receivables.reduce((sum, r) => sum + Number(r.total_amount || 0), 0)
     const totalPaidRec = receivables.reduce((sum, r) => sum + Number(r.paid_amount || 0), 0)
-    const remainingReceivables = totalReceivables - totalPaidRec
+    const remainingReceivables = receivables
+        .filter((r) => r.status !== 'paid')
+        .reduce((sum, r) => sum + Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0)), 0)
 
     function handleAddDebt(e: React.FormEvent) {
         e.preventDefault()

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { Supplier, SupplierItem } from '@/types/inventory'
-import { checkActiveSubscription } from '@/lib/subscription-access'
+import { checkServerModuleAccess } from '@/lib/subscription-access'
 
 export interface CreateSupplierInput {
     code?: string
@@ -64,7 +64,7 @@ export async function createSupplier(payload: CreateSupplierInput) {
     if (!profile) return { error: 'Profil tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat menambahkan supplier.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -132,7 +132,7 @@ export async function updateSupplier(id: string, payload: UpdateSupplierInput) {
     if (!profile) return { error: 'Profil tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat mengubah data supplier.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -200,7 +200,7 @@ export async function deleteSupplier(id: string) {
     if (!profile) return { error: 'Profil tidak ditemukan.' }
     if (profile.role !== 'owner') return { error: 'Hanya Owner yang dapat menghapus supplier.' }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -238,10 +238,26 @@ export async function getSupplierDetailWithPurchases(supplierId: string) {
     } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || profile.role !== 'owner') {
+        return { error: 'Hanya Owner yang dapat melihat detail supplier.' }
+    }
+
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
+
     const { data: supplier, error: sErr } = await supabase
         .from('suppliers')
         .select('*')
         .eq('id', supplierId)
+        .eq('business_id', profile.business_id)
         .single()
 
     if (sErr || !supplier) {
@@ -259,6 +275,7 @@ export async function getSupplierDetailWithPurchases(supplierId: string) {
             purchase_items (id, item_name, quantity, price, subtotal, unit)
         `)
         .eq('supplier_id', supplierId)
+        .eq('business_id', profile.business_id)
         .order('purchase_date', { ascending: false })
 
     if (pErr) return { error: pErr.message }
@@ -282,6 +299,7 @@ export async function getSupplierDetailWithPurchases(supplierId: string) {
             raw_materials (name, unit, sku)
         `)
         .eq('supplier_id', supplierId)
+        .eq('business_id', profile.business_id)
         .order('created_at', { ascending: false })
 
     return {
@@ -308,11 +326,16 @@ export async function getSupplierItems(supplierId: string) {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id')
+        .select('business_id, role')
         .eq('id', user.id)
         .single()
 
-    if (!profile) return { error: 'Profil tidak ditemukan.' }
+    if (!profile || profile.role !== 'owner') return { error: 'Hanya Owner yang dapat mengakses katalog supplier.' }
+
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
+    if (!subCheck.allowed) {
+        return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
+    }
 
     const { data, error } = await supabase
         .from('supplier_items')
@@ -357,7 +380,7 @@ export async function addSupplierItem(payload: SupplierItemInput) {
         return { error: 'Hanya Owner yang dapat menghubungkan bahan baku ke supplier.' }
     }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
@@ -452,7 +475,7 @@ export async function deleteSupplierItem(id: string) {
         return { error: 'Hanya Owner yang dapat menghapus item katalog supplier.' }
     }
 
-    const subCheck = await checkActiveSubscription(profile.business_id, supabase)
+    const subCheck = await checkServerModuleAccess(profile.business_id, 'raw_materials', supabase)
     if (!subCheck.allowed) {
         return { error: subCheck.error || 'Masa aktif langganan telah berakhir.' }
     }
